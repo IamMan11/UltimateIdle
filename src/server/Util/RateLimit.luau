@@ -42,12 +42,17 @@ local LIMITS: { [string]: { Rate: number, Burst: number } } = {
 	GiftPass = { Rate = 0.5, Burst = 2 },
 	BuyPremium = { Rate = 0.5, Burst = 2 },
 	BuyShopItem = { Rate = 3, Burst = 6 },
+	WatchLane = { Rate = 2, Burst = 5 },
+	TutorialSkip = { Rate = 0.5, Burst = 2 },
+	ClaimDaily = { Rate = 0.5, Burst = 3 },
+	RedeemCode = { Rate = 0.2, Burst = 3 },
 	RequestRejoin = { Rate = 0.05, Burst = 1 },
 	DevCommand = { Rate = 10, Burst = 20 },
 }
 
 local buckets: { [Player]: { [string]: Bucket } } = {}
 local trips: { [Player]: number } = {}
+local tripHooks: { (Player, string) -> () } = {}
 
 local RateLimit = {}
 
@@ -76,10 +81,18 @@ function RateLimit.Allow(player: Player, key: string): boolean
 		if count % 50 == 1 then
 			warn(`[RateLimit] {player.Name} over limit on {key} ({count} trips)`)
 		end
+		for _, hook in tripHooks do
+			hook(player, key)
+		end
 		return false
 	end
 	bucket.Tokens -= 1
 	return true
+end
+
+-- Called on every refused call (Analytics counts them for the anomaly log).
+function RateLimit.OnTrip(hook: (Player, string) -> ())
+	table.insert(tripHooks, hook)
 end
 
 Players.PlayerRemoving:Connect(function(player)

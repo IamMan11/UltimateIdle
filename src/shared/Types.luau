@@ -135,6 +135,19 @@ export type Settings = {
 	AutoSalvage: { [string]: boolean }, -- Tier -> salvage on drop
 	AutoOpenBoxes: boolean,
 	SkipWave: boolean,
+	UiScale: number, -- one of Config.Game.UiScales (1 = auto size)
+	LowDetail: boolean, -- fewer monsters drawn, no skill names over heads
+}
+
+export type TutorialState = {
+	Step: number, -- index into Config.Tutorial.Steps of the step being shown
+	Done: boolean,
+	Rewarded: number, -- highest step already paid (replaying the tutorial pays nothing again)
+}
+
+export type DailyState = {
+	Day: string, -- Period key (UTC day) of the last claim
+	Streak: number, -- consecutive days claimed, 1 = first day
 }
 
 -- Dictionaries keyed by string only: DataStore JSON turns sparse numeric keys into broken arrays.
@@ -161,6 +174,9 @@ export type ProfileData = {
 	OfflineRate: Rates,
 	NextUid: number,
 	Settings: Settings,
+	Tutorial: TutorialState,
+	Daily: DailyState,
+	Codes: { [string]: boolean }, -- redeemed code ids
 }
 
 -- Final combat numbers for one hero, cached server-side until something marks it dirty.

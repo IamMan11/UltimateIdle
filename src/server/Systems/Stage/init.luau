@@ -25,6 +25,8 @@ local Box = require(script.Parent.Box)
 local Modifiers = require(script.Parent.Modifiers)
 local Quest = require(script.Parent.Quest)
 local Shop = require(script.Parent.Shop)
+local Spectate = require(script.Parent.Spectate)
+local Analytics = require(script.Parent.Analytics)
 local Sim = require(script.Sim)
 
 type Run = {
@@ -127,7 +129,7 @@ local function finishLevel(player: Player, token: number)
 	updateOfflineRate(data, gold, xp, result.Duration + Stages.PauseBetweenLevels)
 	gold = math.floor(gold * Shop.GoldMult(player))
 	xp = math.floor(xp * Shop.XpMult(player))
-	Currency.Add(player, "Gold", gold)
+	Currency.Add(player, "Gold", gold, "Stage")
 	Hero.AddXp(player, xp, run.HeroIds)
 	Account.AddXp(player, xp * AccountConfig.XpShare)
 	data.LastSeen = os.time()
@@ -153,7 +155,10 @@ local function finishLevel(player: Player, token: number)
 		summary = Loot.Grant(player, bundle)
 		if result.Won then
 			progress.Level = run.Level + 1
-			progress.MaxLevel = math.max(progress.MaxLevel, progress.Level)
+			if progress.Level > progress.MaxLevel then
+				progress.MaxLevel = progress.Level
+				Analytics.Progress(player, run.Rebirth, run.Level)
+			end
 		else
 			progress.Level = math.max(1, run.Level - Stages.RetreatOnLose)
 		end
@@ -244,6 +249,7 @@ startLevel = function(player: Player)
 	if Replication.IsSynced(player) then
 		timelineEvent:Fire(player, payload)
 	end
+	Spectate.Publish(player, payload)
 	run.Thread = task.delay(result.Duration + lead, finishLevel, player, token)
 end
 

@@ -145,7 +145,7 @@ local function grantProduct(player: Player, data: Types.ProfileData, key: string
 	for _, item in ShopConfig.Items do
 		if item.Product == key then
 			countBought(player, data, item.Id) -- counted even past the quota: it is already paid for
-			Rewards.Grant(player, item.Reward)
+			Rewards.Grant(player, item.Reward, "Purchase")
 			Replication.Notify(player, "Purchased", item.Id)
 			return true
 		end
@@ -346,12 +346,12 @@ local function buyItem(player: Player, id: string)
 	local price = if item.Currency == "Gold"
 		then Formula.Economy.Gold(item.Price, Rewards.BestLevel(data))
 		else item.Price
-	if not Guard.Amount(price) or not Currency.Spend(player, item.Currency :: any, price) then
+	if not Guard.Amount(price) or not Currency.Spend(player, item.Currency :: any, price, "Shop") then
 		err(player, if item.Currency == "Gold" then "NotEnoughGold" else "NotEnoughRuby")
 		return
 	end
 	countBought(player, data, id)
-	Rewards.Grant(player, item.Reward)
+	Rewards.Grant(player, item.Reward, "Shop")
 	Replication.Notify(player, "Purchased", id)
 end
 

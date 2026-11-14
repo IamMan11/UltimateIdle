@@ -21,6 +21,7 @@ local Replication = require(script.Parent.Replication)
 local Currency = require(script.Parent.Currency)
 local Inventory = require(script.Parent.Inventory)
 local Modifiers = require(script.Parent.Modifiers)
+local Tutorial = require(script.Parent.Tutorial)
 
 export type TeamEntry = { HeroId: string, Row: string }
 
@@ -182,6 +183,7 @@ local function chooseFirst(player: Player, class: string)
 	syncHero(player, class, hero)
 	Replication.Set(player, { "Team" }, data.Team)
 	teamChanged(player)
+	Tutorial.Event(player, "ChooseHero")
 end
 
 local function buy(player: Player, class: string)
@@ -193,7 +195,7 @@ local function buy(player: Player, class: string)
 	if data == nil or def == nil or data.Heroes[class] ~= nil or next(data.Heroes) == nil then
 		return
 	end
-	if not Currency.Spend(player, "Gold", def.Price) then
+	if not Currency.Spend(player, "Gold", def.Price, "Hero") then
 		notifyError(player, "NotEnoughGold")
 		return
 	end
@@ -251,6 +253,7 @@ local function equip(player: Player, heroId: string, uid: string, slot: string)
 	Hero.MarkDirty(player, heroId)
 	syncHero(player, heroId, hero)
 	Modifiers.MarkDirty(player) -- worn relics feed the team modifiers
+	Tutorial.Event(player, "Equip")
 end
 
 local function unequip(player: Player, heroId: string, slot: string)
@@ -335,7 +338,7 @@ local function advance(player: Player, heroId: string)
 			return
 		end
 	end
-	Currency.Spend(player, "Gold", stage.Gold)
+	Currency.Spend(player, "Gold", stage.Gold, "Hero")
 	for id, n in stage.Items do
 		Inventory.SpendStack(player, id, n)
 	end

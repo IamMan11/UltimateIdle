@@ -26,4 +26,11 @@ return Freeze({
 	LaneOrigins = origins,
 	HeroOffsetX = -18,
 	FloorY = 0.5,
+	-- Monsters drawn at once per lane (the sim keeps the rest; only the picture is capped).
+	MaxMonsters = 40,
+	MaxMonstersWatched = 20,
+	MaxMonstersMobile = 18,
+	MaxMonstersWatchedMobile = 10,
+	-- Share of those caps kept with the Low detail setting on.
+	LowDetailShare = 0.5,
 })

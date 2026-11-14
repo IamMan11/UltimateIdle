@@ -72,17 +72,18 @@ function Rewards.CanGrant(player: Player, reward: Types.Reward): (boolean, strin
 	return true, nil
 end
 
-function Rewards.Grant(player: Player, reward: Types.Reward): Resolved?
+-- `source` = Config.Analytics.TransactionTypes key for the currency part.
+function Rewards.Grant(player: Player, reward: Types.Reward, source: string): Resolved?
 	local data = PlayerData.Data(player)
 	if data == nil then
 		return nil
 	end
 	local resolved = Rewards.Resolve(data, reward)
 	if resolved.Ruby > 0 then
-		Currency.Add(player, "Ruby", resolved.Ruby)
+		Currency.Add(player, "Ruby", resolved.Ruby, source)
 	end
 	if resolved.Gold > 0 then
-		Currency.Add(player, "Gold", resolved.Gold)
+		Currency.Add(player, "Gold", resolved.Gold, source)
 	end
 	for id, n in resolved.Materials do
 		Inventory.AddStack(player, id, n)

@@ -61,7 +61,7 @@ local function enchant(player: Player, uid: string)
 		Replication.Notify(player, "Error", "NotEnoughItems")
 		return
 	end
-	Currency.Spend(player, "Gold", gold)
+	Currency.Spend(player, "Gold", gold, "Forge")
 	Inventory.SpendStack(player, EnchantConfig.Item, dust)
 	local before = item.Enchants
 	local after = Enchant.Roll(Rng.new(), item.Tier)

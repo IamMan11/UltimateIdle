@@ -1,6 +1,6 @@
 # UltimateIdle — เอกสารระบบ
 
-Idle RPG: ทีม hero ตี monster เองตาม timeline ที่ server จำลอง · ผู้เล่นอัพเกรด/ใส่ของ · สถานะ: เฟส 0–6 ใน plan.md เสร็จ (ฐาน, loop หลัก, ของ, ทีม, rebirth, เสริมพลัง, เศรษฐกิจ)
+Idle RPG: ทีม hero ตี monster เองตาม timeline ที่ server จำลอง · ผู้เล่นอัพเกรด/ใส่ของ · สถานะ: เฟส 0–6 ใน plan.md เสร็จ · เฟส 7 เสร็จยกเว้น 7.3 balance (รอข้อมูลเล่นจริง) · leaderboard + raid/challenge/event/boss map ยังไม่ทำ (เจ้าของสั่งข้าม)
 
 เอกสารแยกตามระบบ อ่านเฉพาะอันที่เกี่ยว · ทุกแถวบอกว่า code อยู่ที่ไหน (path ต้องมีจริง)
 
@@ -11,7 +11,13 @@ Idle RPG: ทีม hero ตี monster เองตาม timeline ที่ se
 | ข้อมูลผู้เล่น: โหลด/เซฟผ่าน ProfileStore, `PlayerData.Data(player)`, migrate ตาม `SchemaVersion`, hook `OnLoaded/OnReleasing` | — (ดู CLAUDE.md § Player data) | `src/server/Data/PlayerData.luau` |
 | Remote ทั้งหมด (Red) + ตัวตรวจรูปแบบ | — | `src/shared/Net.luau` · rate limit `src/server/Util/RateLimit.luau` |
 | Sync state → client: snapshot เมื่อ client ขอ + delta รวมต่อเฟรม, notice (toast) | — | `src/server/Systems/Replication/` · ฝั่ง client `src/client/State/` |
-| เงิน Gold/Ruby: `Add/Spend/Has` | — | `src/server/Systems/Currency/` |
+| เงิน Gold/Ruby: `Add/Spend/Has` (ทุกครั้งส่ง `source` = key ใน `Config/Analytics.TransactionTypes`) | — | `src/server/Systems/Currency/` |
+| Analytics: economy รวมชุดส่งทุก `FlushSeconds` + ตอนออก · progression ทุก 10 level · onboarding funnel (tutorial) · custom (Rebirth, Code_*, TutorialSkipped) · **log ผิดปกติ** `[Anomaly]` (gold/ruby เร็วเกิน, gold ก้อนใหญ่, gold จาก trade, rate limit บ่อย) | — | `src/server/Systems/Analytics/` · เกณฑ์ `src/shared/Config/Analytics.luau` · hook `RateLimit.OnTrip` |
+| ดูด่านคนอื่น: client ส่ง `WatchLane(userId)` → server ส่ง timeline ปัจจุบัน + level ถัดไปของคนนั้นให้เฉพาะคนที่ดู (`LaneTimeline`) · คลิกด่าน = ดูคนนั้น / คลิกด่านที่ดูอยู่ = สลับ 2D/3D · ปุ่ม Watch บน HUD วนทีละคน | design §6 §8 | `src/server/Systems/Spectate/` · client `src/client/Battle/` (`Playback.luau` = เล่น 1 ด่าน) |
+| Tutorial 5 ขั้น (ผ่านด้วย event ฝั่ง server, รางวัลครั้งเดียวต่อบัญชี `Rewarded`, ข้าม/เล่นใหม่) · banner บน HUD + ไฮไลต์ปุ่มหน้า | — | `src/server/Systems/Tutorial/` · `Config/Tutorial.luau` · ข้อความ `Text.Tutorial` |
+| รางวัลรายวัน 7 วัน (UTC, ขาดวัน = เริ่มวัน 1) `ClaimDaily` | — | `src/server/Systems/Daily/` · `Config/Daily.luau` · หน้า `src/client/UI/Daily/` |
+| โค้ด `RedeemCode` (ใช้ได้ครั้งเดียวต่อบัญชี, หมดอายุได้) — รายการโค้ดอยู่ฝั่ง server เท่านั้น | — | `src/server/Systems/Codes/` · `src/server/Secret/Codes.luau` · ช่องกรอกในหน้า Settings |
+| มือถือ/ขนาดจอ: `UIScale` เดียวจาก viewport × `Settings.UiScale` · HUD แบบ grid (compact) / ซ่อนแผงทีม (tight, หรือเดินบนจอสัมผัส) · ปิด thumbstick ตอนดูด่าน · จำนวน monster ที่วาดต่อด่าน (`Config/World.MaxMonsters*`, `LowDetail`) | — | `src/client/UI/Core/Device.luau` · `App.luau` · `HUD.luau` · `src/client/Battle/` |
 | Hero: เลือกตัวแรก, ซื้อ, xp/level, ใส่/ถอดของ (wear cap), จัดทีม/แถว (`SetTeam`), เปลี่ยนอาชีพ (`Advance`), stat cache | design §3 §4 §6 | `src/server/Systems/Hero/` · สูตร `src/shared/Formula/` · config `Config/Classes.luau` `Config/Formation.luau` |
 | สกิล hero: ติดตัว 1 + ใช้เอง 2 ต่อ class ใช้อัตโนมัติใน sim, event `Skill` ใน timeline | design §6 | `src/shared/Config/Skills.luau` · `src/shared/Formula/Skills.luau` · `Sim.luau` |
 | Skill tree (ซื้อ/เปิดปิด node) + โบนัส level ส่วนตัว → modifier ก้อนเดียว (cache) | design §6 | `src/server/Systems/SkillTree/` · `src/server/Systems/Modifiers/` · `src/shared/Formula/Mods.luau` · config `Config/SkillTree.luau` `Config/Account.luau` |
@@ -24,14 +30,14 @@ Idle RPG: ทีม hero ตี monster เองตาม timeline ที่ se
 | Battle pass: ฤดู = เดือน UTC · แต้มจาก quest (`Quest.OnClaimed`) · สายฟรี/พรีเมียม `ClaimPass` (tier 0 = รับทั้งหมด) · รางวัลผ่าน `Rewards` | design §6 | `src/server/Systems/BattlePass/` · `Config/BattlePass.luau` · แปลงรางวัล `src/server/Systems/Rewards/` · แท็บ `src/client/UI/Quests/Pass.luau` |
 | ด่าน: sim ล้วน (timeline buffer) → ส่ง client → จ่ายเมื่อจบ · Progress/Farm | design §2 | `src/server/Systems/Stage/` (`Sim.luau`) · codec `src/shared/Timeline.luau` · config `src/shared/Config/Stages.luau` |
 | Lobby + 6 lane สร้างด้วยโค้ด, จองช่องต่อผู้เล่น (attribute `Lane`) | design §8 | `src/server/Systems/World/` · ตำแหน่ง `src/shared/Config/World.luau` |
-| เล่น timeline ฝั่ง client (pool rig R6 เรียบ), กล้อง lane 2D/3D / เดิน | design §8 | `src/client/Battle/` |
+| เล่น timeline ฝั่ง client (pool rig R6 เรียบ, ด่านตัวเอง + ด่านที่ดูอยู่), กล้อง lane 2D/3D / เดิน | design §8 | `src/client/Battle/` |
 | กระเป๋า (Gear/Stacks, ความจุ 500 ไม่นับที่ใส่) | design §4 | `src/server/Systems/Inventory/` |
 | Drop/กล่อง/ก้อน Farm/salvage · เปิดกล่องอัตโนมัติ (timer ต่อผู้เล่น) | design §4 | `src/server/Systems/Loot/` · `src/server/Systems/Box/` · อัตรา `src/server/Secret/` |
 | Tag + ค้นหา `@tag` | design §4 | `src/shared/Tags.luau` |
 | Offline 20% + AFK rejoin | design §6 | `src/server/Systems/Offline/` · client `src/client/Afk.luau` |
-| ตั้งค่า (auto-salvage, skip wave, เปิดกล่องอัตโนมัติ) | — | `src/server/Systems/Settings/` |
+| ตั้งค่า (auto-salvage, skip wave, เปิดกล่องอัตโนมัติ, ขนาด UI, low detail) | — | `src/server/Systems/Settings/` |
 | คำสั่ง dev (Studio เท่านั้น): gold xp level box gear mats points ruby quest passpts pass receipt | — | `src/server/Systems/Dev/` · ปุ่ม `src/client/UI/Dev/` |
-| UI: HUD, หน้า Heroes (Gear/Skills+เปลี่ยนอาชีพ)/Team (ลากวาง)/Skill Tree/Bag/Boxes/Forge (ตีบวก/ช่อง/enchant)/Rebirth/Quests (+Battle Pass)/Shop (+Passes/gift)/Trade/Settings, เลือก hero ตัวแรก | — (ดู CLAUDE.md § UI theme) | `src/client/UI/` |
+| UI: HUD, หน้า Heroes (Gear/Skills+เปลี่ยนอาชีพ)/Team (ลากวาง)/Skill Tree/Bag/Boxes/Forge (ตีบวก/ช่อง/enchant)/Rebirth/Quests (+Battle Pass)/Shop (+Passes/gift)/Trade/Daily/Settings (+โค้ด), เลือก hero ตัวแรก | — (ดู CLAUDE.md § UI theme) | `src/client/UI/` |
 | **สไตล์ภาพ (โมเดล + VFX)** — อ่านก่อนทำ asset ใหม่ทุกครั้ง | [art-style.md](./art-style.md) | — |
 | อาการพัง → ไฟล์เจ้าของ | [debug-map.md](./debug-map.md) | — |
 | ความจำข้าม session | [STATE.md](./STATE.md) | — |

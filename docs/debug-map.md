@@ -24,3 +24,9 @@
 | ซื้อ Robux แล้วไม่ได้ของ / ได้ซ้ำ | `server/Systems/Shop/init.luau` `handleReceipt` (`Purchases.Receipts`, `PlayerData.WaitSaved`) · product id ใน `Config/Shop.luau` | `references/monetization-and-liveops.md` |
 | x2 gold/xp ไม่มีผล | `Shop.Owns` (account cache + `Purchases.Owned`) · Stage `finishLevel` / `Offline.payOffline` | `Config/Shop.luau` PassId |
 | Quest/pass ไม่ขยับ หรือรีเซ็ตผิดเวลา | ผู้เรียก `Quest.Progress` (Stage/Enhance/Enchant/Box) · `shared/Period.luau` (UTC) | `Config/Quests.luau` CapByPeriod |
+| ดูด่านคนอื่นไม่ขึ้น / ค้างภาพเก่า | server `server/Systems/Spectate/` (`watching`, `latest`, `Spectate.Publish` จาก Stage) · client `State.SetWatch` → `Net.LaneTimeline` → `client/Battle/init.luau` `playWatched` | `client/Battle/Playback.luau` |
+| คลิกด่านแล้วไม่สลับมุม/ไม่ดูคนนั้น | `client/Battle/init.luau` `laneAt` (raycast เฉพาะ `Workspace.Arena`, ชื่อ `LaneN`) · กดค้าง/ลาก = ไม่นับคลิก (`CLICK_SECONDS/PIXELS`) | `Battle/Camera.luau` |
+| `[Anomaly]` ใน log | `server/Systems/Analytics/` (`checkEarn`, `onTrip`) · เกณฑ์ `shared/Config/Analytics.luau` · ที่มาเงิน = arg `source` ของ `Currency.Add/Spend` | — |
+| UI ใหญ่/เล็กผิด, ปุ่มทับกันบนมือถือ | `client/UI/Core/Device.luau` (`Scale/Compact/Tight`) · `UIScale` ใน `App.luau` · `Settings.UiScale` | `HUD.luau` (compact grid, `touchWalk`) |
+| Tutorial ไม่ขยับ | step ปัจจุบัน `Config/Tutorial.luau` `Event` · ผู้แจ้ง `Tutorial.Event` (Hero equip, SkillTree buy) / `Quest.OnProgress` (ClearLevel, OpenBox, Enhance) | `server/Systems/Tutorial/` |
+| รางวัลรายวัน/โค้ด ไม่ได้ | `server/Systems/Daily/` (`Daily.Day` = Period key UTC) · `server/Systems/Codes/` + `server/Secret/Codes.luau` (key ตัวใหญ่ไม่มีช่องว่าง) · กล่องเต็ม = `Rewards.CanGrant` | — |

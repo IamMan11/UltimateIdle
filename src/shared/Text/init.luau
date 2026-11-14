@@ -338,6 +338,19 @@ Text.UI = table.freeze({
 	CamWalk = "View: walk",
 	Cam2D = "2D",
 	Cam3D = "3D",
+	WatchOwn = "Watch: own lane",
+	UiSize = "UI size",
+	LowDetail = "Low detail",
+	ReplayTutorial = "Replay tutorial",
+	Daily = "Daily",
+	Codes = "Codes",
+	CodePlaceholder = "Enter a code",
+	Redeem = "Redeem",
+	Claim = "Claim",
+	ClaimedToday = "Come back tomorrow",
+	DailyHint = "One reward per day (UTC). Missing a day starts again at day 1.",
+	SkipTutorial = "Skip",
+	WatchNone = "No other lanes",
 	ModeProgress = "Mode: Progress",
 	ModeFarm = "Mode: Farm",
 	FarmLocked = "Farm unlocks at level " .. tostring(Account.Unlocks.Farm.StageLevel or 0),
@@ -406,6 +419,15 @@ Text.UI = table.freeze({
 	RebirthKeeps = "Nothing is reset. Caps go up and monsters in the new rebirth are tougher.",
 })
 
+-- Tutorial line per Config.Tutorial step id.
+Text.Tutorial = table.freeze({
+	ClearLevel = "Your heroes fight by themselves. Watch them clear a level.",
+	Equip = "Open Heroes and equip an item your team found.",
+	OpenBox = "Open a box on the Boxes page.",
+	BuyNode = "Buy a node in the Skill Tree.",
+	Enhance = "Enhance an item in the Forge.",
+} :: { [string]: string })
+
 Text.Error = table.freeze({
 	NotEnoughGold = "Not enough gold",
 	HeroLevelTooLow = "Hero level is too low for this item",
@@ -453,6 +475,10 @@ Text.Error = table.freeze({
 	TradeBoxFull = "A box stack would go over its limit",
 	TradeNotReady = "Both sides must be ready (wait a moment after changes)",
 	TradeEmpty = "Both offers are empty",
+	DailyClaimed = "Already claimed today",
+	CodeUnknown = "That code does not exist",
+	CodeExpired = "That code has expired",
+	CodeUsed = "You already used that code",
 } :: { [string]: string })
 
 return table.freeze(Text)

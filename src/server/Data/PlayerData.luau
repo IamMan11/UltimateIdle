@@ -46,7 +46,12 @@ local PROFILE_TEMPLATE: Data = {
 		AutoSalvage = {},
 		AutoOpenBoxes = false,
 		SkipWave = false,
+		UiScale = 1,
+		LowDetail = false,
 	},
+	Tutorial = { Step = 1, Done = false, Rewarded = 0 },
+	Daily = { Day = "", Streak = 0 },
+	Codes = {},
 }
 
 -- MIGRATIONS[v] upgrades a save from version v-1 to v. Runs before Reconcile, so missing keys are filled after.
@@ -63,6 +68,12 @@ local MIGRATIONS: { [number]: (data: { [string]: any }) -> () } = {
 	end,
 	[3] = function(_data)
 		-- Quests / Pass / Shop / Purchases.GiftTo are new tables: Reconcile fills them from the template.
+	end,
+	[4] = function(data)
+		-- Tutorial / Daily / Codes / Settings.UiScale+LowDetail are new; players who already picked a hero skip the tutorial.
+		if type(data.Heroes) == "table" and next(data.Heroes) ~= nil then
+			data.Tutorial = { Step = 1, Done = true, Rewarded = 0 }
+		end
 	end,
 }
 

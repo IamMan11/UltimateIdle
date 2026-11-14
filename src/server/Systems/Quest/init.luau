@@ -15,6 +15,7 @@ local Replication = require(script.Parent.Replication)
 local Currency = require(script.Parent.Currency)
 
 local claimedListeners: { (Player, Quests.QuestDef) -> () } = {}
+local progressListeners: { (Player, Quests.Kind) -> () } = {}
 
 local Quest = {}
 
@@ -43,6 +44,9 @@ function Quest.Progress(player: Player, kind: Quests.Kind, n: number)
 	if data == nil or not Guard.Amount(n) or n <= 0 then
 		return
 	end
+	for _, listener in progressListeners do
+		task.spawn(listener, player, kind)
+	end
 	for _, period in Period.List() do
 		local cap = Quests.CapByPeriod[period][kind]
 		if cap ~= nil then
@@ -55,6 +59,11 @@ function Quest.Progress(player: Player, kind: Quests.Kind, n: number)
 			end
 		end
 	end
+end
+
+-- Fires on every reported event, before quest caps (the tutorial follows the same events).
+function Quest.OnProgress(listener: (Player, Quests.Kind) -> ())
+	table.insert(progressListeners, listener)
 end
 
 -- Fires after a quest is claimed (BattlePass adds the points).
@@ -82,7 +91,7 @@ local function claim(player: Player, id: string)
 	end
 	p.Claimed[id] = true
 	Replication.Set(player, { "Quests", def.Period, "Claimed", id }, true)
-	Currency.Add(player, "Ruby", def.Ruby)
+	Currency.Add(player, "Ruby", def.Ruby, "Quest")
 	for _, listener in claimedListeners do
 		task.spawn(listener, player, def)
 	end

@@ -1,6 +1,7 @@
 --!strict
--- Camera modes: Lane (scriptable side view of own lane, 2D = long lens, 3D = angled) and Walk (default Roblox camera).
+-- Camera modes: Lane (scriptable side view of own or watched lane, 2D = long lens, 3D = angled) and Walk (default Roblox camera).
 
+local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -14,13 +15,16 @@ local applied = ""
 
 local function apply()
 	local camera = Workspace.CurrentCamera
-	local lane = player:GetAttribute("Lane")
+	local target = if State.Ui.Watch ~= nil then Players:GetPlayerByUserId(State.Ui.Watch) else player
+	local lane = if target ~= nil then target:GetAttribute("Lane") else nil
 	local mode, view = State.Ui.CameraMode, State.Ui.View
 	local key = `{mode}/{view}/{lane}`
 	if camera == nil or key == applied then
 		return
 	end
 	applied = key
+	-- Thumbstick/jump only while walking; the lane view has nothing to steer.
+	GuiService.TouchControlsEnabled = mode == "Walk"
 	local origin: CFrame? = if type(lane) == "number" then World.LaneOrigins[lane] else nil
 	if mode == "Walk" or origin == nil then
 		camera.CameraType = Enum.CameraType.Custom
@@ -48,6 +52,9 @@ local Camera = {}
 function Camera.Start()
 	State.Subscribe(apply)
 	player:GetAttributeChangedSignal("Lane"):Connect(apply)
+	Players.PlayerRemoving:Connect(function()
+		task.defer(apply)
+	end)
 	player.CharacterAdded:Connect(function()
 		applied = ""
 		task.defer(apply)

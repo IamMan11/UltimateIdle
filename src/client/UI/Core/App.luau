@@ -1,10 +1,12 @@
 --!strict
--- Root component: HUD + the open page + modals + toasts, all mounted in one ScreenGui. Re-renders on any store change.
+-- Root component: HUD + the open page + modals + toasts in one ScreenGui under one UIScale (viewport x UI-size setting). Re-renders on any store change.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local React = require(ReplicatedStorage.Packages.React)
 local Widgets = require(script.Parent.Widgets)
+local Device = require(script.Parent.Device)
 local HUD = require(script.Parent.HUD)
 local Toasts = require(script.Parent.Toasts)
 local Confirm = require(script.Parent.Confirm)
@@ -20,13 +22,34 @@ local QuestsPage = require(script.Parent.Parent.Quests)
 local ShopPage = require(script.Parent.Parent.Shop)
 local TradePage = require(script.Parent.Parent.Trade)
 local Settings = require(script.Parent.Parent.Settings)
+local DailyPage = require(script.Parent.Parent.Daily)
 local Dev = require(script.Parent.Parent.Dev)
 local State = require(script.Parent.Parent.Parent.State)
 
 local e = React.createElement
 
+-- Viewport size, updated on resize/rotation.
+local function useViewport(): Vector2
+	local viewport, setViewport = React.useState(Device.Viewport())
+	React.useEffect(function(): () -> ()
+		local camera = Workspace.CurrentCamera
+		local connection = if camera ~= nil
+			then camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+				setViewport(camera.ViewportSize)
+			end)
+			else nil
+		return function()
+			if connection ~= nil then
+				connection:Disconnect()
+			end
+		end
+	end, {})
+	return viewport
+end
+
 local function App(): React.ReactNode
 	Widgets.useStore()
+	local viewport = useViewport()
 	local data = State.Data
 	if data == nil then
 		return e(Widgets.Label, {
@@ -61,14 +84,21 @@ local function App(): React.ReactNode
 			page = e(ShopPage, { data = data })
 		elseif ui.Page == "Trade" then
 			page = e(TradePage, { data = data })
+		elseif ui.Page == "Daily" then
+			page = e(DailyPage, { data = data })
 		elseif ui.Page == "Settings" then
 			page = e(Settings, { data = data })
 		elseif ui.Page == "Dev" then
 			page = e(Dev)
 		end
 	end
-	return e("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 }, {
-		HUD = if needsHero then nil else e(HUD, { data = data }),
+	-- One UIScale for everything: the root is 1/scale of the screen so it covers the screen once scaled.
+	local scale = Device.Scale(viewport, data.Settings.UiScale or 1)
+	local compact = Device.Compact(viewport, scale)
+	local tight = Device.Tight(viewport, scale)
+	return e("Frame", { Size = UDim2.fromScale(1 / scale, 1 / scale), BackgroundTransparency = 1 }, {
+		Scale = e("UIScale", { Scale = scale }),
+		HUD = if needsHero then nil else e(HUD, { data = data, compact = compact, tight = tight }),
 		Page = page,
 		HeroSelect = if needsHero then e(HeroSelect) else nil,
 		Confirm = if ui.Confirm ~= nil then e(Confirm, { prompt = ui.Confirm }) else nil,

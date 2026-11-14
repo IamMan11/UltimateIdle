@@ -4,7 +4,7 @@
 local Freeze = require(script.Parent.Parent.Freeze)
 
 return Freeze({
-	SchemaVersion = 3,
+	SchemaVersion = 4,
 	InventoryCapacity = 500,
 	-- Numbers stay plain doubles; anything above this is clamped so saves never hold inf.
 	MaxCurrency = 1e300,
@@ -18,4 +18,6 @@ return Freeze({
 	StarterClasses = { "Warrior", "Mage", "Archer" },
 	SalvageBatchMax = 100,
 	OpenBatchMax = 100,
+	-- UI size choices on the Settings page (multiplies the automatic scale).
+	UiScales = { 0.85, 1, 1.15, 1.3 },
 })

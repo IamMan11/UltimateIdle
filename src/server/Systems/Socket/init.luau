@@ -47,7 +47,7 @@ local function merge(player: Player, mainUid: string, materialUid: string)
 	if Inventory.RemoveGear(player, materialUid) == nil then
 		return
 	end
-	Currency.Spend(player, "Gold", gold)
+	Currency.Spend(player, "Gold", gold, "Forge")
 	Inventory.AddSocket(player, mainUid)
 	Replication.Notify(player, "SocketAdded", { Uid = mainUid, Count = #main.Sockets })
 end
@@ -138,7 +138,7 @@ local function remove(player: Player, uid: string, index: number)
 	if item == nil or socket == nil or socket.Insert == nil then
 		return
 	end
-	if not Currency.Spend(player, "Gold", Formula.Forge.RemoveGold(item)) then
+	if not Currency.Spend(player, "Gold", Formula.Forge.RemoveGold(item), "Forge") then
 		err(player, "NotEnoughGold")
 		return
 	end

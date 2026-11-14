@@ -104,6 +104,9 @@ local Net = {
 	Notice = Red.Event("Notice", function(kind: unknown, payload: unknown)
 		return kind :: string, payload :: any
 	end),
+	LaneTimeline = Red.Event("LaneTimeline", function(userId: unknown, payload: unknown)
+		return userId :: number, payload :: Types.TimelinePayload?
+	end),
 	TradeState = Red.Event("TradeState", function(tradeView: unknown)
 		return tradeView :: Types.TradeView?
 	end),
@@ -204,6 +207,15 @@ local Net = {
 	BuyPremium = Red.Event("BuyPremium", function() end),
 	BuyShopItem = Red.Event("BuyShopItem", function(id: unknown)
 		return str(id, 32)
+	end),
+	WatchLane = Red.Event("WatchLane", function(userId: unknown)
+		return int(userId, 0, 1e15)
+	end),
+	TutorialSkip = Red.Event("TutorialSkip", function() end),
+	TutorialRestart = Red.Event("TutorialRestart", function() end),
+	ClaimDaily = Red.Event("ClaimDaily", function() end),
+	RedeemCode = Red.Event("RedeemCode", function(text: unknown)
+		return str(text, 32)
 	end),
 	RequestRejoin = Red.Event("RequestRejoin", function() end),
 	DevCommand = Red.Event("DevCommand", function(cmd: unknown, arg: unknown)

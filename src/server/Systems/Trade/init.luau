@@ -256,8 +256,8 @@ local function takeOffer(side: Side): { Types.GearItem }
 	for key, n in side.Offer.Boxes do
 		Box.Take(player, key, n)
 	end
-	Currency.Spend(player, "Gold", side.Offer.Gold)
-	Currency.Spend(player, "Ruby", side.Offer.Ruby)
+	Currency.Spend(player, "Gold", side.Offer.Gold, "Trade")
+	Currency.Spend(player, "Ruby", side.Offer.Ruby, "Trade")
 	return items
 end
 
@@ -278,8 +278,8 @@ local function giveOffer(to: Player, offer: Offer, items: { Types.GearItem }): {
 	for key, n in offer.Boxes do
 		Box.Grant(to, key, n)
 	end
-	Currency.Add(to, "Gold", offer.Gold)
-	Currency.Add(to, "Ruby", offer.Ruby)
+	Currency.Add(to, "Gold", offer.Gold, "Trade")
+	Currency.Add(to, "Ruby", offer.Ruby, "Trade")
 	return uids
 end
 

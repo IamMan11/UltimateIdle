@@ -78,17 +78,19 @@
 
 ## เฟส 7 — เก็บงาน
 
-- [ ] **7.1 ดูด่านคนอื่น** — ส่ง timeline ให้ทุก client · วาด 2D · คลิกเพื่อปรับมุม
-- [ ] **7.2 Analytics + log ผิดปกติ** (เงินเพิ่มเร็วเกิน, remote ถูก rate limit บ่อย)
-- [ ] **7.3 ปรับ balance รอบแรก** จากการเล่นจริง
-- [ ] **7.4 มือถือ** — ขนาด UI, ปุ่มสัมผัส, ลดจำนวนโมเดลบนจอ
-- [ ] **7.5 ทีหลังสุด** — tutorial · ตั้งค่า · leaderboard · รางวัลรายวัน · โค้ด · raid/challenge/event/boss map
+- [x] **7.1 ดูด่านคนอื่น** — ส่ง timeline ให้ทุก client · วาด 2D · คลิกเพื่อปรับมุม · _ส่งเฉพาะคนที่กดดู (`WatchLane`) แทนการส่งทุก client (ประหยัด bandwidth) · คลิกด่านคนอื่น = ดู, คลิกด่านที่ดูอยู่ = สลับ 2D/3D · ยังไม่ได้ทดสอบ 2 คน (ทดสอบแล้ว: ด่านตัวเองเล่นปกติหลังแยก `Playback`, คลิกสลับมุม)_
+- [x] **7.2 Analytics + log ผิดปกติ** (เงินเพิ่มเร็วเกิน, remote ถูก rate limit บ่อย) · _Studio: spam remote → `[Anomaly] RateLimit` PASS · economy ส่งจริงเฉพาะเซิร์ฟที่ publish (Studio แค่รวมชุด)_
+- [ ] **7.3 ปรับ balance รอบแรก** จากการเล่นจริง · _รอข้อมูล: ดู progression `Stage_R*` + economy ใน Creator Dashboard (7.2) หลังมีผู้เล่น_
+- [x] **7.4 มือถือ** — ขนาด UI, ปุ่มสัมผัส, ลดจำนวนโมเดลบนจอ · _ยังไม่ได้ทดสอบบนเครื่องจริง/Device Emulator_
+- [x] **7.5 ทีหลังสุด** — tutorial · ตั้งค่า · leaderboard · รางวัลรายวัน · โค้ด · raid/challenge/event/boss map · _ทำ: tutorial, ตั้งค่า (ขนาด UI, low detail, เล่น tutorial ใหม่), รางวัลรายวัน, โค้ด (schema v4) · เจ้าของสั่งข้าม: leaderboard, raid/challenge/event/boss map (ยังไม่มีสเปก)_
 
 ## ค้างทำภายนอก / ทดสอบ 2 คน (กลับมาทำทีหลัง)
 
 - [ ] เปิด Studio API access แล้วเช็กว่าเซฟจริงได้ (เกี่ยวกับ 0.2)
 - [ ] สร้าง gamepass + developer product ในหน้า Creator แล้วใส่ ID ใน `src/shared/Config/Shop.luau` — gamepass: `Passes[].PassId` (Gold2x, Xp2x) · developer product: `Products` (GiftGold2x, GiftXp2x, PremiumPass, ShopRuby, ShopCores) · ตั้งราคาให้ตรง `RobuxPrices` (ตัวเลขที่ปุ่มแสดง) · เจ้าของกำหนดรายการ gamepass เพิ่มเติม
-- [ ] ทดสอบ 2 ผู้เล่น: trade (6.1) · gift (6.2) · ดูด่านคนอื่น (7.1) · จองช่องด่านเมื่อมีหลายคน (1.5)
+- [ ] ทดสอบ 2 ผู้เล่น: trade (6.1) · gift (6.2) · ดูด่านคนอื่น (7.1: ปุ่ม Watch, คลิกด่านคนอื่น, คนที่ดูออกจากเกม → กลับด่านตัวเอง) · จองช่องด่านเมื่อมีหลายคน (1.5)
+- [ ] มือถือ (7.4): Studio Device Emulator (โทรศัพท์แนวนอน) — HUD grid ไม่ทับกัน, ปุ่มกดได้, thumbstick หายตอนดูด่าน
+- [ ] โค้ดจริงก่อนเปิดเกม: แก้ `src/server/Secret/Codes.luau` (WELCOME/RELEASE เป็นตัวอย่าง)
 - [ ] ทดสอบซื้อจริงด้วย Robux (6.2, 6.4, 6.5)
 - [ ] Offline (1.7): ทดสอบหลังเปิด API access — ออก แล้วเข้าใหม่ ต้องขึ้น toast "While you were away" (mock store ล้างข้อมูลทุก Play จึงทดสอบใน Studio ตอนนี้ไม่ได้)
 - [ ] AFK rejoin (1.7): teleport ทำงานเฉพาะเกมที่ publish — ทดสอบในเซิร์ฟจริง (Studio แค่ print)

@@ -103,7 +103,7 @@ Idle RPG: ทีม hero เดินหน้าซ้าย→ขวา ตี
 ```
 src/shared/   Net.luau · Types.luau · Format.luau · Config/ · Formula/ · Text/
 src/server/   Data/ · Util/ (RateLimit, Guard, Rng) · Secret/ · Systems/
-              Systems: Replication Currency Inventory Stage Hero SkillTree Rebirth Box Enhance Socket Enchant Trade Shop Quest BattlePass Offline
+              Systems: Replication Currency Inventory Stage Hero SkillTree Rebirth Box Enhance Socket Enchant Trade Shop Quest BattlePass Offline Analytics Spectate Tutorial Daily Codes
 src/client/   State/ · Battle/ (timeline, pool, กล้อง) · UI/ (Core/ + โฟลเดอร์ต่อหน้า)
 ```
 

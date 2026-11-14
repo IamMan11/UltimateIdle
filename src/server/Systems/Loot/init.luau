@@ -234,7 +234,7 @@ function Loot.Grant(player: Player, bundle: Bundle): Summary
 			summary.Materials[id] = n
 		end
 	end
-	Currency.Add(player, "Gold", summary.Gold)
+	Currency.Add(player, "Gold", summary.Gold, "Loot")
 	return summary
 end
 
@@ -262,7 +262,7 @@ local function salvage(player: Player, uids: { string })
 	if count == 0 then
 		return
 	end
-	Currency.Add(player, "Gold", gold)
+	Currency.Add(player, "Gold", gold, "Salvage")
 	Inventory.AddStack(player, SALVAGE_MATERIAL, stones)
 	Replication.Notify(player, "Salvaged", { Count = count, Gold = gold, Stones = stones })
 end

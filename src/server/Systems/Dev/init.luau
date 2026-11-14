@@ -41,7 +41,7 @@ local function run(player: Player, cmd: string, arg: number)
 		return
 	end
 	if cmd == "gold" then
-		Currency.Add(player, "Gold", arg)
+		Currency.Add(player, "Gold", arg, "Dev")
 	elseif cmd == "xp" then
 		Hero.AddXp(player, arg)
 	elseif cmd == "level" and Guard.Int(arg, 1, 1e6) then
@@ -73,7 +73,7 @@ local function run(player: Player, cmd: string, arg: number)
 	elseif cmd == "points" and Guard.Int(arg, 1, 1000) then
 		Rebirth.AddPoints(player, arg)
 	elseif cmd == "ruby" then
-		Currency.Add(player, "Ruby", arg)
+		Currency.Add(player, "Ruby", arg, "Dev")
 	elseif cmd == "quest" and Guard.Int(arg, 1, 1e6) then
 		for _, kind in QUEST_KINDS do
 			Quest.Progress(player, kind :: any, arg)

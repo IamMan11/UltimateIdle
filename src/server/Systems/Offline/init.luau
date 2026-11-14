@@ -38,7 +38,7 @@ local function payOffline(player: Player, data: PlayerData.Data)
 	if not (Guard.Amount(gold) and Guard.Amount(xp)) or (gold <= 0 and xp <= 0) then
 		return
 	end
-	Currency.Add(player, "Gold", gold)
+	Currency.Add(player, "Gold", gold, "Offline")
 	Hero.AddXp(player, xp)
 	Replication.Notify(player, "Offline", { Seconds = seconds, Gold = gold, Xp = xp })
 end

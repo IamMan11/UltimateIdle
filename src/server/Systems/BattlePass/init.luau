@@ -78,7 +78,7 @@ local function claimOne(player: Player, data: Types.ProfileData, track: string, 
 	end
 	claimed[key] = true
 	Replication.Set(player, { "Pass", track, key }, true)
-	Rewards.Grant(player, reward)
+	Rewards.Grant(player, reward, "Reward")
 	return true
 end
 

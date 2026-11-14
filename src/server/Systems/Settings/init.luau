@@ -1,11 +1,12 @@
 --!strict
--- Owner of player Settings: auto-salvage tier filter, skip-wave toggle (from the next level), box auto-open switch (needs the skill tree node).
+-- Owner of player Settings: auto-salvage tier filter, skip-wave toggle (from the next level), box auto-open switch (needs the skill tree node), UI size, low detail.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local Net = require(ReplicatedStorage.Shared.Net)
 local Tiers = require(ReplicatedStorage.Shared.Config.Tiers)
+local Game = require(ReplicatedStorage.Shared.Config.Game)
 local PlayerData = require(ServerScriptService.Server.Data.PlayerData)
 local RateLimit = require(ServerScriptService.Server.Util.RateLimit)
 local Replication = require(script.Parent.Replication)
@@ -19,11 +20,24 @@ local function set(player: Player, key: string, sub: string?, value: boolean | n
 		return
 	end
 	local data = PlayerData.Data(player)
-	if data == nil or type(value) ~= "boolean" then
+	if data == nil then
 		return
 	end
 	local settings = data.Settings
-	if key == "AutoSalvage" and sub ~= nil and Tiers.ById[sub] ~= nil then
+	if key == "UiScale" and sub == nil and type(value) == "number" then
+		if table.find(Game.UiScales, value) == nil then
+			return
+		end
+		settings.UiScale = value
+		Replication.Set(player, { "Settings" }, settings)
+		return
+	end
+	if type(value) ~= "boolean" then
+		return
+	end
+	if key == "LowDetail" and sub == nil then
+		settings.LowDetail = value
+	elseif key == "AutoSalvage" and sub ~= nil and Tiers.ById[sub] ~= nil then
 		settings.AutoSalvage[sub] = value
 	elseif key == "SkipWave" and sub == nil then
 		settings.SkipWave = value

@@ -1,6 +1,7 @@
 --!strict
--- Client store: copy of server state (snapshot + deltas), current timeline, open trade + requests, pass ownership, UI state (page/modal/toasts/camera), event senders.
+-- Client store: copy of server state (snapshot + deltas), current timeline, open trade + requests, pass ownership, UI state (page/modal/toasts/camera/watched lane), event senders.
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Net = require(ReplicatedStorage.Shared.Net)
@@ -38,6 +39,7 @@ export type Ui = {
 	Toasts: { Toast },
 	CameraMode: "Lane" | "Walk",
 	View: "2D" | "3D",
+	Watch: number?, -- userId of the lane being watched (nil = own lane)
 }
 
 export type TradeRequest = {
@@ -66,6 +68,7 @@ local State = {
 		Toasts = {},
 		CameraMode = "Lane",
 		View = "2D",
+		Watch = nil,
 	} :: Ui,
 	Trade = nil :: Types.TradeView?,
 	TradeRequests = {} :: { TradeRequest },
@@ -78,6 +81,7 @@ local REQUEST_TTL = 30
 
 local listeners: { [number]: () -> () } = {}
 local timelineListeners: { (Types.TimelinePayload) -> () } = {}
+local watchListeners: { (number, Types.TimelinePayload?) -> () } = {}
 local nextListener = 0
 local nextToast = 0
 local notifyQueued = false
@@ -108,6 +112,11 @@ end
 
 function State.OnTimeline(listener: (Types.TimelinePayload) -> ())
 	table.insert(timelineListeners, listener)
+end
+
+-- Timelines of the watched lane (payload nil = that lane has nothing to show).
+function State.OnWatchTimeline(listener: (number, Types.TimelinePayload?) -> ())
+	table.insert(watchListeners, listener)
 end
 
 local function applyDelta(change: { any })
@@ -159,6 +168,16 @@ end
 function State.SetCamera(mode: "Lane" | "Walk", view: "2D" | "3D")
 	State.Ui.CameraMode = mode
 	State.Ui.View = view
+	notify()
+end
+
+-- Watch another player's lane (nil = back to own lane); the camera follows the watched lane.
+function State.SetWatch(userId: number?)
+	if State.Ui.Watch == userId then
+		return
+	end
+	State.Ui.Watch = userId
+	Net.WatchLane:Client():Fire(if userId == nil then 0 else userId)
 	notify()
 end
 
@@ -221,7 +240,7 @@ State.Send = {
 	SetStageMode = function(mode: string)
 		Net.SetStageMode:Client():Fire(mode)
 	end,
-	SetSetting = function(key: string, sub: string?, value: boolean)
+	SetSetting = function(key: string, sub: string?, value: boolean | number)
 		Net.SetSetting:Client():Fire(key, sub, value)
 	end,
 	Equip = function(heroId: string, uid: string, slot: string)
@@ -317,6 +336,18 @@ State.Send = {
 	RequestRejoin = function()
 		Net.RequestRejoin:Client():Fire()
 	end,
+	TutorialSkip = function()
+		Net.TutorialSkip:Client():Fire()
+	end,
+	TutorialRestart = function()
+		Net.TutorialRestart:Client():Fire()
+	end,
+	ClaimDaily = function()
+		Net.ClaimDaily:Client():Fire()
+	end,
+	RedeemCode = function(text: string)
+		Net.RedeemCode:Client():Fire(text)
+	end,
 	DevCommand = function(cmd: string, arg: number)
 		Net.DevCommand:Client():Fire(cmd, arg)
 	end,
@@ -357,6 +388,12 @@ local function onNotice(kind: string, payload: any)
 		State.PushToast(`Salvaged {payload.Count}: +{Format.Number(payload.Gold)} gold, +{payload.Stones} stones`)
 	elseif kind == "BoxOpened" then
 		State.PushToast(`Opened {payload.Opened} {Text.Box(payload.Box)}: {lootText(payload.Summary)}`)
+	elseif kind == "TutorialStep" then
+		State.PushToast(if payload.Done then "Tutorial complete!" else "Tutorial step done")
+	elseif kind == "DailyClaimed" then
+		State.PushToast(`Daily reward claimed (day streak {payload.Streak})`)
+	elseif kind == "CodeRedeemed" then
+		State.PushToast(`Code redeemed: {Text.Eco.Reward(payload.Reward, payload.Gold)}`)
 	elseif kind == "NodeBought" then
 		State.PushToast(`Unlocked {Text.Node(payload)}`)
 	elseif kind == "Advanced" then
@@ -425,6 +462,18 @@ function State.Start()
 		State.Timeline = payload
 		for _, listener in timelineListeners do
 			task.spawn(listener, payload)
+		end
+	end)
+	Net.LaneTimeline:Client():On(function(userId: number, payload: Types.TimelinePayload?)
+		if userId ~= State.Ui.Watch then
+			return
+		end
+		if payload == nil and Players:GetPlayerByUserId(userId) == nil then
+			State.Ui.Watch = nil
+			notify()
+		end
+		for _, listener in watchListeners do
+			task.spawn(listener, userId, payload)
 		end
 	end)
 	Net.Notice:Client():On(onNotice)

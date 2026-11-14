@@ -44,7 +44,7 @@ local function enhance(player: Player, uid: string)
 			return
 		end
 	end
-	Currency.Spend(player, "Gold", gold)
+	Currency.Spend(player, "Gold", gold, "Forge")
 	for id, n in items do
 		Inventory.SpendStack(player, id, n)
 	end

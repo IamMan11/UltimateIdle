@@ -1,5 +1,5 @@
 --!strict
--- Owner of Gold/Ruby balances: Add/Spend/Has with finite, non-negative, capped amounts.
+-- Owner of Gold/Ruby balances: Add/Spend/Has with finite, non-negative, capped amounts; every change is reported to Analytics with its source.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
@@ -8,6 +8,7 @@ local Game = require(ReplicatedStorage.Shared.Config.Game)
 local PlayerData = require(ServerScriptService.Server.Data.PlayerData)
 local Guard = require(ServerScriptService.Server.Util.Guard)
 local Replication = require(script.Parent.Replication)
+local Analytics = require(script.Parent.Analytics)
 
 export type CurrencyId = "Gold" | "Ruby"
 
@@ -29,7 +30,8 @@ function Currency.Has(player: Player, id: CurrencyId, amount: number): boolean
 	return Guard.Amount(amount) and Currency.Get(player, id) >= amount
 end
 
-function Currency.Add(player: Player, id: CurrencyId, amount: number): boolean
+-- `source` = Config.Analytics.TransactionTypes key (where the change came from).
+function Currency.Add(player: Player, id: CurrencyId, amount: number, source: string): boolean
 	local data = PlayerData.Data(player)
 	if data == nil or not valid(id) or not Guard.Amount(amount) then
 		if not Guard.Amount(amount) then
@@ -44,11 +46,12 @@ function Currency.Add(player: Player, id: CurrencyId, amount: number): boolean
 	local balances: any = data
 	balances[id] = balance
 	Replication.Set(player, { id }, balance)
+	Analytics.Economy(player, id, "Source", amount, source)
 	return true
 end
 
 -- Deducts only if the full amount is available; never goes negative.
-function Currency.Spend(player: Player, id: CurrencyId, amount: number): boolean
+function Currency.Spend(player: Player, id: CurrencyId, amount: number, source: string): boolean
 	local data = PlayerData.Data(player)
 	if data == nil or not valid(id) or not Guard.Amount(amount) then
 		return false
@@ -61,6 +64,7 @@ function Currency.Spend(player: Player, id: CurrencyId, amount: number): boolean
 	local balances: any = data
 	balances[id] = balance
 	Replication.Set(player, { id }, balance)
+	Analytics.Economy(player, id, "Sink", amount, source)
 	return true
 end
 

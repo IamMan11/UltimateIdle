@@ -14,6 +14,7 @@ local Currency = require(script.Parent.Currency)
 local Inventory = require(script.Parent.Inventory)
 local Rebirth = require(script.Parent.Rebirth)
 local Modifiers = require(script.Parent.Modifiers)
+local Tutorial = require(script.Parent.Tutorial)
 
 local SkillTree = {}
 
@@ -63,7 +64,7 @@ local function buy(player: Player, id: string)
 	end
 	-- Everything was checked above and nothing yields between the checks and these spends.
 	local cost = def.Cost
-	Currency.Spend(player, "Gold", cost.Gold or 0)
+	Currency.Spend(player, "Gold", cost.Gold or 0, "SkillTree")
 	local items: { [string]: number } = cost.Items or {}
 	for itemId, n in items do
 		Inventory.SpendStack(player, itemId, n)
@@ -73,6 +74,7 @@ local function buy(player: Player, id: string)
 	Replication.Set(player, { "SkillTree", id }, 1)
 	Modifiers.MarkDirty(player)
 	Replication.Notify(player, "NodeBought", id)
+	Tutorial.Event(player, "BuyNode")
 end
 
 local function toggle(player: Player, id: string, on: boolean)
