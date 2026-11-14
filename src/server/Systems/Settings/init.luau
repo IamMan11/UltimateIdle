@@ -1,5 +1,5 @@
 --!strict
--- Owner of player Settings: auto-salvage tier filter, skip-wave toggle (applies from the next level).
+-- Owner of player Settings: auto-salvage tier filter, skip-wave toggle (from the next level), box auto-open switch (needs the skill tree node).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
@@ -9,6 +9,8 @@ local Tiers = require(ReplicatedStorage.Shared.Config.Tiers)
 local PlayerData = require(ServerScriptService.Server.Data.PlayerData)
 local RateLimit = require(ServerScriptService.Server.Util.RateLimit)
 local Replication = require(script.Parent.Replication)
+local Modifiers = require(script.Parent.Modifiers)
+local Box = require(script.Parent.Box)
 
 local Settings = {}
 
@@ -25,10 +27,15 @@ local function set(player: Player, key: string, sub: string?, value: boolean | n
 		settings.AutoSalvage[sub] = value
 	elseif key == "SkipWave" and sub == nil then
 		settings.SkipWave = value
+	elseif key == "AutoOpenBoxes" and sub == nil and Modifiers.Get(player).AutoOpen then
+		settings.AutoOpenBoxes = value
 	else
-		return -- AutoOpenBoxes is unlocked by the skill tree (phase 3)
+		return
 	end
 	Replication.Set(player, { "Settings" }, settings)
+	if key == "AutoOpenBoxes" then
+		Box.Refresh(player)
+	end
 end
 
 function Settings.Start()

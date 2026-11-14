@@ -1,5 +1,5 @@
 --!strict
--- Settings page: auto-salvage per tier, skip-wave toggle.
+-- Settings page: auto-salvage per tier, skip-wave toggle, box auto-open (once unlocked in the skill tree).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -7,6 +7,7 @@ local React = require(ReplicatedStorage.Packages.React)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Text = require(ReplicatedStorage.Shared.Text)
 local Tiers = require(ReplicatedStorage.Shared.Config.Tiers)
+local Formula = require(ReplicatedStorage.Shared.Formula)
 local Theme = require(script.Parent.Core.Theme)
 local Widgets = require(script.Parent.Core.Widgets)
 local State = require(script.Parent.Parent.State)
@@ -48,13 +49,30 @@ local function Settings(props: Props): React.ReactNode
 		textSize = 15,
 		layoutOrder = 21,
 	})
+	local data = props.data
+	local mods = Formula.Mods.Build(data.SkillTree, data.SkillOff, data.AccountLevel)
+	rows.AutoOpen = e(Widgets.Button, {
+		text = if not mods.AutoOpen
+			then Text.UI.AutoOpenLocked
+			else `{Text.UI.AutoOpen} (every {math.floor(mods.AutoOpenInterval * 10 + 0.5) / 10}s): {if settings.AutoOpenBoxes
+				then Text.UI.On
+				else Text.UI.Off}`,
+		size = UDim2.fromOffset(420, 38),
+		textSize = 15,
+		selected = mods.AutoOpen and settings.AutoOpenBoxes,
+		disabled = not mods.AutoOpen,
+		layoutOrder = 30,
+		onClick = function()
+			State.Send.SetSetting("AutoOpenBoxes", nil, not settings.AutoOpenBoxes)
+		end,
+	})
 	return e(Widgets.Window, {
 		title = Text.UI.Settings,
 		onClose = function()
 			State.SetPage(nil)
 		end,
 		closeOnBackdrop = true,
-		size = UDim2.fromOffset(520, 420),
+		size = UDim2.fromOffset(520, 470),
 	}, rows)
 end
 

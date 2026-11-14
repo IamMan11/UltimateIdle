@@ -8,6 +8,7 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Text = require(ReplicatedStorage.Shared.Text)
 local Boxes = require(ReplicatedStorage.Shared.Config.Boxes)
 local Heroes = require(ReplicatedStorage.Shared.Config.Heroes)
+local Formula = require(ReplicatedStorage.Shared.Formula)
 local Theme = require(script.Parent.Core.Theme)
 local Widgets = require(script.Parent.Core.Widgets)
 local VirtualList = require(script.Parent.Core.VirtualList)
@@ -22,6 +23,7 @@ type Stack = { Key: string, Kind: string, Rebirth: number, Band: number, Count: 
 
 local function stacks(data: Types.ProfileData): { Stack }
 	local out: { Stack } = {}
+	local bonus = Formula.Mods.Build(data.SkillTree, data.SkillOff, data.AccountLevel).BoxCapPct
 	for key, count in data.Boxes do
 		local parsed = Boxes.Parse(key)
 		local def = if parsed ~= nil then Boxes.ById[parsed.Kind] else nil
@@ -32,7 +34,7 @@ local function stacks(data: Types.ProfileData): { Stack }
 				Rebirth = parsed.Rebirth,
 				Band = parsed.Band,
 				Count = count,
-				Max = def.Max,
+				Max = Boxes.Cap(parsed.Kind, bonus),
 				Order = def.Order,
 			})
 		end

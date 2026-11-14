@@ -9,7 +9,7 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Format = require(ReplicatedStorage.Shared.Format)
 local Formula = require(ReplicatedStorage.Shared.Formula)
 local Text = require(ReplicatedStorage.Shared.Text)
-local Game = require(ReplicatedStorage.Shared.Config.Game)
+local AccountConfig = require(ReplicatedStorage.Shared.Config.Account)
 local Stages = require(ReplicatedStorage.Shared.Config.Stages)
 local Theme = require(script.Parent.Theme)
 local Widgets = require(script.Parent.Widgets)
@@ -49,7 +49,7 @@ local function HUD(props: Props): React.ReactNode
 	local data = props.data
 	local battle = State.Battle
 	local ui = State.Ui
-	local farmUnlocked = bestLevel(data) >= Game.FarmUnlockLevel
+	local farmUnlocked = AccountConfig.IsUnlocked("Farm", data.AccountLevel, bestLevel(data))
 
 	local team: { [string]: React.ReactNode } = { Layout = Widgets.List(Enum.FillDirection.Vertical, 4) }
 	for i, slot in data.Team do
@@ -58,7 +58,7 @@ local function HUD(props: Props): React.ReactNode
 			local need = Formula.Progression.HeroXpToNext(hero.Level)
 			team[`H{i}`] = e("Frame", { Size = UDim2.new(1, 0, 0, 32), BackgroundTransparency = 1, LayoutOrder = i }, {
 				Name = e(Widgets.Label, {
-					text = `{Text.Class(hero.Class)}  Lv {hero.Level}`,
+					text = `{Text.Advancement(hero.Class, hero.Advancement)}  Lv {hero.Level}`,
 					size = UDim2.new(1, 0, 0, 20),
 					textSize = 16,
 				}),
@@ -67,7 +67,14 @@ local function HUD(props: Props): React.ReactNode
 		end
 	end
 
-	local pages = { { "Heroes", UI.Heroes }, { "Bag", UI.Bag }, { "Boxes", UI.Boxes }, { "Settings", UI.Settings } }
+	local pages = {
+		{ "Heroes", UI.Heroes },
+		{ "Team", UI.Team },
+		{ "Tree", UI.Tree },
+		{ "Bag", UI.Bag },
+		{ "Boxes", UI.Boxes },
+		{ "Settings", UI.Settings },
+	}
 	if RunService:IsStudio() then
 		table.insert(pages, { "Dev", UI.Dev })
 	end
@@ -122,7 +129,7 @@ local function HUD(props: Props): React.ReactNode
 			AnchorPoint = Vector2.new(0, 1),
 		}),
 		Pages = e("Frame", {
-			Size = UDim2.fromOffset(120, 280),
+			Size = UDim2.fromOffset(120, 46 * #pages),
 			Position = UDim2.new(0, 12, 0.5, 0),
 			AnchorPoint = Vector2.new(0, 0.5),
 			BackgroundTransparency = 1,

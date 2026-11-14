@@ -18,6 +18,8 @@ local COMMANDS: { { Label: string, Cmd: string, Arg: number } } = {
 	{ Label = "Level 200", Cmd = "level", Arg = 200 },
 	{ Label = "+5 boxes", Cmd = "box", Arg = 5 },
 	{ Label = "+20 gear", Cmd = "gear", Arg = 20 },
+	{ Label = "+100 materials", Cmd = "mats", Arg = 100 },
+	{ Label = "+5 rebirth pts", Cmd = "points", Arg = 5 },
 }
 
 local function Dev(): React.ReactNode
@@ -43,7 +45,7 @@ local function Dev(): React.ReactNode
 			State.SetPage(nil)
 		end,
 		closeOnBackdrop = true,
-		size = UDim2.fromOffset(520, 300),
+		size = UDim2.fromOffset(520, 350),
 	}, buttons)
 end
 

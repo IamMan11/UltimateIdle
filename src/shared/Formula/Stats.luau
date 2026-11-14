@@ -1,11 +1,13 @@
 --!strict
--- Final stats: hero (class + level + worn gear), single gear piece, monster at a stage level.
+-- Final stats: hero (class + level + advancement + worn gear + passive), single gear piece, monster at a stage level.
 
 local Types = require(script.Parent.Parent.Types)
 local Heroes = require(script.Parent.Parent.Config.Heroes)
 local Items = require(script.Parent.Parent.Config.Items)
 local Monsters = require(script.Parent.Parent.Config.Monsters)
+local Classes = require(script.Parent.Parent.Config.Classes)
 local Scaling = require(script.Parent.Scaling)
+local Skills = require(script.Parent.Skills)
 
 export type GearBonus = {
 	MaxHp: number,
@@ -62,10 +64,10 @@ function Stats.Power(s: Types.HeroStats): number
 	return s.Atk / s.AtkInterval * (1 + 0.5 * s.Splash) + s.MaxHp * 0.1 + s.Def * 0.5 + s.Heal
 end
 
-function Stats.Hero(class: string, level: number, gear: { Types.GearItem }): Types.HeroStats
+function Stats.Hero(class: string, level: number, gear: { Types.GearItem }, advancement: number): Types.HeroStats
 	local def = Heroes.ById[class]
 	assert(def ~= nil, `unknown hero class {class}`)
-	local scale = Scaling.Hero(level)
+	local scale = Scaling.Hero(level) * (1 + Classes.Totals(advancement).StatBonus)
 	local s: Types.HeroStats = {
 		MaxHp = def.MaxHp * scale,
 		Atk = def.Atk * scale,
@@ -95,6 +97,7 @@ function Stats.Hero(class: string, level: number, gear: { Types.GearItem }): Typ
 		-- Healers heal with their own attack growth too.
 		s.Heal = math.max(s.Heal, s.Atk * 1.5)
 	end
+	Skills.ApplyPassive(s, class, level, advancement)
 	s.Power = Stats.Power(s)
 	return s
 end

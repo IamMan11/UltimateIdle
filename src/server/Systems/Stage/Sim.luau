@@ -1,5 +1,5 @@
 --!strict
--- Pure battle sim: (team, level, rebirth, seed, skipWave) -> result + timeline buffer. No Instances, deterministic per seed.
+-- Pure battle sim: (team, level, rebirth, seed, skipWave) -> result + timeline buffer. Auto-cast hero skills. No Instances, deterministic per seed.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -9,11 +9,17 @@ local Timeline = require(ReplicatedStorage.Shared.Timeline)
 local Stages = require(ReplicatedStorage.Shared.Config.Stages)
 local Formation = require(ReplicatedStorage.Shared.Config.Formation)
 local Monsters = require(ReplicatedStorage.Shared.Config.Monsters)
+local SkillsConfig = require(ReplicatedStorage.Shared.Config.Skills)
 
 local Code = Timeline.Code
 local ROW_ORDER = Formation.Rows
 -- Extra reach so heroes can hit monsters queued behind the first one (monster offsets go up to 2.4).
 local MELEE_SLACK = 3
+
+type SkillState = {
+	Def: Types.SimSkill,
+	Cd: number,
+}
 
 type HeroUnit = {
 	Id: number,
@@ -24,6 +30,7 @@ type HeroUnit = {
 	Cd: number,
 	Alive: boolean,
 	ReviveAt: number,
+	Skills: { SkillState },
 }
 
 type MonsterUnit = {
@@ -43,18 +50,11 @@ type Wave = { At: number, Number: number, Spawned: boolean }
 local Sim = {}
 
 local function teamSpeed(team: { Types.SimHero }): number
-	local fastest = 0
-	local sum = 0
+	local members: { { Row: string, Speed: number } } = {}
 	for _, hero in team do
-		sum += hero.Stats.Speed
-		if hero.Row == "Middle" then
-			fastest = math.max(fastest, hero.Stats.Speed)
-		end
+		table.insert(members, { Row = hero.Row :: string, Speed = hero.Stats.Speed })
 	end
-	if fastest > 0 then
-		return fastest
-	end
-	return if #team > 0 then sum / #team else Stages.ReferenceSpeed
+	return Formula.Team.Speed(members, Stages.ReferenceSpeed)
 end
 
 local function pickMinion(rng: Random, level: number): Monsters.MonsterDef
@@ -101,6 +101,10 @@ function Sim.Run(
 
 	local heroes: { HeroUnit } = {}
 	for i, hero in team do
+		local skills: { SkillState } = {}
+		for _, skill in hero.Skills do
+			table.insert(skills, { Def = skill, Cd = math.max(skill.Cooldown * 0.4, SkillsConfig.FirstCastDelay) })
+		end
 		table.insert(heroes, {
 			Id = i,
 			Row = hero.Row,
@@ -110,8 +114,10 @@ function Sim.Run(
 			Cd = 0,
 			Alive = true,
 			ReviveAt = 0,
+			Skills = skills,
 		})
 	end
+	local shieldUntil, shieldReduce = 0, 0
 
 	local interval = Formula.Combat.WaveInterval(teamSpeed(team))
 	local waves: { Wave } = {}
@@ -167,6 +173,96 @@ function Sim.Run(
 				bossKills += 1
 			end
 		end
+	end
+
+	local function monstersInRange(h: HeroUnit): { MonsterUnit }
+		local inRange: { MonsterUnit } = {}
+		for _, m in monsters do
+			if m.Alive and m.X - h.X <= h.Stats.Range + Stages.ContactGap + MELEE_SLACK then
+				table.insert(inRange, m)
+			end
+		end
+		table.sort(inRange, function(a, b)
+			return a.X < b.X
+		end)
+		return inRange
+	end
+
+	local function healPower(h: HeroUnit): number
+		return if h.Stats.Heal > 0 then h.Stats.Heal else h.Stats.Atk
+	end
+
+	-- Casts the skill if its condition holds right now; returns whether it fired.
+	local function tryCast(t: number, h: HeroUnit, skill: Types.SimSkill): boolean
+		local kind = skill.Kind
+		if kind == "Damage" then
+			local inRange = monstersInRange(h)
+			if #inRange == 0 then
+				return false
+			end
+			local n = if skill.Targets > 0 then skill.Targets else SkillsConfig.MaxDamageTargets
+			Timeline.Push(builder, t, Code.Skill, h.Id, skill.Index, 0, 0)
+			for i = 1, math.min(n, #inRange) do
+				local m = inRange[i]
+				damageMonster(t, h, m, Formula.Combat.Damage(h.Stats.Atk * skill.Mult, m.Stats.Def))
+			end
+			return true
+		elseif kind == "Shield" then
+			if t < shieldUntil then
+				return false
+			end
+			local engaged = false
+			for _, m in monsters do
+				if m.Alive and not m.Moving then
+					engaged = true
+					break
+				end
+			end
+			if not engaged then
+				return false
+			end
+			shieldUntil, shieldReduce = t + skill.Duration, skill.Reduce
+			Timeline.Push(builder, t, Code.Skill, h.Id, skill.Index, skill.Duration, 0)
+			return true
+		elseif kind == "HealAll" then
+			local needed = false
+			for _, ally in heroes do
+				if ally.Alive and ally.Hp < ally.Stats.MaxHp * skill.Threshold then
+					needed = true
+					break
+				end
+			end
+			if not needed then
+				return false
+			end
+			Timeline.Push(builder, t, Code.Skill, h.Id, skill.Index, 0, 0)
+			local power = healPower(h) * skill.Mult
+			for _, ally in heroes do
+				if ally.Alive and ally.Hp < ally.Stats.MaxHp then
+					local amount = math.min(power, ally.Stats.MaxHp - ally.Hp)
+					ally.Hp += amount
+					Timeline.Push(builder, t, Code.Heal, h.Id, ally.Id, amount, ally.Hp)
+				end
+			end
+			return true
+		elseif kind == "Revive" then
+			local fallen: HeroUnit? = nil
+			for _, ally in heroes do
+				if not ally.Alive and (fallen == nil or ally.ReviveAt > fallen.ReviveAt) then
+					fallen = ally -- the one with the longest wait left
+				end
+			end
+			if fallen == nil then
+				return false
+			end
+			fallen.Alive = true
+			fallen.Hp = fallen.Stats.MaxHp * skill.HpRatio
+			fallen.Cd = 0
+			Timeline.Push(builder, t, Code.Skill, h.Id, skill.Index, 0, 0)
+			Timeline.Push(builder, t, Code.Revive, fallen.Id, 0, 0, fallen.Hp)
+			return true
+		end
+		return false
 	end
 
 	local won = false
@@ -236,6 +332,9 @@ function Sim.Run(
 					if #targets > 0 then
 						local target = targets[rng:NextInteger(1, #targets)]
 						local dmg = Formula.Combat.Damage(m.Stats.Atk, target.Stats.Def)
+						if t < shieldUntil then
+							dmg *= 1 - shieldReduce
+						end
 						target.Hp = math.max(target.Hp - dmg, 0)
 						Timeline.Push(builder, t, Code.Hit, m.Id, target.Id, dmg, target.Hp)
 						if target.Hp <= 0 then
@@ -251,6 +350,20 @@ function Sim.Run(
 
 		if frontRow() == nil then
 			break
+		end
+
+		-- Skills: at most one cast per hero per step, highest priority first
+		for _, h in heroes do
+			if h.Alive then
+				local cast = false
+				for _, state in h.Skills do
+					state.Cd -= dt
+					if not cast and state.Cd <= 0 and tryCast(t, h, state.Def) then
+						state.Cd = state.Def.Cooldown
+						cast = true
+					end
+				end
+			end
 		end
 
 		-- Heroes heal or attack
@@ -276,16 +389,8 @@ function Sim.Run(
 						end
 					end
 					if not acted then
-						local inRange: { MonsterUnit } = {}
-						for _, m in monsters do
-							if m.Alive and m.X - h.X <= h.Stats.Range + Stages.ContactGap + MELEE_SLACK then
-								table.insert(inRange, m)
-							end
-						end
+						local inRange = monstersInRange(h)
 						if #inRange > 0 then
-							table.sort(inRange, function(a, b)
-								return a.X < b.X
-							end)
 							for i = 1, math.min(1 + h.Stats.Splash, #inRange) do
 								local m = inRange[i]
 								damageMonster(t, h, m, Formula.Combat.Damage(h.Stats.Atk, m.Stats.Def))

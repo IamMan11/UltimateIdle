@@ -1,5 +1,5 @@
 --!strict
--- Account-wide constants: capacities, offline/AFK timing, mode unlocks, currency ids.
+-- Account-wide constants: capacities, offline/AFK timing, team size, currency ids.
 
 local Freeze = require(script.Parent.Parent.Freeze)
 
@@ -13,7 +13,8 @@ return Freeze({
 	-- Rate averaging: new level income weighs this much against the running average.
 	OfflineRateBlend = 0.2,
 	AfkRejoinSeconds = 19 * 60 + 30,
-	FarmUnlockLevel = 200,
+	BaseTeamSlots = 1,
+	MaxTeamSlots = 4,
 	StarterClasses = { "Warrior", "Mage", "Archer" },
 	SalvageBatchMax = 100,
 	OpenBatchMax = 100,

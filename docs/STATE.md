@@ -12,7 +12,7 @@
 | งาน | ถึงไหนแล้ว | ขั้นต่อไป | อัปเดต |
 |---|---|---|---|
 | เปิด DataStore จริง | publish แล้ว (placeId 108236200953937) แต่ Studio API access ยังปิด → ProfileStore รัน mock (SEEN) | Game Settings → Security → Enable Studio Access to API Services แล้ว Play ซ้ำ 2 รอบ: hero ที่เลือก + Gold ต้องยังอยู่รอบที่ 2 (LogInTimes ถูกลบใน schema v1) | 2026-10-31 |
-| สร้างเกมตามแผน | เฟส 0–2 เสร็จ ทดสอบใน Studio แล้ว (SEEN) | เฟส 3 ขั้น 3.1 (ทีมยังมี 1 ช่องจนถึง 3.2 — เจ้าของรับทราบ) | 2026-11-14 |
+| สร้างเกมตามแผน | เฟส 0–3 เสร็จ ทดสอบใน Studio แล้ว (SEEN) | เฟส 4 ขั้น 4.1 (Rebirth: ย้าย cap/WearCaps/AccountLevelCap ที่อยู่ `Config/Rebirth` ให้ขยายต่อขั้น · `Systems/Rebirth` มีแค่ Points) | 2026-11-14 |
 | ลบไฟล์เก่า | `src/shared/Hello.luau` ย้ายไป `_to_delete/` (ไม่มีสิทธิ์ลบ) (SEEN) | ผู้ใช้ลบโฟลเดอร์ `_to_delete/` เอง | 2026-11-14 |
 | commit แรก | ยังไม่มี commit (SEEN) | ผู้ใช้รัน `git add .` + `git commit` เอง (git ใน device_bash ค้าง lock ถ้าไม่มีสิทธิ์ลบ) | 2026-10-31 |
 
@@ -36,6 +36,7 @@
 
 - device_bash VM โหลด binary จาก GitHub ได้: stylua/selene/luau-lsp/rojo (รุ่นตาม rokit.toml) + `globalTypes.None.d.luau` ลง `$HOME/bin` แล้วรันบนโฟลเดอร์จริงได้เลย ไม่ต้อง stage (SEEN) · โหลด lune ถูก auto-mode ปฏิเสธ → ทดสอบ pure module ใน Studio แทน
 - Rojo ของผู้ใช้ sync โฟลเดอร์ D:\UltimateIdle เข้า Studio "Place1" อยู่แล้ว → แก้ไฟล์แล้ว Stop/Play ใหม่ได้ผลทันที (SEEN)
+- `execute_luau` ใน **Edit** require module ได้ของเก่าที่ cache ไว้ (เช่น `Formula.Mods` = nil ทั้งที่ Rojo sync แล้ว) → ทดสอบ pure module ใน Play (Server) แทน (SEEN)
 - `execute_luau` ใน Server/Client require module ได้ instance ใหม่ (cache แยก) → อ่าน state ของระบบที่รันอยู่ไม่ได้ (PlayerData.Data = nil) · ตรวจผลทาง GUI/Workspace หรือ attribute แทน · ใช้รัน Sim/Formula แบบ pure ได้ (SEEN)
 - คลิก UI ด้วย `user_mouse_input` ต้องใช้ `instance_path` (พิกัด x/y จาก screenshot คลาดเคลื่อน) · path React = ชื่อ key ของ child เช่น `LocalPlayer.PlayerGui.Main.Frame.Page.Window.Content.…` (SEEN)
 - Red: event ที่ server ยิงก่อน client ตั้ง listener หายไป (ไม่มีคิว) → client ส่ง `RequestSnapshot` หลังตั้ง listener, ระบบอื่นยิงซ้ำผ่าน `Replication.OnSynced` (SEEN)
@@ -43,6 +44,9 @@
 - Table ที่ type `{[string]: number}`: `x[k] = if c then v else nil` ไม่ผ่าน strict → เขียน if/else แยก (SEEN)
 - stylua ลบ `;` นำหน้า `(expr)[k] = v` → parse พัง · ใช้ `local t: any = data; t[k] = v` (SEEN)
 - Sim: monster ระยะไกลหยุดไกลเกินระยะตีของ hero ประชิด → level ค้าง timeout · ระยะตี hero = Range + ContactGap + `MELEE_SLACK` (SEEN)
+- React drag: เก็บ drag ใน ref (`dragRef`) ให้ handler อ่าน/เขียน · state ไว้วาดเท่านั้น · ถ้าใช้ state ใน closure ตรงๆ InputChanged ที่มาช้าหลังปล่อยปุ่มจะชุบ drag กลับ ghost ค้าง (SEEN, หน้า Team)
+- ทดสอบลากใน Studio: `user_mouse_input` mouseButtonDown → moveTo (instance_path) → mouseButtonUp ใน call เดียวกันได้ · call ใหม่ต้อง moveTo ก่อน mouseButtonUp (SEEN)
+- เช็ก effect ชั่วคราวบน client (ชื่อสกิลบนหัว) ด้วย poll `ClientBattle` ≥20 วิ — 10 วิอาจพลาดเพราะ cooldown (SEEN)
 - Balance รอบแรก (hero เดี่ยว ไม่มีของ): ~L100 ใน 1.5 ชม. ติดเพดาน hero L150 ที่ด่าน ~155 (SEEN, sim ใน Studio)
 
 ## Dead ends — ลองแล้วไม่ได้ผล อย่าลองซ้ำ
@@ -62,4 +66,5 @@
 - 2026-11-14: ตกลงสเปกเกมกับเจ้าของ เขียน docs/design.md + docs/plan.md · ยังไม่แตะ src/
 - 2026-11-14: ขั้น 0.1 — Types.luau + Format.luau · stylua/selene/luau-analyze ผ่าน · `Format.Number(1.5e12) == "1.5T"` PASS (รันด้วย luau CLI) · ช่องสวมใส่ = 10 (เจ้าของยืนยัน แก้เลข 11 ใน design/plan แล้ว)
 - 2026-11-14: เฟส 0–2 (0.2–2.7) ครบ · stylua/selene/luau-lsp strict ผ่าน 0 error · Studio Play: เลือก hero → ด่านเล่น/จ่าย gold+gear, Bag ค้นหา @tag + salvage confirm, Heroes ใส่ของ/ซื้อ hero, Boxes เปิด/แปลง, Farm + skip wave + กล้อง 3D PASS · offline/AFK ยังไม่ได้ทดสอบจริง
+- 2026-11-14: เฟส 3 (3.1–3.7) ครบ · stylua/selene/luau-lsp strict 0 error · Studio Play PASS: ซื้อ node (confirm), Squad I → ทีม 2 ช่อง (ลากวาง + เกินช่อง = toast), เปลี่ยนอาชีพ 2 ขั้น (wear cap 60→110→150), sim ยิงสกิล (PowerStrike/Fireball/Meteor/ShieldWall/MassHeal) + ชื่อสกิลขึ้นบนหัว, กล่องเปิดอัตโนมัติทุก 20 วิ, cap กล่อง 25→35 · ยังไม่ทดสอบ: Resurrect ในด่านจริง, toggle Berserk ผ่าน UI, กระเป๋าเต็มแล้ว auto-open หยุด/กลับมา · `Settings.AutoOpenBoxes` = สวิตช์ auto-open · `SkillOff` = node toggle ทั่วไป
 - 2026-11-14: เจ้าของตัดสิน 4 ข้อ → ทำแล้ว: skip wave เฉพาะ level ที่เคยผ่าน · ออกจาก Farm กลางรอบ = ได้ก้อนของรอบที่จบล่าสุด (`LastFarmRound`) · กล่องแยก stack ตาม kind:rebirth:ช่วง level 25 (schema v2) แปลง class ได้จาก Normal และ Boss · ข้อความภาษาอังกฤษเท่านั้น · Studio PASS (กล่องแยกช่วง, แปลง Boss→Mage, ป้าย skip รอผ่าน level)

@@ -45,13 +45,13 @@
 
 ## เฟส 3 — ทีม (design §3 §6)
 
-- [ ] **3.1 สกิล hero** — `Config/Skills` (ติดตัว 1 + ใช้เอง 2 ต่อ class, cooldown, ปลดตาม level hero) · เพิ่มใน `Sim` (ใช้อัตโนมัติ, สกิลชุบของ healer) · timeline มี event สกิลให้ client เล่น
-- [ ] **3.2 ทีม + แถว** — remote `SetTeam` (ตรวจจำนวนช่องที่ปลด, hero เป็นของเรา, แถวละ ≤4) · โบนัสตำแหน่ง/คู่ที่เข้ากันใน `Config/Formation` · มีผล level ถัดไป
-- [ ] **3.3 Skill tree** — `Config/SkillTree` (3 สาย, node มี: ราคา gold/item/แต้ม rebirth, node ก่อนหน้า, ผล, เปิดปิดได้ไหม) · `Systems/SkillTree/`: `Buy` (ไม่มี reset) · `Toggle` เฉพาะ node ที่เปิดปิดได้ · รวมผลเป็น modifier ก้อนเดียวที่ cache ไว้ · node ชุดแรก: ช่องทีม 2–4, % offline, ความจุกล่อง, เปิดกล่องอัตโนมัติ
-- [ ] **3.4 เปิดกล่องอัตโนมัติ** — ทำงานตาม cooldown จาก skill tree ด้วยตัวจับเวลาต่อผู้เล่น (ไม่ใช่ loop ต่อเฟรม) · หยุดเมื่อกระเป๋าเต็ม
-- [ ] **3.5 เปลี่ยนอาชีพ** — `Config/Classes` (2 ขั้นต่อ class: เงื่อนไข level hero + gold + item, cap ของสวมใส่ที่เพิ่ม, สกิลที่แรงขึ้น) · remote `Advance`
-- [ ] **3.6 Level ส่วนตัว** — `Config/Account` (ตารางปลดฟีเจอร์ + โบนัส) · ย้ายเงื่อนไขปลด Farm/trade มาอ่านจากที่นี่
-- [ ] **3.7 UI** — หน้าจัดทีม (ลากวางแถว) · หน้า skill tree (เส้นแยกสาย, ปุ่มเปิดปิด) · หน้าสกิล/เปลี่ยนอาชีพ
+- [x] **3.1 สกิล hero** — `Config/Skills` (ติดตัว 1 + ใช้เอง 2 ต่อ class, cooldown, ปลดตาม level hero) · เพิ่มใน `Sim` (ใช้อัตโนมัติ, สกิลชุบของ healer) · timeline มี event สกิลให้ client เล่น
+- [x] **3.2 ทีม + แถว** — remote `SetTeam` (ตรวจจำนวนช่องที่ปลด, hero เป็นของเรา, แถวละ ≤4) · โบนัสตำแหน่ง/คู่ที่เข้ากันใน `Config/Formation` · มีผล level ถัดไป
+- [x] **3.3 Skill tree** — `Config/SkillTree` (3 สาย, node มี: ราคา gold/item/แต้ม rebirth, node ก่อนหน้า, ผล, เปิดปิดได้ไหม) · `Systems/SkillTree/`: `Buy` (ไม่มี reset) · `Toggle` เฉพาะ node ที่เปิดปิดได้ · รวมผลเป็น modifier ก้อนเดียวที่ cache ไว้ · node ชุดแรก: ช่องทีม 2–4, % offline, ความจุกล่อง, เปิดกล่องอัตโนมัติ
+- [x] **3.4 เปิดกล่องอัตโนมัติ** — ทำงานตาม cooldown จาก skill tree ด้วยตัวจับเวลาต่อผู้เล่น (ไม่ใช่ loop ต่อเฟรม) · หยุดเมื่อกระเป๋าเต็ม
+- [x] **3.5 เปลี่ยนอาชีพ** — `Config/Classes` (2 ขั้นต่อ class: เงื่อนไข level hero + gold + item, cap ของสวมใส่ที่เพิ่ม, สกิลที่แรงขึ้น) · remote `Advance`
+- [x] **3.6 Level ส่วนตัว** — `Config/Account` (ตารางปลดฟีเจอร์ + โบนัส) · ย้ายเงื่อนไขปลด Farm/trade มาอ่านจากที่นี่
+- [x] **3.7 UI** — หน้าจัดทีม (ลากวางแถว) · หน้า skill tree (เส้นแยกสาย, ปุ่มเปิดปิด) · หน้าสกิล/เปลี่ยนอาชีพ
 
 ## เฟส 4 — Rebirth (design §6)
 

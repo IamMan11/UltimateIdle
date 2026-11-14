@@ -17,6 +17,10 @@ local LIMITS: { [string]: { Rate: number, Burst: number } } = {
 	Salvage = { Rate = 3, Burst = 6 },
 	OpenBox = { Rate = 4, Burst = 8 },
 	ConvertBox = { Rate = 4, Burst = 8 },
+	SetTeam = { Rate = 1, Burst = 4 },
+	Advance = { Rate = 1, Burst = 3 },
+	BuyNode = { Rate = 3, Burst = 6 },
+	ToggleNode = { Rate = 3, Burst = 6 },
 	RequestRejoin = { Rate = 0.05, Burst = 1 },
 	DevCommand = { Rate = 10, Burst = 20 },
 }

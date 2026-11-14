@@ -10,6 +10,8 @@ local Toasts = require(script.Parent.Toasts)
 local Confirm = require(script.Parent.Confirm)
 local HeroSelect = require(script.Parent.Parent.HeroSelect)
 local HeroesPage = require(script.Parent.Parent.Heroes)
+local TeamPage = require(script.Parent.Parent.Team)
+local TreePage = require(script.Parent.Parent.Tree)
 local Inventory = require(script.Parent.Parent.Inventory)
 local BoxesPage = require(script.Parent.Parent.Boxes)
 local Settings = require(script.Parent.Parent.Settings)
@@ -36,6 +38,10 @@ local function App(): React.ReactNode
 	if not needsHero then
 		if ui.Page == "Heroes" then
 			page = e(HeroesPage, { data = data })
+		elseif ui.Page == "Team" then
+			page = e(TeamPage, { data = data })
+		elseif ui.Page == "Tree" then
+			page = e(TreePage, { data = data })
 		elseif ui.Page == "Bag" then
 			page = e(Inventory, { data = data })
 		elseif ui.Page == "Boxes" then

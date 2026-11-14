@@ -14,4 +14,8 @@
 | ไม่มีอะไรเล่นในด่าน / ด่านไม่เริ่ม | team ว่าง (`Hero.GetTeam`) · `server/Systems/Stage/init.luau` startLevel · client `Battle/init.luau` (attribute `Lane`) | — |
 | ด่านแพ้ timeout 180 วิ ทั้งที่ไม่ตาย | `Sim.luau` ระยะตี (`MELEE_SLACK`) กับ Range ของ monster | `shared/Config/Monsters.luau` |
 | Toast/notice ไม่ขึ้นตอนเข้าเกม | `Replication.Notify` คิวก่อน snapshot | — |
+| สกิล hero ไม่ออก / ไม่ขึ้นชื่อสกิลบนหัว | `shared/Formula/Skills.luau` (level ปลด) · `Sim.luau` `tryCast` (เงื่อนไขต่อ kind) · client `Battle/init.luau` `Code.Skill` → `Rig.Flash` | `shared/Config/Skills.luau` |
+| โบนัส skill tree / level ส่วนตัวไม่มีผล | `shared/Formula/Mods.luau` · cache `server/Systems/Modifiers/` (เจ้าของ input ต้องเรียก `MarkDirty`) | `shared/Config/SkillTree.luau` · `Config/Account.luau` |
+| เปิดกล่องอัตโนมัติไม่ทำงาน | `Box.Refresh` (ต้องปลด node + `Settings.AutoOpenBoxes` + มีที่ว่าง) | `server/Systems/Box/init.luau` |
+| ของสวมไม่ได้ทั้งที่ level ถึง | wear cap: `Config/Rebirth.luau` `WearCaps` ตาม `Advancement` | `Hero.WearCap` |
 | ของไม่ drop / ถูกย่อยหมด | `Settings.AutoSalvage` · ความจุ `Inventory.FreeSpace` · `server/Secret/DropTables.luau` | — |

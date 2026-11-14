@@ -133,11 +133,25 @@ export type HeroStats = {
 	Power: number, -- single number for UI comparisons
 }
 
+-- An unlocked active skill with advancement scaling already applied.
+export type SimSkill = {
+	Index: number, -- Config.Skills.List index
+	Kind: string,
+	Cooldown: number,
+	Mult: number,
+	Targets: number,
+	Duration: number,
+	Reduce: number,
+	HpRatio: number,
+	Threshold: number,
+}
+
 export type SimHero = {
 	Key: string,
 	Class: ClassId,
 	Row: Row,
 	Stats: HeroStats,
+	Skills: { SimSkill },
 }
 
 export type SimResult = {

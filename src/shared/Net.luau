@@ -35,6 +35,19 @@ local function strList(value: unknown, maxCount: number, maxLen: number): { stri
 	return out
 end
 
+-- Team list: 1..4 entries of { HeroId, Row }; the server checks ownership, slot count and row capacity.
+local function teamList(value: unknown): { { HeroId: string, Row: string } }
+	assert(type(value) == "table", "bad argument")
+	local out: { { HeroId: string, Row: string } } = {}
+	for i, v in value :: { [unknown]: unknown } do
+		assert(type(i) == "number" and i % 1 == 0 and i >= 1 and i <= 4 and type(v) == "table", "bad argument")
+		local entry = v :: { [unknown]: unknown }
+		out[i] = { HeroId = str(entry.HeroId, 16), Row = str(entry.Row, 8) }
+	end
+	assert(#out >= 1 and #out <= 4, "bad argument")
+	return out
+end
+
 local function scalar(value: unknown): boolean | number | string
 	assert(type(value) == "boolean" or type(value) == "number" or type(value) == "string", "bad argument")
 	return value :: any
@@ -83,6 +96,19 @@ local Net = {
 	end),
 	ConvertBox = Red.Event("ConvertBox", function(source: unknown, class: unknown, count: unknown)
 		return str(source, 32), str(class, 16), int(count, 1, 100)
+	end),
+	SetTeam = Red.Event("SetTeam", function(entries: unknown)
+		return teamList(entries)
+	end),
+	Advance = Red.Event("Advance", function(heroId: unknown)
+		return str(heroId, 16)
+	end),
+	BuyNode = Red.Event("BuyNode", function(id: unknown)
+		return str(id, 32)
+	end),
+	ToggleNode = Red.Event("ToggleNode", function(id: unknown, on: unknown)
+		assert(type(on) == "boolean", "bad argument")
+		return str(id, 32), on
 	end),
 	RequestRejoin = Red.Event("RequestRejoin", function() end),
 	DevCommand = Red.Event("DevCommand", function(cmd: unknown, arg: unknown)

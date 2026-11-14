@@ -55,6 +55,12 @@ function Boxes.BandRange(band: number, rebirth: number): (number, number)
 	return low, math.min(band * BAND_SIZE, cap)
 end
 
+-- Stack cap for a kind with the skill tree's BoxCapPct applied.
+function Boxes.Cap(kind: string, bonusPct: number): number
+	local def = byId[kind]
+	return if def ~= nil then math.floor(def.Max * (1 + bonusPct)) else 0
+end
+
 -- Stack key stored in ProfileData.Boxes: "<Kind>:<rebirth>:<band>".
 function Boxes.Key(kind: string, rebirth: number, band: number): string
 	return `{kind}:{rebirth}:{band}`

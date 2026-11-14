@@ -25,7 +25,14 @@ export type GearSpec = {
 -- Total gear entries (worn + bag) per player, kept in step with data.Gear.
 local totals: { [Player]: number } = {}
 
+local freedListeners: { (Player) -> () } = {}
+
 local Inventory = {}
+
+-- Fires after a bag item is removed (space freed), e.g. so box auto-open can resume.
+function Inventory.OnFreed(listener: (Player) -> ())
+	table.insert(freedListeners, listener)
+end
 
 function Inventory.Get(player: Player, uid: string): Types.GearItem?
 	local data = PlayerData.Data(player)
@@ -124,6 +131,9 @@ function Inventory.RemoveGear(player: Player, uid: string): Types.GearItem?
 	data.Gear[uid] = nil
 	totals[player] = (totals[player] or 1) - 1
 	Replication.Set(player, { "Gear", uid }, nil)
+	for _, listener in freedListeners do
+		task.defer(listener, player)
+	end
 	return item
 end
 

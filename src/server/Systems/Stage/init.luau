@@ -9,6 +9,7 @@ local Net = require(ReplicatedStorage.Shared.Net)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Formula = require(ReplicatedStorage.Shared.Formula)
 local Game = require(ReplicatedStorage.Shared.Config.Game)
+local AccountConfig = require(ReplicatedStorage.Shared.Config.Account)
 local Stages = require(ReplicatedStorage.Shared.Config.Stages)
 local Monsters = require(ReplicatedStorage.Shared.Config.Monsters)
 local Rebirth = require(ReplicatedStorage.Shared.Config.Rebirth)
@@ -21,6 +22,7 @@ local Hero = require(script.Parent.Hero)
 local Account = require(script.Parent.Account)
 local Loot = require(script.Parent.Loot)
 local Box = require(script.Parent.Box)
+local Modifiers = require(script.Parent.Modifiers)
 local Sim = require(script.Sim)
 
 type Run = {
@@ -28,6 +30,7 @@ type Run = {
 	Level: number,
 	Mode: Types.StageMode,
 	Rebirth: number,
+	HeroIds: { string }, -- the heroes that fought; they share this level's xp
 	Result: Types.SimResult,
 	Payload: Types.TimelinePayload?,
 	Thread: thread?,
@@ -63,7 +66,7 @@ local function syncStage(player: Player, data: Types.ProfileData)
 	Replication.Set(player, { "Stage" }, data.Stage)
 end
 
-local function rewards(result: Types.SimResult, level: number): (number, number)
+local function rewards(player: Player, result: Types.SimResult, level: number): (number, number)
 	local gold, xp = 0, 0
 	for id, count in result.Kills do
 		local def = Monsters.ById[id]
@@ -72,7 +75,9 @@ local function rewards(result: Types.SimResult, level: number): (number, number)
 			xp += def.Xp * count
 		end
 	end
-	return math.floor(gold * Formula.Scaling.Gold(level)), math.floor(xp * Formula.Scaling.Xp(level))
+	local mods = Modifiers.Get(player)
+	return math.floor(gold * Formula.Scaling.Gold(level) * Formula.Mods.Mult(mods.GoldPct)),
+		math.floor(xp * Formula.Scaling.Xp(level) * Formula.Mods.Mult(mods.XpPct))
 end
 
 local function updateOfflineRate(data: Types.ProfileData, gold: number, xp: number, duration: number)
@@ -105,10 +110,10 @@ local function finishLevel(player: Player, token: number)
 	end
 	runs[player] = nil
 	local result = run.Result
-	local gold, xp = rewards(result, run.Level)
+	local gold, xp = rewards(player, result, run.Level)
 	Currency.Add(player, "Gold", gold)
-	Hero.AddXp(player, xp)
-	Account.AddXp(player, xp * 0.25)
+	Hero.AddXp(player, xp, run.HeroIds)
+	Account.AddXp(player, xp * AccountConfig.XpShare)
 	updateOfflineRate(data, gold, xp, result.Duration + Stages.PauseBetweenLevels)
 	data.LastSeen = os.time()
 
@@ -173,8 +178,20 @@ startLevel = function(player: Player)
 
 	local token = (tokens[player] or 0) + 1
 	tokens[player] = token
-	local run: Run =
-		{ Token = token, Level = level, Mode = mode, Rebirth = rebirth, Result = result, Payload = nil, Thread = nil }
+	local heroIds: { string } = {}
+	for _, hero in team do
+		table.insert(heroIds, hero.Key)
+	end
+	local run: Run = {
+		Token = token,
+		Level = level,
+		Mode = mode,
+		Rebirth = rebirth,
+		HeroIds = heroIds,
+		Result = result,
+		Payload = nil,
+		Thread = nil,
+	}
 	runs[player] = run
 
 	local lead = 0.3
@@ -222,7 +239,7 @@ local function setMode(player: Player, mode: string)
 	if data == nil or (mode ~= "Progress" and mode ~= "Farm") or data.Stage.Mode == mode then
 		return
 	end
-	if mode == "Farm" and Stage.BestLevel(data) < Game.FarmUnlockLevel then
+	if mode == "Farm" and not AccountConfig.IsUnlocked("Farm", data.AccountLevel, Stage.BestLevel(data)) then
 		Replication.Notify(player, "Error", "FarmLocked")
 		return
 	end

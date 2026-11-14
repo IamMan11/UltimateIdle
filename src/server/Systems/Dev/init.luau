@@ -1,5 +1,5 @@
 --!strict
--- Studio-only dev commands (gold, xp, level, boxes, gear). Never registered outside Studio.
+-- Studio-only dev commands (gold, xp, level, boxes, gear, materials, rebirth points). Never registered outside Studio.
 
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -7,6 +7,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local Net = require(ReplicatedStorage.Shared.Net)
 local Boxes = require(ReplicatedStorage.Shared.Config.Boxes)
+local Materials = require(ReplicatedStorage.Shared.Config.Materials)
 local PlayerData = require(ServerScriptService.Server.Data.PlayerData)
 local RateLimit = require(ServerScriptService.Server.Util.RateLimit)
 local Guard = require(ServerScriptService.Server.Util.Guard)
@@ -18,6 +19,8 @@ local Hero = require(script.Parent.Hero)
 local Box = require(script.Parent.Box)
 local Loot = require(script.Parent.Loot)
 local Stage = require(script.Parent.Stage)
+local Inventory = require(script.Parent.Inventory)
+local Rebirth = require(script.Parent.Rebirth)
 
 local Dev = {}
 
@@ -55,6 +58,12 @@ local function run(player: Player, cmd: string, arg: number)
 			end
 		end
 		Loot.Grant(player, bundle)
+	elseif cmd == "mats" and Guard.Int(arg, 1, 10000) then
+		for _, def in Materials.List do
+			Inventory.AddStack(player, def.Id, arg)
+		end
+	elseif cmd == "points" and Guard.Int(arg, 1, 1000) then
+		Rebirth.AddPoints(player, arg)
 	end
 end
 

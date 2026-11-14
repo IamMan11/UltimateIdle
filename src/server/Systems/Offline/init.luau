@@ -14,12 +14,13 @@ local Guard = require(ServerScriptService.Server.Util.Guard)
 local Replication = require(script.Parent.Replication)
 local Currency = require(script.Parent.Currency)
 local Hero = require(script.Parent.Hero)
+local Modifiers = require(script.Parent.Modifiers)
 
 local Offline = {}
 
--- Skill tree adds to this in phase 3; gamepass x2 multipliers in phase 6.
-function Offline.Share(_player: Player): number
-	return Game.OfflineShare
+-- Base share + skill tree; gamepass x2 multipliers arrive in phase 6.
+function Offline.Share(player: Player): number
+	return Game.OfflineShare + Modifiers.Get(player).OfflineShare
 end
 
 local function payOffline(player: Player, data: PlayerData.Data)

@@ -11,6 +11,8 @@ local Timeline = require(ReplicatedStorage.Shared.Timeline)
 local World = require(ReplicatedStorage.Shared.Config.World)
 local Formation = require(ReplicatedStorage.Shared.Config.Formation)
 local Monsters = require(ReplicatedStorage.Shared.Config.Monsters)
+local Skills = require(ReplicatedStorage.Shared.Config.Skills)
+local Text = require(ReplicatedStorage.Shared.Text)
 local State = require(script.Parent.State)
 local Rig = require(script.Rig)
 local Camera = require(script.Camera)
@@ -126,6 +128,13 @@ local function handle(event: Timeline.Event, payload: Types.TimelinePayload, now
 			live.Dead = false
 			Rig.SetFaded(live.Unit, false)
 			setBar(live, event.D)
+		end
+	elseif code == Code.Skill then
+		local live = units[event.A]
+		local def = Skills.List[event.B]
+		if live ~= nil and def ~= nil and now - event.T < 1 then
+			live.LungeUntil = event.T + LUNGE_TIME * 2
+			Rig.Flash(live.Unit, Text.Skill(def.Id))
 		end
 	elseif code == Code.Wave then
 		State.SetBattle(payload.Level, event.A, payload.Mode, payload.Skip == true)

@@ -175,6 +175,18 @@ State.Send = {
 	ConvertBox = function(source: string, class: string, count: number)
 		Net.ConvertBox:Client():Fire(source, class, count)
 	end,
+	SetTeam = function(entries: { { HeroId: string, Row: string } })
+		Net.SetTeam:Client():Fire(entries)
+	end,
+	Advance = function(heroId: string)
+		Net.Advance:Client():Fire(heroId)
+	end,
+	BuyNode = function(id: string)
+		Net.BuyNode:Client():Fire(id)
+	end,
+	ToggleNode = function(id: string, on: boolean)
+		Net.ToggleNode:Client():Fire(id, on)
+	end,
 	RequestRejoin = function()
 		Net.RequestRejoin:Client():Fire()
 	end,
@@ -218,6 +230,12 @@ local function onNotice(kind: string, payload: any)
 		State.PushToast(`Salvaged {payload.Count}: +{Format.Number(payload.Gold)} gold, +{payload.Stones} stones`)
 	elseif kind == "BoxOpened" then
 		State.PushToast(`Opened {payload.Opened} {Text.Box(payload.Box)}: {lootText(payload.Summary)}`)
+	elseif kind == "NodeBought" then
+		State.PushToast(`Unlocked {Text.Node(payload)}`)
+	elseif kind == "Advanced" then
+		State.PushToast(`{Text.Class(payload.Hero)} advanced to {Text.Advancement(payload.Hero, payload.Stage)}`)
+	elseif kind == "TeamSet" then
+		State.PushToast("Team saved: applies from the next level")
 	elseif kind == "FarmLump" then
 		State.PushToast(`Farm reward (levels 1-{payload.Levels}): {lootText(payload.Summary)}`)
 	end

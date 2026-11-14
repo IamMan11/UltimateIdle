@@ -14,6 +14,7 @@ Timeline.Code = table.freeze({
 	Revive = 6, -- a = unit, d = hp
 	Heal = 7, -- a = source, b = target, c = amount, d = target hp after
 	Wave = 8, -- a = wave number
+	Skill = 9, -- a = caster, b = Config.Skills index, c = effect duration (0 = instant)
 })
 
 -- Heroes are units 1..4; monsters start here.
