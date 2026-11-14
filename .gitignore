@@ -1,0 +1,20 @@
+# Wally packages — ลงใหม่ได้จาก wally.toml เสมอ
+Packages/
+ServerPackages/
+DevPackages/
+
+# luau-lsp สร้างใหม่อัตโนมัติทุกครั้งที่เปิดโปรเจกต์
+sourcemap.json
+
+# ไฟล์ place ที่ build ออกมา
+*.rbxl
+*.rbxlx
+*.rbxl.lock
+*.rbxlx.lock
+
+# ของเครื่องแต่ละคน
+.DS_Store
+Thumbs.db
+
+# selene สร้างใหม่ได้ด้วย selene generate-roblox-std
+roblox.yml
