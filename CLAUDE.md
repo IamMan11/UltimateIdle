@@ -2,10 +2,9 @@
 
 Conventions for writing code in this project — read before touching any file.
 
-**<ProjectName>** is a <one-line genre/concept> written outside Studio and synced in with Rojo.
+**UltimateIdle** is an idle RPG (auto-battling hero team, gear, boxes, rebirth) written outside Studio and synced in with Rojo.
 Language: **Luau** · Packages: **Wally** · Toolchain: **Rokit**
 
-<!-- Copied from E:\ClaudeShared. Replace every <...>, delete sections that don't apply. -->
 
 ---
 
@@ -45,7 +44,7 @@ SKILL.md is a router: read only the reference under `references/` that matches t
 ## Project structure
 
 ```
-<ProjectName>/
+UltimateIdle/
 ├── src/
 │   ├── shared/          code both sides use — ReplicatedStorage.Shared
 │   │   ├── Net.luau     every remote event + validators
@@ -149,7 +148,9 @@ A package that exports no types gives `TypeError: Unknown type` for any `Pkg.Typ
 
 ### UI theme
 
-<!-- Fill in: where Theme lives, the palette table, fonts, frame/panel components. Rule: every color comes from Theme; never hard-code a Color3 in a UI file. -->
+Theme: `src/client/UI/Core/Theme.luau` — plain greys (`Bg`, `Panel`, `PanelAlt`, `Hover`, `Stroke`, `Text`, `Subtext`, `Accent`, `Confirm`, `OnLight`, `Danger`, `Backdrop`, `Bar`), fonts `Font`/`FontBold` (BuilderSans), z layers `ZHud` 1 · `ZPage` 3 · `ZModal` 6 · `ZToast` 10 · `ZDev` 20.
+Widgets: `src/client/UI/Core/Widgets.luau` (`Label`, `Button`, `Bar`, `TextInput`, `Stepper`, `Window` = page/modal shell with backdrop + Esc, `useStore`, `useOptional`) · `VirtualList.luau` for long lists · `Confirm.luau` for yes/no.
+Rule: every color comes from Theme; never hard-code a Color3 in a UI file. Pages read `State.Data`, send intent through `State.Send.*`.
 
 ### Player data — ProfileStore only
 
@@ -165,7 +166,7 @@ A package that exports no types gives `TypeError: Unknown type` for any `Pkg.Typ
 | **Before calling anything done** | `stylua src/` then `selene src/` |
 | After editing `wally.toml` | `wally install` → `rojo sourcemap default.project.json --output sourcemap.json` → `wally-package-types --sourcemap sourcemap.json Packages/` → **Reload Window** |
 | Fresh clone / new machine | `rokit install` → `wally install` → `selene generate-roblox-std` |
-| Building a place file | `rojo build -o <ProjectName>.rbxlx` |
+| Building a place file | `rojo build -o UltimateIdle.rbxlx` |
 
 ---
 

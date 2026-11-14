@@ -1,0 +1,26 @@
+--!strict
+-- Per-rebirth caps and difficulty. Index 0 = before any rebirth. Phase 4 extends this table.
+
+local Freeze = require(script.Parent.Parent.Freeze)
+
+export type RebirthDef = {
+	Index: number,
+	HeroLevelCap: number,
+	ItemLevelCap: number,
+	Difficulty: number,
+	FarmRoundCap: number, -- farm round ends (lump paid) when this level is cleared
+}
+
+local list: { RebirthDef } = {
+	{ Index = 0, HeroLevelCap = 150, ItemLevelCap = 150, Difficulty = 1, FarmRoundCap = 1000 },
+}
+
+local Rebirth = {
+	List = list,
+}
+
+function Rebirth.Get(index: number): RebirthDef
+	return list[math.clamp(index + 1, 1, #list)]
+end
+
+return Freeze(Rebirth)

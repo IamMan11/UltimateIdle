@@ -10,4 +10,8 @@
 | UI window / modal เพี้ยน (layer, Esc, focus) | `client/UI/Core/` · state ใน client store | `.claude/skills/ui-modal/references/roblox-react.md` |
 | ข้อความผิด / hard-code | `shared/Text/` เท่านั้น | — |
 | ตัวเลขผิด | `shared/Config/` (สูตร/ค่า) | balance = แก้ค่าจริง ไม่ใช่ตัวคูณรวม |
-| <อาการ> | <ไฟล์เจ้าของ> | <doc> |
+| UI ไม่อัปเดตหลังซื้อ/ได้ของ | system เจ้าของเรียก `Replication.Set` ไหม · `client/State/init.luau` applyDelta | `server/Systems/Replication/` |
+| ไม่มีอะไรเล่นในด่าน / ด่านไม่เริ่ม | team ว่าง (`Hero.GetTeam`) · `server/Systems/Stage/init.luau` startLevel · client `Battle/init.luau` (attribute `Lane`) | — |
+| ด่านแพ้ timeout 180 วิ ทั้งที่ไม่ตาย | `Sim.luau` ระยะตี (`MELEE_SLACK`) กับ Range ของ monster | `shared/Config/Monsters.luau` |
+| Toast/notice ไม่ขึ้นตอนเข้าเกม | `Replication.Notify` คิวก่อน snapshot | — |
+| ของไม่ drop / ถูกย่อยหมด | `Settings.AutoSalvage` · ความจุ `Inventory.FreeSpace` · `server/Secret/DropTables.luau` | — |
