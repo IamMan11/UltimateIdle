@@ -15,10 +15,11 @@ local Replication = require(script.Parent.Replication)
 local Currency = require(script.Parent.Currency)
 local Hero = require(script.Parent.Hero)
 local Modifiers = require(script.Parent.Modifiers)
+local Shop = require(script.Parent.Shop)
 
 local Offline = {}
 
--- Base share + skill tree; gamepass x2 multipliers arrive in phase 6.
+-- Base share + skill tree (x2 passes multiply gold / xp separately).
 function Offline.Share(player: Player): number
 	return Game.OfflineShare + Modifiers.Get(player).OfflineShare
 end
@@ -32,8 +33,8 @@ local function payOffline(player: Player, data: PlayerData.Data)
 	end
 	local seconds = now - last
 	local share = Offline.Share(player)
-	local gold = math.floor(data.OfflineRate.Gold * seconds * share)
-	local xp = math.floor(data.OfflineRate.Xp * seconds * share)
+	local gold = math.floor(data.OfflineRate.Gold * seconds * share * Shop.GoldMult(player))
+	local xp = math.floor(data.OfflineRate.Xp * seconds * share * Shop.XpMult(player))
 	if not (Guard.Amount(gold) and Guard.Amount(xp)) or (gold <= 0 and xp <= 0) then
 		return
 	end

@@ -1,5 +1,5 @@
 --!strict
--- Studio-only dev commands (gold, xp, level, boxes, gear, materials, rebirth points). Never registered outside Studio.
+-- Studio-only dev commands (gold, xp, level, boxes, gear, materials, rebirth points, ruby, quest/pass progress, fake receipts, gifted passes). Never registered outside Studio.
 
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -21,6 +21,14 @@ local Loot = require(script.Parent.Loot)
 local Stage = require(script.Parent.Stage)
 local Inventory = require(script.Parent.Inventory)
 local Rebirth = require(script.Parent.Rebirth)
+local Quest = require(script.Parent.Quest)
+local BattlePass = require(script.Parent.BattlePass)
+local Shop = require(script.Parent.Shop)
+
+-- "receipt" / "pass" pick by index from these lists.
+local DEV_PRODUCTS = { "GiftGold2x", "GiftXp2x", "PremiumPass", "ShopRuby", "ShopCores" }
+local DEV_PASSES = { "Gold2x", "Xp2x" }
+local QUEST_KINDS = { "ClearLevel", "Kill", "Boss", "Enhance", "OpenBox", "Enchant" }
 
 local Dev = {}
 
@@ -64,6 +72,23 @@ local function run(player: Player, cmd: string, arg: number)
 		end
 	elseif cmd == "points" and Guard.Int(arg, 1, 1000) then
 		Rebirth.AddPoints(player, arg)
+	elseif cmd == "ruby" then
+		Currency.Add(player, "Ruby", arg)
+	elseif cmd == "quest" and Guard.Int(arg, 1, 1e6) then
+		for _, kind in QUEST_KINDS do
+			Quest.Progress(player, kind :: any, arg)
+		end
+	elseif cmd == "passpts" and Guard.Int(arg, 1, 1e6) then
+		BattlePass.AddPoints(player, arg)
+	elseif cmd == "pass" and Guard.Int(arg, 1, #DEV_PASSES) then
+		Shop.DevTogglePass(player, DEV_PASSES[arg])
+	elseif cmd == "receipt" and Guard.Int(arg, 1, #DEV_PRODUCTS * 100) then
+		-- arg = product index + 10 * n: same n = same purchase id (tests the dedupe).
+		local index = (arg - 1) % 10 + 1
+		local key = DEV_PRODUCTS[index]
+		if key ~= nil then
+			Shop.DevReceipt(player, key, `dev-{arg}`)
+		end
 	end
 end
 

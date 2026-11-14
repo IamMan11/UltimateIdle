@@ -22,6 +22,17 @@ local BOSS: BoxTable = {
 	Materials = {
 		{ Id = "EnhanceStone", Chance = 1, Min = 2, Max = 5 },
 		{ Id = "EnchantDust", Chance = 0.3, Min = 1, Max = 2 },
+		{ Id = "AncientShard", Chance = 0.05, Min = 1, Max = 1 },
+		{ Id = "SocketCore", Chance = 0.03, Min = 1, Max = 1 },
+		{ Id = "GemAtk", Chance = 0.04, Min = 1, Max = 1 },
+		{ Id = "GemHp", Chance = 0.04, Min = 1, Max = 1 },
+		{ Id = "GemDef", Chance = 0.04, Min = 1, Max = 1 },
+		{ Id = "ArtLifesteal", Chance = 0.01, Min = 1, Max = 1 },
+		{ Id = "ArtCrit", Chance = 0.01, Min = 1, Max = 1 },
+		{ Id = "ArtSplash", Chance = 0.006, Min = 1, Max = 1 },
+		{ Id = "RelicGold", Chance = 0.008, Min = 1, Max = 1 },
+		{ Id = "RelicXp", Chance = 0.008, Min = 1, Max = 1 },
+		{ Id = "RelicDrop", Chance = 0.005, Min = 1, Max = 1 },
 	},
 }
 

@@ -1,5 +1,5 @@
 --!strict
--- Player-facing strings: names for classes, items, materials, boxes, tiers, slots, skills, advancements, skill tree nodes, and UI labels.
+-- Player-facing strings: names for classes, items, materials, inserts, traits, boxes, tiers, slots, skills, advancements, skill tree nodes, UI labels; phase 6 strings in Text.Eco.
 
 local Items = require(script.Parent.Config.Items)
 local Boxes = require(script.Parent.Config.Boxes)
@@ -7,6 +7,7 @@ local Skills = require(script.Parent.Config.Skills)
 local SkillTree = require(script.Parent.Config.SkillTree)
 local Types = require(script.Parent.Types)
 local Account = require(script.Parent.Config.Account)
+local Inserts = require(script.Parent.Config.Inserts)
 
 local CLASS = { Warrior = "Warrior", Mage = "Mage", Archer = "Archer", Healer = "Healer" }
 local TIER = { Common = "Common", Uncommon = "Uncommon", Rare = "Rare" }
@@ -22,7 +23,39 @@ local SLOT = {
 	Ring1 = "Ring",
 	Ring2 = "Ring",
 }
-local MATERIAL = { EnhanceStone = "Enhance Stone", EnchantDust = "Enchant Dust", SocketCore = "Socket Core" }
+local MATERIAL: { [string]: string } = {
+	EnhanceStone = "Enhance Stone",
+	EnchantDust = "Enchant Dust",
+	SocketCore = "Socket Core",
+	AncientShard = "Ancient Shard",
+	GemAtk = "Fury Gem",
+	GemHp = "Life Gem",
+	GemDef = "Guard Gem",
+	ArtLifesteal = "Vampire Fang",
+	ArtCrit = "Hawk Eye",
+	ArtSplash = "Twin Blade",
+	RelicGold = "Golden Idol",
+	RelicXp = "Sage Scroll",
+	RelicDrop = "Lucky Charm",
+}
+local SOCKET_KIND = { Gem = "Gem", Artifact = "Artifact", Relic = "Relic" }
+local TRAIT: { [string]: string } = {
+	AtkPct = "Attack",
+	HpPct = "HP",
+	DefPct = "Defense",
+	AtkSpeed = "Attack speed",
+	MoveSpeed = "Move speed",
+}
+local INSERT_STAT: { [string]: string } = {
+	Atk = "attack",
+	MaxHp = "HP",
+	Def = "defense",
+	Lifesteal = "lifesteal",
+	Crit = "crit chance",
+	GoldPct = "gold (team)",
+	XpPct = "xp (team)",
+	DropPct = "drop chance (team)",
+}
 local BOX = { Normal = "Box", Boss = "Boss Box" }
 local MONSTER =
 	{ Slime = "Slime", Goblin = "Goblin", SkeletonArcher = "Skeleton Archer", Orc = "Orc", OgreKing = "Ogre King" }
@@ -75,6 +108,7 @@ local EFFECT_PCT: { [string]: string } = {
 	DefPct = "defense",
 	GoldPct = "gold",
 	XpPct = "xp",
+	DropPct = "drop chance",
 	OfflineShare = "offline earnings (of online rate)",
 	BoxCapPct = "box stack size",
 }
@@ -154,7 +188,31 @@ function Text.Item(baseId: string): string
 	return ITEM_NAMES[baseId] or baseId
 end
 function Text.Material(id: string): string
-	return (MATERIAL :: { [string]: string })[id] or id
+	return MATERIAL[id] or id
+end
+function Text.SocketKind(id: string): string
+	return (SOCKET_KIND :: { [string]: string })[id] or id
+end
+
+-- "Attack +10%" / "Move speed +2".
+function Text.Trait(enchant: Types.Enchant): string
+	local name = TRAIT[enchant.Id] or enchant.Id
+	return if enchant.Id == "MoveSpeed" then `{name} +{enchant.Value}` else `{name} +{enchant.Value}%`
+end
+
+-- What one insert does, e.g. "+3% lifesteal" or "+2 attack (x item level)".
+function Text.InsertEffect(id: string): string
+	local def = Inserts.ById[id]
+	if def == nil then
+		return id
+	end
+	local stat = INSERT_STAT[def.Stat] or def.Stat
+	if def.Kind == "Gem" then
+		return `+{def.Value} {stat} (grows with item level)`
+	elseif def.Stat == "Splash" then
+		return `+{def.Value} extra target`
+	end
+	return `{pct(def.Value)} {stat}`
 end
 function Text.Monster(id: string): string
 	return (MONSTER :: { [string]: string })[id] or id
@@ -262,6 +320,8 @@ function Text.Box(key: string): string
 	return `{boxKind(kind)} R{r} Lv {(band - 1) * Boxes.BandSize + 1}-{band * Boxes.BandSize}`
 end
 
+Text.Eco = require(script.Economy)({ Material = Text.Material, Box = Text.Box })
+
 Text.UI = table.freeze({
 	ChooseHeroTitle = "Choose your first hero",
 	ChooseHeroBody = "Other heroes can be bought with gold later.",
@@ -323,6 +383,27 @@ Text.UI = table.freeze({
 	AutoOpenLocked = "Auto-open boxes: unlock in the skill tree",
 	RebirthPoints = "Rebirth points",
 	Unlocks = "Unlocks at hero level",
+	Forge = "Forge",
+	Rebirth = "Rebirth",
+	Enhance = "Enhance",
+	Sockets = "Sockets",
+	Enchant = "Enchant",
+	PickItem = "Pick an item on the left",
+	EnhanceNote = "Failure keeps the current plus. Gold and materials are used either way.",
+	EnhanceMax = "Fully enhanced",
+	AddSocket = "Add a socket",
+	MergeHint = "Merge a duplicate (same item, tier and socket count). The duplicate is destroyed.",
+	NoDuplicates = "No duplicate to merge",
+	SocketsMax = "All sockets open",
+	NoInserts = "None in bag",
+	EnchantNote = "Rerolls every trait line. Current traits are replaced.",
+	NoTraits = "No traits",
+	Before = "Before",
+	After = "After",
+	PlayRebirth = "Rebirth to play",
+	PlayHint = "Lower rebirths are easier and drop their own items. Applies from the next level.",
+	RebirthMaxed = "Highest rebirth reached",
+	RebirthKeeps = "Nothing is reset. Caps go up and monsters in the new rebirth are tougher.",
 })
 
 Text.Error = table.freeze({
@@ -341,6 +422,37 @@ Text.Error = table.freeze({
 	NotEnoughItems = "Not enough materials",
 	NotEnoughPoints = "Not enough rebirth points",
 	AutoOpenBagFull = "Auto-open paused: bag is full",
+	RebirthMax = "Highest rebirth reached",
+	RebirthLocked = "Clear the required level first",
+	MaxPlus = "Already at max plus",
+	MaterialWorn = "Unequip the duplicate first",
+	SocketsFull = "All sockets are open",
+	WrongSocketKind = "That insert does not fit this socket kind",
+	SocketTaken = "Remove the current insert first",
+	ItemInTrade = "That item is in an open trade",
+	QuestClaimed = "Already claimed",
+	QuestNotDone = "Quest not finished yet",
+	NeedPremium = "Unlock the premium pass first",
+	PassOwned = "You already own this pass",
+	NotForSale = "Not available yet",
+	GiftNoTarget = "That player is not in this server",
+	GiftOwned = "They already own this pass",
+	PremiumOwned = "Premium is already active this season",
+	QuotaReached = "Monthly limit reached",
+	NotEnoughRuby = "Not enough Ruby",
+	TradeUnavailable = "Trade unavailable",
+	TradeLocked = "Trading unlocks at account level " .. tostring(Account.Unlocks.Trade.AccountLevel or 0),
+	TradePolicy = "Trading is not available for this account",
+	TradePartnerLocked = "That player cannot trade yet",
+	TradeBusy = "Already in a trade",
+	TradeExpired = "Trade request expired",
+	TradeTooMany = "Too many things in one offer",
+	TradeMissing = "Something in an offer is no longer available",
+	TradeWorn = "Unequip items before trading them",
+	TradeBagFull = "Not enough bag space for this trade",
+	TradeBoxFull = "A box stack would go over its limit",
+	TradeNotReady = "Both sides must be ready (wait a moment after changes)",
+	TradeEmpty = "Both offers are empty",
 } :: { [string]: string })
 
 return table.freeze(Text)

@@ -1,5 +1,5 @@
 --!strict
--- Owner of Gear (wearables, by uid) and Stacks (materials): create/remove/stack with capacity checks. Other systems never write these tables.
+-- Owner of Gear (wearables, by uid) and Stacks (materials): create/remove/stack with capacity checks, plus/socket/enchant setters, trade locks + transfer. Other systems never write these tables.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -25,7 +25,11 @@ export type GearSpec = {
 -- Total gear entries (worn + bag) per player, kept in step with data.Gear.
 local totals: { [Player]: number } = {}
 
+-- Pieces offered in an open trade (memory only): they cannot be changed, worn or removed until the trade ends.
+local locks: { [Player]: { [string]: boolean } } = {}
+
 local freedListeners: { (Player) -> () } = {}
+local changedListeners: { (Player, string) -> () } = {}
 
 local Inventory = {}
 
@@ -118,8 +122,25 @@ function Inventory.CreateGear(player: Player, spec: GearSpec): Types.GearItem?
 	return item
 end
 
--- Removes a bag item (refuses worn items) and returns it.
-function Inventory.RemoveGear(player: Player, uid: string): Types.GearItem?
+function Inventory.IsLocked(player: Player, uid: string): boolean
+	local set = locks[player]
+	return set ~= nil and set[uid] == true
+end
+
+-- Replaces the player's lock set (Trade owns the contents; pass {} to clear).
+function Inventory.SetLocks(player: Player, uids: { string })
+	local set: { [string]: boolean } = {}
+	for _, uid in uids do
+		set[uid] = true
+	end
+	if next(set) ~= nil then
+		locks[player] = set
+	else
+		locks[player] = nil
+	end
+end
+
+local function take(player: Player, uid: string): Types.GearItem?
 	local data = PlayerData.Data(player)
 	if data == nil then
 		return nil
@@ -135,6 +156,128 @@ function Inventory.RemoveGear(player: Player, uid: string): Types.GearItem?
 		task.defer(listener, player)
 	end
 	return item
+end
+
+-- Removes a bag item (refuses worn and trade-locked items) and returns it.
+function Inventory.RemoveGear(player: Player, uid: string): Types.GearItem?
+	if Inventory.IsLocked(player, uid) then
+		return nil
+	end
+	return take(player, uid)
+end
+
+-- Trade only: removes a bag piece even though it is locked (the trade that locked it is executing).
+function Inventory.TakeForTrade(player: Player, uid: string): Types.GearItem?
+	local set = locks[player]
+	if set ~= nil then
+		set[uid] = nil
+	end
+	return take(player, uid)
+end
+
+-- Trade only: stores a piece that came from another profile under a fresh uid of this profile. Returns the new uid.
+function Inventory.Adopt(player: Player, item: Types.GearItem): string?
+	local data = PlayerData.Data(player)
+	if data == nil or not Inventory.HasSpace(player, 1) then
+		return nil
+	end
+	local uid = tostring(data.NextUid)
+	data.NextUid += 1
+	local sockets: { Types.Socket } = {}
+	for i, socket in item.Sockets do
+		sockets[i] = { Kind = socket.Kind, Insert = socket.Insert }
+	end
+	local enchants: { Types.Enchant } = {}
+	for i, enchant in item.Enchants do
+		enchants[i] = { Id = enchant.Id, Value = enchant.Value }
+	end
+	local copy: Types.GearItem = {
+		Uid = uid,
+		BaseId = item.BaseId,
+		Tier = item.Tier,
+		Level = item.Level,
+		Rebirth = item.Rebirth,
+		GearScore = item.GearScore,
+		Plus = item.Plus,
+		Sockets = sockets,
+		Enchants = enchants,
+	}
+	assert(data.Gear[uid] == nil, `[Inventory] uid collision {uid}`)
+	data.Gear[uid] = copy
+	totals[player] = (totals[player] or 0) + 1
+	Replication.Set(player, { "Gear", uid }, copy)
+	Replication.Set(player, { "NextUid" }, data.NextUid)
+	return uid
+end
+
+-- Fires after a piece's plus / sockets / enchants change (worn stats need rebuilding).
+function Inventory.OnGearChanged(listener: (Player, string) -> ())
+	table.insert(changedListeners, listener)
+end
+
+local function gearChanged(player: Player, item: Types.GearItem)
+	Replication.Set(player, { "Gear", item.Uid }, item)
+	for _, listener in changedListeners do
+		task.spawn(listener, player, item.Uid)
+	end
+end
+
+function Inventory.SetPlus(player: Player, uid: string, plus: number): boolean
+	if Inventory.IsLocked(player, uid) then
+		return false
+	end
+	local item = Inventory.Get(player, uid)
+	if item == nil or not Guard.Int(plus, 0, 100) then
+		return false
+	end
+	item.Plus = plus
+	gearChanged(player, item)
+	return true
+end
+
+-- Appends one empty socket (Kind chosen later).
+function Inventory.AddSocket(player: Player, uid: string): boolean
+	if Inventory.IsLocked(player, uid) then
+		return false
+	end
+	local item = Inventory.Get(player, uid)
+	if item == nil then
+		return false
+	end
+	table.insert(item.Sockets, {})
+	gearChanged(player, item)
+	return true
+end
+
+function Inventory.SetSocket(player: Player, uid: string, index: number, socket: Types.Socket): boolean
+	if Inventory.IsLocked(player, uid) then
+		return false
+	end
+	local item = Inventory.Get(player, uid)
+	if item == nil or item.Sockets[index] == nil then
+		return false
+	end
+	item.Sockets[index] = { Kind = socket.Kind, Insert = socket.Insert }
+	gearChanged(player, item)
+	return true
+end
+
+function Inventory.SetEnchants(player: Player, uid: string, enchants: { Types.Enchant }): boolean
+	if Inventory.IsLocked(player, uid) then
+		return false
+	end
+	local item = Inventory.Get(player, uid)
+	if item == nil then
+		return false
+	end
+	for _, enchant in enchants do
+		if not Guard.Finite(enchant.Value) then
+			return false
+		end
+	end
+	item.Enchants = enchants
+	gearChanged(player, item)
+	return true
 end
 
 function Inventory.StackCount(player: Player, id: string): number
@@ -185,6 +328,7 @@ function Inventory.Start()
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		totals[player] = nil
+		locks[player] = nil
 	end)
 end
 

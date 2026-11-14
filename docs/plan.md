@@ -55,26 +55,26 @@
 
 ## เฟส 4 — Rebirth (design §6)
 
-- [ ] **4.1 Rebirth** — `Config/Rebirth` (ต่อขั้น: level ที่ต้องผ่าน, cap ต่างๆ, ตัวคูณความยาก, ของรางวัล, แต้ม) · `Systems/Rebirth/`: `Rebirth` (ไม่ reset อะไร) · ทุกที่ที่ใช้ cap อ่านจากที่นี่
-- [ ] **4.2 เลือก rebirth ที่เล่น** — remote `SetPlayRebirth` (≤ ที่ปลดแล้ว) · Stage ใช้ความยาก/cap/ตาราง drop ของ rebirth ที่เลือก · level เก็บแยกต่อ rebirth (`Stage.ByRebirth`) · มีผล level ถัดไป
-- [ ] **4.3 UI** — หน้า rebirth (เงื่อนไข, สิ่งที่จะได้, ตัวเลือก rebirth ที่เล่น)
+- [x] **4.1 Rebirth** — `Config/Rebirth` (ต่อขั้น: level ที่ต้องผ่าน, cap ต่างๆ, ตัวคูณความยาก, ของรางวัล, แต้ม) · `Systems/Rebirth/`: `Rebirth` (ไม่ reset อะไร) · ทุกที่ที่ใช้ cap อ่านจากที่นี่
+- [x] **4.2 เลือก rebirth ที่เล่น** — remote `SetPlayRebirth` (≤ ที่ปลดแล้ว) · Stage ใช้ความยาก/cap/ตาราง drop ของ rebirth ที่เลือก · level เก็บแยกต่อ rebirth (`Stage.ByRebirth`) · มีผล level ถัดไป
+- [x] **4.3 UI** — หน้า rebirth (เงื่อนไข, สิ่งที่จะได้, ตัวเลือก rebirth ที่เล่น)
 
 ## เฟส 5 — เสริมพลัง (design §5)
 
-- [ ] **5.1 ตีบวก** — `Config/Enhance` (ค่าพลังต่อขั้น, ราคา, item เฉพาะของบางชิ้น) · `Secret/EnhanceRates` · remote `Enhance(uid)`: ตรวจ → หัก gold+ของ → สุ่ม → +1 หรือคงเดิม (ไม่แตก)
-- [ ] **5.2 เปิดช่อง** — remote `MergeSocket(mainUid, materialUid)`: baseId + tier เดียวกัน, จำนวนช่องเท่ากัน, <5 → ชิ้นหลัก +1 ช่อง ชิ้นวัตถุดิบหาย (ต้องไม่ได้สวม/ไม่มีของในช่อง) · item ข้ามขั้น
-- [ ] **5.3 ใส่ของในช่อง** — `Config/Inserts` (Gem/Artifact/Relic + ผล) · remote `SetSocketKind/Insert/Remove` (ถอดเสีย gold, เปลี่ยนชนิดคืนของ) · ผล Artifact เข้า `Sim` · ผล Relic เข้า modifier ทีม
-- [ ] **5.4 Enchant** — `Secret/EnchantPools` (trait + ช่วงค่า ต่อ tier) · remote `Enchant(uid)`: หัก item → สุ่มใหม่ทั้งชุด
-- [ ] **5.5 UI** — หน้าตีบวก · หน้าช่องเสริม · หน้า enchant (แสดงผลก่อน/หลัง)
+- [x] **5.1 ตีบวก** — `Config/Enhance` (ค่าพลังต่อขั้น, ราคา, item เฉพาะของบางชิ้น) · `Secret/EnhanceRates` · remote `Enhance(uid)`: ตรวจ → หัก gold+ของ → สุ่ม → +1 หรือคงเดิม (ไม่แตก)
+- [x] **5.2 เปิดช่อง** — remote `MergeSocket(mainUid, materialUid)`: baseId + tier เดียวกัน, จำนวนช่องเท่ากัน, <5 → ชิ้นหลัก +1 ช่อง ชิ้นวัตถุดิบหาย (ต้องไม่ได้สวม/ไม่มีของในช่อง) · item ข้ามขั้น
+- [x] **5.3 ใส่ของในช่อง** — `Config/Inserts` (Gem/Artifact/Relic + ผล) · remote `SetSocketKind/Insert/Remove` (ถอดเสีย gold, เปลี่ยนชนิดคืนของ) · ผล Artifact เข้า `Sim` · ผล Relic เข้า modifier ทีม
+- [x] **5.4 Enchant** — `Secret/EnchantPools` (trait + ช่วงค่า ต่อ tier) · remote `Enchant(uid)`: หัก item → สุ่มใหม่ทั้งชุด
+- [x] **5.5 UI** — หน้าตีบวก · หน้าช่องเสริม · หน้า enchant (แสดงผลก่อน/หลัง)
 
 ## เฟส 6 — เศรษฐกิจ (design §6)
 
-- [ ] **6.1 Trade** — `Systems/Trade/`: ขอ/รับ → ใส่ของ+gold (ล็อกของ) → ยืนยัน 2 ชั้น (แก้ข้อเสนอ = ยกเลิกการยืนยัน) → ตรวจซ้ำทั้งสองฝั่ง (ยังมีของ, ที่ว่างพอ, ไม่ได้สวม, ถึง level ส่วนตัว) → สลับในจังหวะเดียวไม่มี yield → log · ยกเลิกเมื่อฝ่ายใดออก · อ่าน `references/security.md` · ทดสอบ 2 ผู้เล่น
-- [ ] **6.2 Gamepass + gift** — `Systems/Shop/`: x2 gold, x2 xp (เช็กทั้งที่ซื้อเองและ `Purchases.Owned`) มีผลกับ offline · gift = developer product เลือกผู้รับใน server · `ProcessReceipt` กันซ้ำด้วย purchaseId · ต้องมี ID จากหน้า Creator ก่อน · อ่าน `references/monetization-and-liveops.md`
-- [ ] **6.3 Quest** — `Config/Quests` (รายวัน/รายอาทิตย์/รายเดือน: เงื่อนไขนับ เช่น ฆ่า boss N, ผ่าน N level, ตีบวก N ครั้ง + รางวัล Ruby) · `Systems/Quest/`: ระบบอื่นแจ้งเหตุการณ์ผ่าน `Quest.Progress(player, kind, n)` · รีเซ็ตตามวัน/สัปดาห์/เดือน UTC ตรวจตอนเข้าและตอนรับรางวัล (ไม่ใช้ loop) · remote `ClaimQuest`
-- [ ] **6.4 Battle pass** — สายฟรี + พรีเมียม ฤดูละ 1 เดือน · `Config/BattlePass` (ขั้น, รางวัล Ruby/ของ, ความยาวฤดู) · แต้ม pass จาก quest · remote `ClaimPass`
-- [ ] **6.5 ร้านรายเดือน** — `Config/Shop` (ของ, ราคาเป็น Robux/gold/Ruby, โควตาต่อเดือน) · นับโควตาใน profile รีเซ็ตตามเดือน UTC
-- [ ] **6.6 UI** — หน้า trade · ร้าน · gift · quest · battle pass
+- [x] **6.1 Trade** — `Systems/Trade/`: ขอ/รับ → ใส่ของ+gold (ล็อกของ) → ยืนยัน 2 ชั้น (แก้ข้อเสนอ = ยกเลิกการยืนยัน) → ตรวจซ้ำทั้งสองฝั่ง (ยังมีของ, ที่ว่างพอ, ไม่ได้สวม, ถึง level ส่วนตัว) → สลับในจังหวะเดียวไม่มี yield → log · ยกเลิกเมื่อฝ่ายใดออก · อ่าน `references/security.md` · ทดสอบ 2 ผู้เล่น · _ยังไม่ได้ทดสอบ 2 คน (render หน้า trade ด้วย view จำลองผ่าน) · ทุก trade ต้องผ่าน PolicyService `IsPaidItemTradingAllowed` เพราะ Robux ซื้อของได้_
+- [x] **6.2 Gamepass + gift** — `Systems/Shop/`: x2 gold, x2 xp (เช็กทั้งที่ซื้อเองและ `Purchases.Owned`) มีผลกับ offline · gift = developer product เลือกผู้รับใน server · `ProcessReceipt` กันซ้ำด้วย purchaseId · ต้องมี ID จากหน้า Creator ก่อน · อ่าน `references/monetization-and-liveops.md` · _ID = 0 ใน `Config/Shop.luau` · ทดสอบผ่าน dev `receipt` (dedupe + รอเซฟ) และ dev `pass` (x2) แล้ว · gift ส่งผ่าน `ProfileStore:MessageAsync` (ผู้รับออกไปแล้วก็ได้)_
+- [x] **6.3 Quest** — `Config/Quests` (รายวัน/รายอาทิตย์/รายเดือน: เงื่อนไขนับ เช่น ฆ่า boss N, ผ่าน N level, ตีบวก N ครั้ง + รางวัล Ruby) · `Systems/Quest/`: ระบบอื่นแจ้งเหตุการณ์ผ่าน `Quest.Progress(player, kind, n)` · รีเซ็ตตามวัน/สัปดาห์/เดือน UTC ตรวจตอนเข้าและตอนรับรางวัล (ไม่ใช้ loop) · remote `ClaimQuest`
+- [x] **6.4 Battle pass** — สายฟรี + พรีเมียม ฤดูละ 1 เดือน · `Config/BattlePass` (ขั้น, รางวัล Ruby/ของ, ความยาวฤดู) · แต้ม pass จาก quest · remote `ClaimPass`
+- [x] **6.5 ร้านรายเดือน** — `Config/Shop` (ของ, ราคาเป็น Robux/gold/Ruby, โควตาต่อเดือน) · นับโควตาใน profile รีเซ็ตตามเดือน UTC
+- [x] **6.6 UI** — หน้า trade · ร้าน · gift · quest · battle pass · _HUD: Quests (มีแท็บ Battle Pass) · Shop (แท็บ Passes = ซื้อ/gift) · Trade_
 
 ## เฟส 7 — เก็บงาน
 
@@ -87,7 +87,7 @@
 ## ค้างทำภายนอก / ทดสอบ 2 คน (กลับมาทำทีหลัง)
 
 - [ ] เปิด Studio API access แล้วเช็กว่าเซฟจริงได้ (เกี่ยวกับ 0.2)
-- [ ] สร้าง gamepass + developer product ในหน้า Creator แล้วใส่ ID ใน Config (6.2 gift, 6.4 สายพรีเมียม, 6.5 ของที่ขาย Robux) · เจ้าของกำหนดรายการ gamepass เพิ่มเติม
+- [ ] สร้าง gamepass + developer product ในหน้า Creator แล้วใส่ ID ใน `src/shared/Config/Shop.luau` — gamepass: `Passes[].PassId` (Gold2x, Xp2x) · developer product: `Products` (GiftGold2x, GiftXp2x, PremiumPass, ShopRuby, ShopCores) · ตั้งราคาให้ตรง `RobuxPrices` (ตัวเลขที่ปุ่มแสดง) · เจ้าของกำหนดรายการ gamepass เพิ่มเติม
 - [ ] ทดสอบ 2 ผู้เล่น: trade (6.1) · gift (6.2) · ดูด่านคนอื่น (7.1) · จองช่องด่านเมื่อมีหลายคน (1.5)
 - [ ] ทดสอบซื้อจริงด้วย Robux (6.2, 6.4, 6.5)
 - [ ] Offline (1.7): ทดสอบหลังเปิด API access — ออก แล้วเข้าใหม่ ต้องขึ้น toast "While you were away" (mock store ล้างข้อมูลทุก Play จึงทดสอบใน Studio ตอนนี้ไม่ได้)

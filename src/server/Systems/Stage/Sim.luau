@@ -1,5 +1,5 @@
 --!strict
--- Pure battle sim: (team, level, rebirth, seed, skipWave) -> result + timeline buffer. Auto-cast hero skills. No Instances, deterministic per seed.
+-- Pure battle sim: (team, level, rebirth, seed, skipWave) -> result + timeline buffer. Auto-cast hero skills, crit + lifesteal. No Instances, deterministic per seed.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -10,6 +10,7 @@ local Stages = require(ReplicatedStorage.Shared.Config.Stages)
 local Formation = require(ReplicatedStorage.Shared.Config.Formation)
 local Monsters = require(ReplicatedStorage.Shared.Config.Monsters)
 local SkillsConfig = require(ReplicatedStorage.Shared.Config.Skills)
+local Inserts = require(ReplicatedStorage.Shared.Config.Inserts)
 
 local Code = Timeline.Code
 local ROW_ORDER = Formation.Rows
@@ -162,9 +163,19 @@ function Sim.Run(
 		return nil, 0
 	end
 
-	local function damageMonster(t: number, src: HeroUnit, m: MonsterUnit, amount: number)
-		m.Hp = math.max(m.Hp - amount, 0)
+	local function damageMonster(t: number, src: HeroUnit, m: MonsterUnit, raw: number)
+		local amount = raw
+		if src.Stats.Crit > 0 and rng:NextNumber() < src.Stats.Crit then
+			amount *= Inserts.CritMult
+		end
+		amount = math.min(amount, m.Hp)
+		m.Hp -= amount
 		Timeline.Push(builder, t, Code.Hit, src.Id, m.Id, amount, m.Hp)
+		if src.Stats.Lifesteal > 0 and src.Alive and src.Hp < src.Stats.MaxHp then
+			local healed = math.min(amount * src.Stats.Lifesteal, src.Stats.MaxHp - src.Hp)
+			src.Hp += healed
+			Timeline.Push(builder, t, Code.Heal, src.Id, src.Id, healed, src.Hp)
+		end
 		if m.Hp <= 0 then
 			m.Alive = false
 			Timeline.Push(builder, t, Code.Die, m.Id, 0, 0, 0)

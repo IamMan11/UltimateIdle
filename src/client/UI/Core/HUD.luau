@@ -41,6 +41,15 @@ local function bestLevel(data: Types.ProfileData): number
 	return best
 end
 
+-- "Trade", with the pending request count or a mark while a trade is open.
+local function tradeLabel(_data: Types.ProfileData): string
+	if State.Trade ~= nil then
+		return `{Text.Eco.UI.Trade} •`
+	end
+	local n = #State.LiveRequests()
+	return if n > 0 then `{Text.Eco.UI.Trade} ({n})` else Text.Eco.UI.Trade
+end
+
 export type Props = {
 	data: Types.ProfileData,
 }
@@ -73,6 +82,11 @@ local function HUD(props: Props): React.ReactNode
 		{ "Tree", UI.Tree },
 		{ "Bag", UI.Bag },
 		{ "Boxes", UI.Boxes },
+		{ "Forge", UI.Forge },
+		{ "Rebirth", UI.Rebirth },
+		{ "Quests", Text.Eco.UI.Quests },
+		{ "Shop", Text.Eco.UI.Shop },
+		{ "Trade", tradeLabel(data) },
 		{ "Settings", UI.Settings },
 	}
 	if RunService:IsStudio() then

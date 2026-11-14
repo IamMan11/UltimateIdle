@@ -1,5 +1,5 @@
 --!strict
--- Bag page: search (name + @tag), sort, tier filter, virtual list, item detail, salvage one or many (with confirm).
+-- Bag page: search (name + @tag), sort, tier filter, virtual list, item detail (open in Forge), salvage one or many (with confirm).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -198,11 +198,18 @@ local function Inventory(props: Props): React.ReactNode
 		detail.Worn = if wornBy ~= nil
 			then e(Widgets.Label, { text = `Worn by {Text.Class(wornBy)}`, layoutOrder = 5 })
 			else nil
+		detail.Forge = e(Widgets.Button, {
+			text = UI.Forge,
+			layoutOrder = 6,
+			onClick = function()
+				State.OpenForge(focused.Uid)
+			end,
+		})
 		detail.Salvage = e(Widgets.Button, {
 			text = UI.Salvage,
 			color = Theme.Danger,
 			disabled = wornBy ~= nil,
-			layoutOrder = 6,
+			layoutOrder = 7,
 			onClick = function()
 				confirmSalvage({ focused }, function()
 					setFocus(nil)

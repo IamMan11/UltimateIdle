@@ -1,5 +1,5 @@
 --!strict
--- Client store: copy of server state (snapshot + deltas), current timeline, UI state (page/modal/toasts/camera), and event senders.
+-- Client store: copy of server state (snapshot + deltas), current timeline, open trade + requests, pass ownership, UI state (page/modal/toasts/camera), event senders.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -21,12 +21,29 @@ export type Toast = {
 	Text: string,
 }
 
+export type ForgeResult = {
+	Uid: string,
+	Plus: number?,
+	Ok: boolean?,
+	Before: { Types.Enchant }?,
+	After: { Types.Enchant }?,
+}
+
 export type Ui = {
 	Page: string?,
+	ForgeUid: string?, -- item selected on the Forge page
+	LastEnhance: ForgeResult?,
+	LastEnchant: ForgeResult?,
 	Confirm: ConfirmPrompt?,
 	Toasts: { Toast },
 	CameraMode: "Lane" | "Walk",
 	View: "2D" | "3D",
+}
+
+export type TradeRequest = {
+	UserId: number,
+	Name: string,
+	At: number, -- os.clock() when received
 }
 
 export type Battle = {
@@ -40,9 +57,24 @@ local State = {
 	Data = nil :: Types.ProfileData?,
 	Timeline = nil :: Types.TimelinePayload?,
 	Battle = { Level = 0, Wave = 0, Mode = "Progress", Skip = false } :: Battle,
-	Ui = { Page = nil, Confirm = nil, Toasts = {}, CameraMode = "Lane", View = "2D" } :: Ui,
+	Ui = {
+		Page = nil,
+		ForgeUid = nil,
+		LastEnhance = nil,
+		LastEnchant = nil,
+		Confirm = nil,
+		Toasts = {},
+		CameraMode = "Lane",
+		View = "2D",
+	} :: Ui,
+	Trade = nil :: Types.TradeView?,
+	TradeRequests = {} :: { TradeRequest },
+	Passes = {} :: { [string]: boolean }, -- effective pass ownership (account or gifted), from the server
 	Version = 0,
 }
+
+-- Requests older than this are gone on the server too (Config.Trade.RequestSeconds).
+local REQUEST_TTL = 30
 
 local listeners: { [number]: () -> () } = {}
 local timelineListeners: { (Types.TimelinePayload) -> () } = {}
@@ -103,6 +135,17 @@ function State.SetPage(page: string?)
 	notify()
 end
 
+function State.OpenForge(uid: string?)
+	State.Ui.Page = "Forge"
+	State.Ui.ForgeUid = uid
+	notify()
+end
+
+function State.SelectForge(uid: string?)
+	State.Ui.ForgeUid = uid
+	notify()
+end
+
 function State.OpenConfirm(prompt: ConfirmPrompt)
 	State.Ui.Confirm = prompt
 	notify()
@@ -143,6 +186,27 @@ function State.PushToast(text: string)
 			notify()
 		end
 	end)
+end
+
+-- Pending trade requests that have not expired (oldest first).
+function State.LiveRequests(): { TradeRequest }
+	local live: { TradeRequest } = {}
+	for _, r in State.TradeRequests do
+		if os.clock() - r.At < REQUEST_TTL then
+			table.insert(live, r)
+		end
+	end
+	return live
+end
+
+function State.DropRequest(userId: number)
+	for i, r in State.TradeRequests do
+		if r.UserId == userId then
+			table.remove(State.TradeRequests, i)
+			break
+		end
+	end
+	notify()
 end
 
 -- Senders (intent only; the server decides) ---------------------------
@@ -186,6 +250,69 @@ State.Send = {
 	end,
 	ToggleNode = function(id: string, on: boolean)
 		Net.ToggleNode:Client():Fire(id, on)
+	end,
+	Rebirth = function()
+		Net.Rebirth:Client():Fire()
+	end,
+	SetPlayRebirth = function(index: number)
+		Net.SetPlayRebirth:Client():Fire(index)
+	end,
+	Enhance = function(uid: string)
+		Net.Enhance:Client():Fire(uid)
+	end,
+	MergeSocket = function(main: string, material: string)
+		Net.MergeSocket:Client():Fire(main, material)
+	end,
+	UseSocketCore = function(uid: string)
+		Net.UseSocketCore:Client():Fire(uid)
+	end,
+	SetSocketKind = function(uid: string, index: number, kind: string)
+		Net.SetSocketKind:Client():Fire(uid, index, kind)
+	end,
+	InsertSocket = function(uid: string, index: number, id: string)
+		Net.InsertSocket:Client():Fire(uid, index, id)
+	end,
+	RemoveInsert = function(uid: string, index: number)
+		Net.RemoveInsert:Client():Fire(uid, index)
+	end,
+	Enchant = function(uid: string)
+		Net.Enchant:Client():Fire(uid)
+	end,
+	TradeRequest = function(userId: number)
+		Net.TradeRequest:Client():Fire(userId)
+	end,
+	TradeRespond = function(userId: number, accept: boolean)
+		Net.TradeRespond:Client():Fire(userId, accept)
+	end,
+	TradeOffer = function(offer: Types.TradeOffer)
+		Net.TradeOffer:Client():Fire(offer)
+	end,
+	TradeReady = function(on: boolean)
+		Net.TradeReady:Client():Fire(on)
+	end,
+	TradeConfirm = function()
+		Net.TradeConfirm:Client():Fire()
+	end,
+	TradeCancel = function()
+		Net.TradeCancel:Client():Fire()
+	end,
+	ClaimQuest = function(id: string)
+		Net.ClaimQuest:Client():Fire(id)
+	end,
+	ClaimPass = function(track: string, tier: number)
+		Net.ClaimPass:Client():Fire(track, tier)
+	end,
+	BuyPass = function(key: string)
+		Net.BuyPass:Client():Fire(key)
+	end,
+	GiftPass = function(key: string, userId: number)
+		Net.GiftPass:Client():Fire(key, userId)
+	end,
+	BuyPremium = function()
+		Net.BuyPremium:Client():Fire()
+	end,
+	BuyShopItem = function(id: string)
+		Net.BuyShopItem:Client():Fire(id)
 	end,
 	RequestRejoin = function()
 		Net.RequestRejoin:Client():Fire()
@@ -236,8 +363,50 @@ local function onNotice(kind: string, payload: any)
 		State.PushToast(`{Text.Class(payload.Hero)} advanced to {Text.Advancement(payload.Hero, payload.Stage)}`)
 	elseif kind == "TeamSet" then
 		State.PushToast("Team saved: applies from the next level")
+	elseif kind == "Enhanced" then
+		State.Ui.LastEnhance = { Uid = payload.Uid, Plus = payload.Plus, Ok = payload.Ok }
+		State.PushToast(
+			if payload.Ok then `Enhance success: +{payload.Plus + 1}` else `Enhance failed: stays +{payload.Plus}`
+		)
+	elseif kind == "Enchanted" then
+		State.Ui.LastEnchant = { Uid = payload.Uid, Before = payload.Before, After = payload.After }
+		State.PushToast("Enchanted: new traits rolled")
+	elseif kind == "SocketAdded" then
+		State.PushToast(`Socket opened ({payload.Count} total)`)
+	elseif kind == "Rebirthed" then
+		State.PushToast(`Rebirth {payload} reached! Caps raised.`)
+	elseif kind == "PlayRebirth" then
+		State.PushToast(`Playing rebirth {payload} from the next level`)
 	elseif kind == "FarmLump" then
 		State.PushToast(`Farm reward (levels 1-{payload.Levels}): {lootText(payload.Summary)}`)
+	elseif kind == "TradeRequest" then
+		State.DropRequest(payload.From)
+		table.insert(State.TradeRequests, { UserId = payload.From, Name = payload.Name, At = os.clock() })
+		State.PushToast(`{payload.Name} wants to trade (open Trade)`)
+	elseif kind == "TradeRequested" then
+		State.PushToast(`Trade request sent to {payload}`)
+	elseif kind == "TradeDeclined" then
+		State.PushToast(`{payload} declined your trade`)
+	elseif kind == "TradeCancelled" then
+		State.PushToast(`Trade cancelled by {payload}`)
+	elseif kind == "TradeDone" then
+		State.PushToast("Trade complete")
+	elseif kind == "QuestClaimed" then
+		State.PushToast(`Quest done: +{payload.Ruby} Ruby, +{payload.Points} pass points`)
+	elseif kind == "PassClaimed" then
+		State.PushToast(`Claimed {payload} pass reward{if payload == 1 then "" else "s"}`)
+	elseif kind == "Passes" then
+		State.Passes = payload
+	elseif kind == "Purchased" then
+		State.PushToast(`Purchased: {Text.Eco.ShopItem(payload)}`)
+	elseif kind == "GiftSent" then
+		State.PushToast(`Gift sent: {Text.Eco.PassName(payload.Pass)}`)
+	elseif kind == "GiftReceived" then
+		State.PushToast(
+			`{Text.Eco.PassName(payload.Pass)} unlocked{if payload.From ~= nil
+				then " (gift from " .. payload.From .. ")"
+				else ""}`
+		)
 	end
 end
 
@@ -259,6 +428,15 @@ function State.Start()
 		end
 	end)
 	Net.Notice:Client():On(onNotice)
+	Net.TradeState:Client():On(function(view: Types.TradeView?)
+		local opened = State.Trade == nil and view ~= nil
+		State.Trade = view
+		if opened and view ~= nil then
+			State.DropRequest(view.PartnerId)
+			State.Ui.Page = "Trade"
+		end
+		notify()
+	end)
 	-- Listeners are in place: now ask for the snapshot (the server answers once the profile is loaded).
 	Net.RequestSnapshot:Client():Fire()
 end

@@ -14,6 +14,11 @@ local TeamPage = require(script.Parent.Parent.Team)
 local TreePage = require(script.Parent.Parent.Tree)
 local Inventory = require(script.Parent.Parent.Inventory)
 local BoxesPage = require(script.Parent.Parent.Boxes)
+local ForgePage = require(script.Parent.Parent.Forge)
+local RebirthPage = require(script.Parent.Parent.Rebirth)
+local QuestsPage = require(script.Parent.Parent.Quests)
+local ShopPage = require(script.Parent.Parent.Shop)
+local TradePage = require(script.Parent.Parent.Trade)
 local Settings = require(script.Parent.Parent.Settings)
 local Dev = require(script.Parent.Parent.Dev)
 local State = require(script.Parent.Parent.Parent.State)
@@ -46,6 +51,16 @@ local function App(): React.ReactNode
 			page = e(Inventory, { data = data })
 		elseif ui.Page == "Boxes" then
 			page = e(BoxesPage, { data = data })
+		elseif ui.Page == "Forge" then
+			page = e(ForgePage, { data = data })
+		elseif ui.Page == "Rebirth" then
+			page = e(RebirthPage, { data = data })
+		elseif ui.Page == "Quests" then
+			page = e(QuestsPage, { data = data })
+		elseif ui.Page == "Shop" then
+			page = e(ShopPage, { data = data })
+		elseif ui.Page == "Trade" then
+			page = e(TradePage, { data = data })
 		elseif ui.Page == "Settings" then
 			page = e(Settings, { data = data })
 		elseif ui.Page == "Dev" then

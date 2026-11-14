@@ -23,6 +23,8 @@ local Account = require(script.Parent.Account)
 local Loot = require(script.Parent.Loot)
 local Box = require(script.Parent.Box)
 local Modifiers = require(script.Parent.Modifiers)
+local Quest = require(script.Parent.Quest)
+local Shop = require(script.Parent.Shop)
 local Sim = require(script.Sim)
 
 type Run = {
@@ -43,14 +45,20 @@ local tokens: { [Player]: number } = {}
 
 local Stage = {}
 
-function Stage.Progress(data: Types.ProfileData): Types.StageProgress
-	local key = tostring(data.Stage.Rebirth)
+-- Progress of one rebirth (created at level 1 if missing).
+function Stage.ProgressFor(data: Types.ProfileData, rebirth: number): Types.StageProgress
+	local key = tostring(rebirth)
 	local progress = data.Stage.ByRebirth[key]
 	if progress == nil then
 		progress = { Level = 1, MaxLevel = 1, FarmLevel = 1, LastFarmRound = 0 }
 		data.Stage.ByRebirth[key] = progress
 	end
 	return progress
+end
+
+-- Progress of the rebirth being played.
+function Stage.Progress(data: Types.ProfileData): Types.StageProgress
+	return Stage.ProgressFor(data, data.Stage.Rebirth)
 end
 
 -- Best level reached across every rebirth (gates Farm).
@@ -91,11 +99,15 @@ local function updateOfflineRate(data: Types.ProfileData, gold: number, xp: numb
 	rate.Xp = if rate.Xp <= 0 then x else rate.Xp * (1 - blend) + x * blend
 end
 
+local function dropMult(player: Player): number
+	return Formula.Mods.Mult(Modifiers.Get(player).DropPct)
+end
+
 local function payLump(player: Player, lastLevel: number, rebirth: number)
 	if lastLevel < 1 then
 		return
 	end
-	local bundle = Loot.FarmLump(Rng.new(), lastLevel, rebirth)
+	local bundle = Loot.FarmLump(Rng.new(), lastLevel, rebirth, dropMult(player))
 	local summary = Loot.Grant(player, bundle)
 	Replication.Notify(player, "FarmLump", { Levels = lastLevel, Summary = summary })
 end
@@ -111,17 +123,30 @@ local function finishLevel(player: Player, token: number)
 	runs[player] = nil
 	local result = run.Result
 	local gold, xp = rewards(player, result, run.Level)
+	-- The offline rate is stored without pass multipliers: offline pay applies the ones owned at login.
+	updateOfflineRate(data, gold, xp, result.Duration + Stages.PauseBetweenLevels)
+	gold = math.floor(gold * Shop.GoldMult(player))
+	xp = math.floor(xp * Shop.XpMult(player))
 	Currency.Add(player, "Gold", gold)
 	Hero.AddXp(player, xp, run.HeroIds)
 	Account.AddXp(player, xp * AccountConfig.XpShare)
-	updateOfflineRate(data, gold, xp, result.Duration + Stages.PauseBetweenLevels)
 	data.LastSeen = os.time()
+	local kills = 0
+	for _, n in result.Kills do
+		kills += n
+	end
+	Quest.Progress(player, "Kill", kills)
+	Quest.Progress(player, "Boss", result.BossKills)
+	if result.Won then
+		Quest.Progress(player, "ClearLevel", 1)
+	end
 
-	local progress = Stage.Progress(data)
+	-- The played rebirth may have changed during the level: progress belongs to the one that was fought.
+	local progress = Stage.ProgressFor(data, run.Rebirth)
 	local summary: Loot.Summary? = nil
 	if run.Mode == "Progress" then
 		local rng = Rng.new()
-		local bundle = Loot.ForLevel(rng, run.Level, run.Rebirth, result.Kills)
+		local bundle = Loot.ForLevel(rng, run.Level, run.Rebirth, result.Kills, dropMult(player))
 		for boxId, n in bundle.Boxes do
 			Box.Grant(player, boxId, n)
 		end
@@ -134,7 +159,11 @@ local function finishLevel(player: Player, token: number)
 		end
 	else
 		local cap = Rebirth.Get(run.Rebirth).FarmRoundCap
-		if result.Won and run.Level < cap then
+		if data.Stage.Rebirth ~= run.Rebirth then
+			-- Switched rebirth mid-round: same as leaving Farm (drop the round, pay the last finished one).
+			payLump(player, progress.LastFarmRound or 0, run.Rebirth)
+			progress.FarmLevel = 1
+		elseif result.Won and run.Level < cap then
 			progress.FarmLevel = run.Level + 1
 			progress.MaxLevel = math.max(progress.MaxLevel, progress.FarmLevel)
 		else
@@ -252,6 +281,31 @@ local function setMode(player: Player, mode: string)
 	data.Stage.Mode = mode :: Types.StageMode
 	syncStage(player, data)
 	Stage.Restart(player)
+end
+
+-- Rebirth being played (<= rebirths owned; checked by the caller). Applies from the next level.
+function Stage.SetPlayRebirth(player: Player, rebirth: number)
+	local data = PlayerData.Data(player)
+	if data == nil or data.Stage.Rebirth == rebirth then
+		return
+	end
+	data.Stage.Rebirth = rebirth
+	local progress = Stage.ProgressFor(data, rebirth)
+	if data.Stage.Mode == "Farm" then
+		progress.FarmLevel = 1 -- a fresh round in the new rebirth
+	end
+	syncStage(player, data)
+end
+
+-- New rebirth keeps the stage level reached in the one it came from.
+function Stage.SeedRebirth(player: Player, rebirth: number, from: number)
+	local data = PlayerData.Data(player)
+	if data == nil or data.Stage.ByRebirth[tostring(rebirth)] ~= nil then
+		return
+	end
+	local level = Stage.ProgressFor(data, from).Level
+	data.Stage.ByRebirth[tostring(rebirth)] = { Level = level, MaxLevel = level, FarmLevel = 1, LastFarmRound = 0 }
+	syncStage(player, data)
 end
 
 function Stage.Start()

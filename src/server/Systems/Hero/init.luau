@@ -219,6 +219,10 @@ local function equip(player: Player, heroId: string, uid: string, slot: string)
 	if def == nil or Items.SlotOf[slot] ~= def.Slot then
 		return
 	end
+	if Inventory.IsLocked(player, uid) then
+		notifyError(player, "ItemInTrade")
+		return
+	end
 	if hero.Level < item.Level then
 		notifyError(player, "HeroLevelTooLow")
 		return
@@ -246,6 +250,7 @@ local function equip(player: Player, heroId: string, uid: string, slot: string)
 	hero.Equipped[slot] = uid
 	Hero.MarkDirty(player, heroId)
 	syncHero(player, heroId, hero)
+	Modifiers.MarkDirty(player) -- worn relics feed the team modifiers
 end
 
 local function unequip(player: Player, heroId: string, slot: string)
@@ -264,6 +269,7 @@ local function unequip(player: Player, heroId: string, slot: string)
 	hero.Equipped[slot] = nil
 	Hero.MarkDirty(player, heroId)
 	syncHero(player, heroId, hero)
+	Modifiers.MarkDirty(player)
 end
 
 -- Replaces the whole team. Applies from the next level (the running level keeps its sim).
@@ -295,6 +301,7 @@ local function setTeam(player: Player, entries: { TeamEntry })
 		table.insert(team, { HeroId = entry.HeroId, Row = entry.Row :: Types.Row })
 	end
 	data.Team = team
+	Modifiers.MarkDirty(player)
 	Replication.Set(player, { "Team" }, team)
 	Replication.Notify(player, "TeamSet", #team)
 	teamChanged(player)
@@ -345,6 +352,13 @@ function Hero.Start()
 	Net.BuyHero:Server():On(buy)
 	Net.Equip:Server():On(equip)
 	Net.Unequip:Server():On(unequip)
+	Inventory.OnGearChanged(function(player, uid)
+		local heroId = Inventory.WornBy(player, uid)
+		if heroId ~= nil then
+			Hero.MarkDirty(player, heroId)
+			Modifiers.MarkDirty(player)
+		end
+	end)
 	Players.PlayerRemoving:Connect(function(player)
 		statCache[player] = nil
 	end)

@@ -1,5 +1,5 @@
 --!strict
--- Display helpers for gear: one-line summary, stat lines for a wearer, which hero wears what.
+-- Display helpers for gear: one-line summary, stat lines for a wearer (incl. traits + inserts), which hero wears what.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -9,6 +9,7 @@ local Formula = require(ReplicatedStorage.Shared.Formula)
 local Text = require(ReplicatedStorage.Shared.Text)
 local Items = require(ReplicatedStorage.Shared.Config.Items)
 local Tiers = require(ReplicatedStorage.Shared.Config.Tiers)
+local Inserts = require(ReplicatedStorage.Shared.Config.Inserts)
 
 local ItemInfo = {}
 
@@ -42,6 +43,18 @@ function ItemInfo.StatLines(item: Types.GearItem, wearer: string?): { string }
 	end
 	if bonus.Speed > 0 then
 		table.insert(lines, `Speed +{bonus.Speed}`)
+	end
+	for _, enchant in item.Enchants do
+		table.insert(lines, Text.Trait(enchant))
+	end
+	for _, socket in item.Sockets do
+		local insert = if socket.Insert ~= nil then Inserts.ById[socket.Insert] else nil
+		if insert ~= nil and insert.Kind ~= "Gem" then
+			table.insert(lines, `{Text.Material(insert.Id)}: {Text.InsertEffect(insert.Id)}`)
+		end
+	end
+	if #item.Sockets > 0 then
+		table.insert(lines, `Sockets {#item.Sockets}/{Inserts.MaxSockets}`)
 	end
 	local def = Items.ById[item.BaseId]
 	if def ~= nil and def.Ability ~= nil then

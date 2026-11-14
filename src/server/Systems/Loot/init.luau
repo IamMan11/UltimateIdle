@@ -119,16 +119,22 @@ function Loot.RollBox(rng: Rng.Rng, kind: string, level: number, rebirth: number
 	end
 end
 
--- Normal drops for one finished level (Progress mode): rolled per kill.
-function Loot.ForLevel(rng: Rng.Rng, stageLevel: number, rebirth: number, kills: { [string]: number }): Bundle
+-- Normal drops for one finished level (Progress mode): rolled per kill. `dropMult` scales every chance (relics).
+function Loot.ForLevel(
+	rng: Rng.Rng,
+	stageLevel: number,
+	rebirth: number,
+	kills: { [string]: number },
+	dropMult: number
+): Bundle
 	local bundle = emptyBundle()
 	local tbl = DropTables.Get(rebirth)
 	local level = Loot.ItemLevel(stageLevel, rebirth)
 	for monsterId, count in kills do
 		local def = Monsters.ById[monsterId]
 		if def ~= nil then
-			local gearChance = if def.Boss then tbl.BossGearChance else tbl.GearChance
-			local boxChance = if def.Boss then tbl.BossBoxChance else tbl.NormalBoxChance
+			local gearChance = (if def.Boss then tbl.BossGearChance else tbl.GearChance) * dropMult
+			local boxChance = (if def.Boss then tbl.BossBoxChance else tbl.NormalBoxChance) * dropMult
 			local boxId = Boxes.Key(if def.Boss then "Boss" else "Normal", rebirth, Boxes.Band(level))
 			for _ = 1, count do
 				if rng:Chance(gearChance) then
@@ -141,7 +147,7 @@ function Loot.ForLevel(rng: Rng.Rng, stageLevel: number, rebirth: number, kills:
 					bundle.Boxes[boxId] = (bundle.Boxes[boxId] or 0) + 1
 				end
 				for _, m in tbl.Materials do
-					if rng:Chance(m.Chance) then
+					if rng:Chance(m.Chance * dropMult) then
 						addMaterial(bundle, m.Id, rng:Int(m.Min, m.Max))
 					end
 				end
@@ -152,7 +158,7 @@ function Loot.ForLevel(rng: Rng.Rng, stageLevel: number, rebirth: number, kills:
 end
 
 -- Farm lump for cleared levels 1..lastLevel: expected counts per 10-level band, rolled once each. Boxes are opened into gear.
-function Loot.FarmLump(rng: Rng.Rng, lastLevel: number, rebirth: number): Bundle
+function Loot.FarmLump(rng: Rng.Rng, lastLevel: number, rebirth: number, dropMult: number): Bundle
 	local bundle = emptyBundle()
 	if lastLevel < 1 then
 		return bundle
@@ -165,11 +171,12 @@ function Loot.FarmLump(rng: Rng.Rng, lastLevel: number, rebirth: number): Bundle
 		local mats: { [string]: number } = {}
 		for l = from, to do
 			local normal, boss = Formula.Combat.KillsPerLevel(l)
-			gear += normal * tbl.GearChance + boss * tbl.BossGearChance
-			normalBoxes += normal * tbl.NormalBoxChance
-			bossBoxes += boss * tbl.BossBoxChance
+			gear += (normal * math.min(tbl.GearChance * dropMult, 1) + boss * math.min(tbl.BossGearChance * dropMult, 1))
+			normalBoxes += normal * math.min(tbl.NormalBoxChance * dropMult, 1)
+			bossBoxes += boss * math.min(tbl.BossBoxChance * dropMult, 1)
 			for _, m in tbl.Materials do
-				mats[m.Id] = (mats[m.Id] or 0) + (normal + boss) * m.Chance * (m.Min + m.Max) / 2
+				local chance = math.min(m.Chance * dropMult, 1)
+				mats[m.Id] = (mats[m.Id] or 0) + (normal + boss) * chance * (m.Min + m.Max) / 2
 			end
 		end
 		for _ = 1, rng:Count(gear) do

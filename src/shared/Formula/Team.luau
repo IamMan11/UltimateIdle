@@ -47,6 +47,8 @@ function Team.Apply(base: Types.HeroStats, formation: number, mods: Mods.Mods): 
 		Speed = base.Speed,
 		Splash = base.Splash,
 		Heal = base.Heal * Mods.Mult(formation + mods.AtkPct),
+		Lifesteal = base.Lifesteal,
+		Crit = base.Crit,
 		Power = 0,
 	}
 	s.Power = Stats.Power(s)

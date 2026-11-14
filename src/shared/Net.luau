@@ -4,6 +4,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Red = require(ReplicatedStorage.Packages.Red)
+local Types = require(script.Parent.Types)
 
 -- Shape checks: Red runs these in pcall on the server and drops the call when they error.
 local function str(value: unknown, maxLen: number): string
@@ -48,6 +49,42 @@ local function teamList(value: unknown): { { HeroId: string, Row: string } }
 	return out
 end
 
+-- String-keyed positive integer counts (materials / boxes in a trade offer).
+local function countMap(value: unknown, maxCount: number, maxLen: number, maxN: number): { [string]: number }
+	assert(type(value) == "table", "bad argument")
+	local out: { [string]: number } = {}
+	local n = 0
+	for k, v in value :: { [unknown]: unknown } do
+		n += 1
+		assert(n <= maxCount, "bad argument")
+		out[str(k, maxLen)] = int(v, 1, maxN)
+	end
+	return out
+end
+
+local function nonNegative(value: unknown): number
+	local n = num(value)
+	assert(n >= 0 and n <= 1e300, "bad argument")
+	return n
+end
+
+local function bool(value: unknown): boolean
+	assert(type(value) == "boolean", "bad argument")
+	return value
+end
+
+local function tradeOffer(value: unknown): Types.TradeOffer
+	assert(type(value) == "table", "bad argument")
+	local t = value :: { [unknown]: unknown }
+	return {
+		Gear = strList(if t.Gear == nil then {} else t.Gear, 50, 16),
+		Stacks = countMap(if t.Stacks == nil then {} else t.Stacks, 20, 32, 1e12),
+		Boxes = countMap(if t.Boxes == nil then {} else t.Boxes, 20, 40, 1e6),
+		Gold = nonNegative(if t.Gold == nil then 0 else t.Gold),
+		Ruby = nonNegative(if t.Ruby == nil then 0 else t.Ruby),
+	}
+end
+
 local function scalar(value: unknown): boolean | number | string
 	assert(type(value) == "boolean" or type(value) == "number" or type(value) == "string", "bad argument")
 	return value :: any
@@ -66,6 +103,9 @@ local Net = {
 	end),
 	Notice = Red.Event("Notice", function(kind: unknown, payload: unknown)
 		return kind :: string, payload :: any
+	end),
+	TradeState = Red.Event("TradeState", function(tradeView: unknown)
+		return tradeView :: Types.TradeView?
 	end),
 
 	-- client -> server
@@ -109,6 +149,61 @@ local Net = {
 	ToggleNode = Red.Event("ToggleNode", function(id: unknown, on: unknown)
 		assert(type(on) == "boolean", "bad argument")
 		return str(id, 32), on
+	end),
+	Rebirth = Red.Event("Rebirth", function() end),
+	SetPlayRebirth = Red.Event("SetPlayRebirth", function(index: unknown)
+		return int(index, 0, 10000)
+	end),
+	Enhance = Red.Event("Enhance", function(uid: unknown)
+		return str(uid, 16)
+	end),
+	MergeSocket = Red.Event("MergeSocket", function(main: unknown, material: unknown)
+		return str(main, 16), str(material, 16)
+	end),
+	UseSocketCore = Red.Event("UseSocketCore", function(uid: unknown)
+		return str(uid, 16)
+	end),
+	SetSocketKind = Red.Event("SetSocketKind", function(uid: unknown, index: unknown, kind: unknown)
+		return str(uid, 16), int(index, 1, 10), str(kind, 16)
+	end),
+	InsertSocket = Red.Event("InsertSocket", function(uid: unknown, index: unknown, id: unknown)
+		return str(uid, 16), int(index, 1, 10), str(id, 32)
+	end),
+	RemoveInsert = Red.Event("RemoveInsert", function(uid: unknown, index: unknown)
+		return str(uid, 16), int(index, 1, 10)
+	end),
+	Enchant = Red.Event("Enchant", function(uid: unknown)
+		return str(uid, 16)
+	end),
+	TradeRequest = Red.Event("TradeRequest", function(userId: unknown)
+		return int(userId, 1, 1e15)
+	end),
+	TradeRespond = Red.Event("TradeRespond", function(userId: unknown, accept: unknown)
+		return int(userId, 1, 1e15), bool(accept)
+	end),
+	TradeOffer = Red.Event("TradeOffer", function(offer: unknown)
+		return tradeOffer(offer)
+	end),
+	TradeReady = Red.Event("TradeReady", function(on: unknown)
+		return bool(on)
+	end),
+	TradeConfirm = Red.Event("TradeConfirm", function() end),
+	TradeCancel = Red.Event("TradeCancel", function() end),
+	ClaimQuest = Red.Event("ClaimQuest", function(id: unknown)
+		return str(id, 32)
+	end),
+	ClaimPass = Red.Event("ClaimPass", function(track: unknown, tier: unknown)
+		return str(track, 8), int(tier, 0, 100)
+	end),
+	BuyPass = Red.Event("BuyPass", function(key: unknown)
+		return str(key, 32)
+	end),
+	GiftPass = Red.Event("GiftPass", function(key: unknown, userId: unknown)
+		return str(key, 32), int(userId, 1, 1e15)
+	end),
+	BuyPremium = Red.Event("BuyPremium", function() end),
+	BuyShopItem = Red.Event("BuyShopItem", function(id: unknown)
+		return str(id, 32)
 	end),
 	RequestRejoin = Red.Event("RequestRejoin", function() end),
 	DevCommand = Red.Event("DevCommand", function(cmd: unknown, arg: unknown)

@@ -1,6 +1,7 @@
 --!strict
--- Shared UI widgets: Label, Button, Window (page shell with backdrop/Esc close), TextInput, Stepper, Bar, store hook.
+-- Shared UI widgets: Label, Button, Window (page shell with backdrop/Esc close), TextInput, Stepper, Bar, Tabs; hooks: store, tick, other players.
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
@@ -22,6 +23,58 @@ function Widgets.useStore(): number
 		end)
 	end, {})
 	return version
+end
+
+-- Re-renders the caller every `interval` seconds while mounted (countdowns); returns os.clock() of the last tick.
+function Widgets.useTick(interval: number): number
+	local t, setT = React.useState(os.clock())
+	React.useEffect(function()
+		local alive = true
+		task.spawn(function()
+			while alive do
+				task.wait(interval)
+				if alive then
+					setT(os.clock())
+				end
+			end
+		end)
+		return function()
+			alive = false
+		end
+	end, { interval })
+	return t
+end
+
+-- Everyone in the server except the local player, kept current as players join and leave.
+function Widgets.useOthers(): { Player }
+	local function others(): { Player }
+		local list: { Player } = {}
+		for _, p in Players:GetPlayers() do
+			if p ~= Players.LocalPlayer then
+				table.insert(list, p)
+			end
+		end
+		table.sort(list, function(a, b)
+			return a.DisplayName < b.DisplayName
+		end)
+		return list
+	end
+	local list, setList = React.useState(others())
+	React.useEffect(function()
+		local function refresh()
+			setList(others())
+		end
+		local added = Players.PlayerAdded:Connect(refresh)
+		-- Removing fires before the player leaves GetPlayers(): refresh on the next frame.
+		local removing = Players.PlayerRemoving:Connect(function()
+			task.defer(refresh)
+		end)
+		return function()
+			added:Disconnect()
+			removing:Disconnect()
+		end
+	end, {})
+	return list
 end
 
 -- useState for an optional value: React's types infer the state type from the initial nil, so the
@@ -163,6 +216,7 @@ export type TextInputProps = {
 	text: string,
 	placeholder: string,
 	onChanged: (string) -> (),
+	onFocusLost: ((string) -> ())?,
 	size: UDim2?,
 	position: UDim2?,
 }
@@ -182,6 +236,11 @@ function Widgets.TextInput(props: TextInputProps): React.ReactNode
 		ClearTextOnFocus = false,
 		[React.Change.Text] = function(rbx: TextBox)
 			props.onChanged(rbx.Text)
+		end,
+		[React.Event.FocusLost] = function(rbx: TextBox)
+			if props.onFocusLost ~= nil then
+				props.onFocusLost(rbx.Text)
+			end
 		end,
 	}, {
 		Corner = Widgets.Corner(6),
@@ -230,6 +289,35 @@ function Widgets.Stepper(props: StepperProps): React.ReactNode
 			end,
 		}),
 	})
+end
+
+export type TabsProps = {
+	tabs: { { Id: string, Label: string } },
+	current: string,
+	onSelect: (string) -> (),
+	width: number?,
+	position: UDim2?,
+}
+
+-- Row of tab buttons.
+function Widgets.Tabs(props: TabsProps): React.ReactNode
+	local buttons: { [string]: React.ReactNode } = { Layout = Widgets.List(Enum.FillDirection.Horizontal, 8) }
+	for i, t in props.tabs do
+		buttons[t.Id] = e(Widgets.Button, {
+			text = t.Label,
+			size = UDim2.fromOffset(props.width or 130, 36),
+			selected = props.current == t.Id,
+			layoutOrder = i,
+			onClick = function()
+				props.onSelect(t.Id)
+			end,
+		})
+	end
+	return e("Frame", {
+		Size = UDim2.new(1, 0, 0, 36),
+		Position = props.position,
+		BackgroundTransparency = 1,
+	}, buttons)
 end
 
 -- Closes on Esc / gamepad B while mounted.
@@ -281,13 +369,15 @@ function Widgets.Window(props: WindowProps): React.ReactNode
 			end
 		end,
 	}, {
-		Window = e("Frame", {
+		-- A button (not a Frame) so clicks inside the window never reach the backdrop's close handler.
+		Window = e("TextButton", {
 			Size = props.size or UDim2.fromScale(0.8, 0.8),
 			Position = UDim2.fromScale(0.5, 0.5),
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			BackgroundColor3 = Theme.Panel,
 			BorderSizePixel = 0,
-			Active = true,
+			AutoButtonColor = false,
+			Text = "",
 		}, {
 			Max = e("UISizeConstraint", { MaxSize = props.maxSize or Vector2.new(1100, 720) }),
 			Corner = Widgets.Corner(12),

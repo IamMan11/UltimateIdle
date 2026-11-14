@@ -1,13 +1,15 @@
 --!strict
--- Final stats: hero (class + level + advancement + worn gear + passive), single gear piece, monster at a stage level.
+-- Final stats: hero (class + level + advancement + worn gear incl. gems/artifacts/enchants + passive), single gear piece, monster at a stage level.
 
 local Types = require(script.Parent.Parent.Types)
 local Heroes = require(script.Parent.Parent.Config.Heroes)
 local Items = require(script.Parent.Parent.Config.Items)
 local Monsters = require(script.Parent.Parent.Config.Monsters)
 local Classes = require(script.Parent.Parent.Config.Classes)
+local Inserts = require(script.Parent.Parent.Config.Inserts)
 local Scaling = require(script.Parent.Scaling)
 local Skills = require(script.Parent.Skills)
+local Gear = require(script.Parent.Gear)
 
 export type GearBonus = {
 	MaxHp: number,
@@ -49,19 +51,22 @@ function Stats.Gear(item: Types.GearItem, wearer: string?): GearBonus
 	if def == nil then
 		return out
 	end
-	local mult = Scaling.Item(item.Level) * item.GearScore / 100 * (1 + 0.1 * item.Plus)
-	if wearer ~= nil and wearer ~= def.Class then
-		mult *= Items.ClassMismatchMultiplier
-	end
-	out.MaxHp = (def.Stats.MaxHp or 0) * mult
-	out.Atk = (def.Stats.Atk or 0) * mult
-	out.Def = (def.Stats.Def or 0) * mult
+	local mismatch = if wearer ~= nil and wearer ~= def.Class then Items.ClassMismatchMultiplier else 1
+	local mult = Scaling.Item(item.Level) * item.GearScore / 100 * Gear.PlusMult(item.Plus) * mismatch
+	local gemHp, gemAtk, gemDef = Gear.Gems(item)
+	out.MaxHp = (def.Stats.MaxHp or 0) * mult + gemHp * mismatch
+	out.Atk = (def.Stats.Atk or 0) * mult + gemAtk * mismatch
+	out.Def = (def.Stats.Def or 0) * mult + gemDef * mismatch
 	out.Speed = def.Stats.Speed or 0
 	return out
 end
 
 function Stats.Power(s: Types.HeroStats): number
-	return s.Atk / s.AtkInterval * (1 + 0.5 * s.Splash) + s.MaxHp * 0.1 + s.Def * 0.5 + s.Heal
+	local crit = 1 + s.Crit * (Inserts.CritMult - 1)
+	return s.Atk * crit / s.AtkInterval * (1 + 0.5 * s.Splash) * (1 + s.Lifesteal)
+		+ s.MaxHp * 0.1
+		+ s.Def * 0.5
+		+ s.Heal
 end
 
 function Stats.Hero(class: string, level: number, gear: { Types.GearItem }, advancement: number): Types.HeroStats
@@ -77,8 +82,11 @@ function Stats.Hero(class: string, level: number, gear: { Types.GearItem }, adva
 		Speed = def.Speed,
 		Splash = def.Splash,
 		Heal = def.Heal * scale,
+		Lifesteal = 0,
+		Crit = 0,
 		Power = 0,
 	}
+	local extras = Gear.NewExtras()
 	for _, item in gear do
 		local bonus = Stats.Gear(item, class)
 		s.MaxHp += bonus.MaxHp
@@ -92,7 +100,17 @@ function Stats.Hero(class: string, level: number, gear: { Types.GearItem }, adva
 				apply(s)
 			end
 		end
+		Gear.AddExtras(extras, item)
 	end
+	Gear.CapExtras(extras)
+	s.Atk *= 1 + extras.AtkPct / 100
+	s.MaxHp *= 1 + extras.HpPct / 100
+	s.Def *= 1 + extras.DefPct / 100
+	s.AtkInterval /= 1 + extras.AtkSpeed / 100
+	s.Speed += extras.MoveSpeed
+	s.Lifesteal = extras.Lifesteal
+	s.Crit = extras.Crit
+	s.Splash += extras.Splash
 	if s.Heal > 0 then
 		-- Healers heal with their own attack growth too.
 		s.Heal = math.max(s.Heal, s.Atk * 1.5)

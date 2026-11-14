@@ -12,7 +12,7 @@
 | งาน | ถึงไหนแล้ว | ขั้นต่อไป | อัปเดต |
 |---|---|---|---|
 | เปิด DataStore จริง | publish แล้ว (placeId 108236200953937) แต่ Studio API access ยังปิด → ProfileStore รัน mock (SEEN) | Game Settings → Security → Enable Studio Access to API Services แล้ว Play ซ้ำ 2 รอบ: hero ที่เลือก + Gold ต้องยังอยู่รอบที่ 2 (LogInTimes ถูกลบใน schema v1) | 2026-10-31 |
-| สร้างเกมตามแผน | เฟส 0–3 เสร็จ ทดสอบใน Studio แล้ว (SEEN) | เฟส 4 ขั้น 4.1 (Rebirth: ย้าย cap/WearCaps/AccountLevelCap ที่อยู่ `Config/Rebirth` ให้ขยายต่อขั้น · `Systems/Rebirth` มีแค่ Points) | 2026-11-14 |
+| สร้างเกมตามแผน | เฟส 0–6 เสร็จ (SEEN) · trade ยังไม่ได้เล่นจริง 2 คน · ID Robux ยังเป็น 0 | เฟส 7 ขั้น 7.1 · หรือทดสอบ trade 2 คน (Studio Test → Clients and Servers 2 players) | 2026-11-14 |
 | ลบไฟล์เก่า | `src/shared/Hello.luau` ย้ายไป `_to_delete/` (ไม่มีสิทธิ์ลบ) (SEEN) | ผู้ใช้ลบโฟลเดอร์ `_to_delete/` เอง | 2026-11-14 |
 | commit แรก | ยังไม่มี commit (SEEN) | ผู้ใช้รัน `git add .` + `git commit` เอง (git ใน device_bash ค้าง lock ถ้าไม่มีสิทธิ์ลบ) | 2026-10-31 |
 
@@ -49,6 +49,17 @@
 - เช็ก effect ชั่วคราวบน client (ชื่อสกิลบนหัว) ด้วย poll `ClientBattle` ≥20 วิ — 10 วิอาจพลาดเพราะ cooldown (SEEN)
 - Balance รอบแรก (hero เดี่ยว ไม่มีของ): ~L100 ใน 1.5 ชม. ติดเพดาน hero L150 ที่ด่าน ~155 (SEEN, sim ใน Studio)
 
+- `Widgets.Window` ต้องเป็น TextButton (ไม่ใช่ Frame): ไม่งั้นคลิก label ในหน้าต่างทะลุไปโดน backdrop → หน้าปิด (SEEN)
+- ของที่ระบบอื่นแก้ผ่าน `Inventory.Set*` เป็น table เดิม → อ่านค่าเก่า (เช่น `item.Plus`) ก่อนเรียก setter ถ้าจะส่งใน notice (SEEN)
+- Relic นับเฉพาะของที่ hero ในทีมใส่ → Modifiers ต้อง MarkDirty ตอน Equip/Unequip/SetTeam/แก้ socket ของที่ใส่อยู่ (SEEN)
+- Stage `finishLevel` ใช้ `Stage.ProgressFor(data, run.Rebirth)` ไม่ใช่ rebirth ที่เล่นตอนนี้ (ผู้เล่นสลับ rebirth กลาง level ได้) (SEEN)
+
+- `/tmp/sm.json` ใน VM ของ device_bash อาจเป็นของ user อื่น (Permission denied) → เขียน sourcemap ที่ `$HOME/sm.json` (SEEN)
+- luau-lsp: ค่าจาก `{ Kind }` ที่ Kind เป็น union ของ string literal ถูกมองเป็น `string` ตอนส่งข้าม module → cast `x :: Period.Kind` ตรงจุดเรียก (SEEN, 1.70.1)
+- ทดสอบหน้า React ที่ต้องมี 2 คน: ใน Client `execute_luau` require component เอง + `ReactRoblox.createRoot` ลง ScreenGui ชั่วคราวพร้อม props จำลอง แล้วอ่าน Text ของลูก (SEEN, หน้า Trade)
+- ProfileStore mock (ไม่มี API access) ยัง fire `OnAfterSave` → `PlayerData.WaitSaved` / ProcessReceipt ทดสอบใน Studio ได้ผ่าน dev `receipt` (SEEN)
+- คลิกปุ่ม HUD ขณะเปิดหน้าอื่นอยู่ = โดน backdrop → หน้าเดิมปิด ไม่เปิดหน้าใหม่ → ปิดหน้าก่อน (Close) แล้วค่อยคลิก (SEEN)
+
 ## Dead ends — ลองแล้วไม่ได้ผล อย่าลองซ้ำ
 
 - 
@@ -68,3 +79,5 @@
 - 2026-11-14: เฟส 0–2 (0.2–2.7) ครบ · stylua/selene/luau-lsp strict ผ่าน 0 error · Studio Play: เลือก hero → ด่านเล่น/จ่าย gold+gear, Bag ค้นหา @tag + salvage confirm, Heroes ใส่ของ/ซื้อ hero, Boxes เปิด/แปลง, Farm + skip wave + กล้อง 3D PASS · offline/AFK ยังไม่ได้ทดสอบจริง
 - 2026-11-14: เฟส 3 (3.1–3.7) ครบ · stylua/selene/luau-lsp strict 0 error · Studio Play PASS: ซื้อ node (confirm), Squad I → ทีม 2 ช่อง (ลากวาง + เกินช่อง = toast), เปลี่ยนอาชีพ 2 ขั้น (wear cap 60→110→150), sim ยิงสกิล (PowerStrike/Fireball/Meteor/ShieldWall/MassHeal) + ชื่อสกิลขึ้นบนหัว, กล่องเปิดอัตโนมัติทุก 20 วิ, cap กล่อง 25→35 · ยังไม่ทดสอบ: Resurrect ในด่านจริง, toggle Berserk ผ่าน UI, กระเป๋าเต็มแล้ว auto-open หยุด/กลับมา · `Settings.AutoOpenBoxes` = สวิตช์ auto-open · `SkillOff` = node toggle ทั่วไป
 - 2026-11-14: เจ้าของตัดสิน 4 ข้อ → ทำแล้ว: skip wave เฉพาะ level ที่เคยผ่าน · ออกจาก Farm กลางรอบ = ได้ก้อนของรอบที่จบล่าสุด (`LastFarmRound`) · กล่องแยก stack ตาม kind:rebirth:ช่วง level 25 (schema v2) แปลง class ได้จาก Normal และ Boss · ข้อความภาษาอังกฤษเท่านั้น · Studio PASS (กล่องแยกช่วง, แปลง Boss→Mage, ป้าย skip รอผ่าน level)
+- 2026-11-14: เฟส 6 ครบ (schema v3: Quests/Pass/Shop/Purchases.GiftTo) · stylua/selene/luau-lsp 0 error · Studio PASS: quest progress + claim (ซ้ำ = ปฏิเสธ), pass claim ฟรี/premium ล็อก, dev receipt ShopRuby ซ้ำ id ไม่ให้ซ้ำ + PurchaseGranted หลังเซฟ, premium ผ่าน receipt, ร้าน gold/Ruby + โควตา + ปุ่ม Robux ID 0, x2 gold (87→174), หน้า trade lobby + render ข้อเสนอจำลอง · ยังไม่ทดสอบ: trade จริง 2 คน, gift ข้ามคน, lock ของระหว่าง trade, offline x2, ซื้อ Robux จริง · ตัดสินเอง (ปรับได้): trade ได้ gear/วัตถุดิบ/กล่อง/gold/Ruby · ไม่ขายกล่องด้วย Robux/Ruby (paid random items) · ราคา gold + รางวัล gold = หน่วย "gold-level" × Scaling.Gold(level ดีสุด) · อัตรา offline เก็บแบบไม่รวม x2 แล้วคูณตอนจ่าย
+- 2026-11-14: เฟส 4–5 ครบ · stylua/selene/luau-lsp strict 0 error · Studio PASS: ตีบวก (+1..+3, ข้อความผล), เปิดช่อง (merge ของซ้ำ + Socket Core), ใส่ Gem/Artifact/Relic, ถอด (คืนของ เสีย gold), enchant (ก่อน/หลัง), rebirth 0→1 (R1 เริ่มที่ level เดิม, ได้แต้ม+ของ), สลับเล่น R0 · ยังไม่ทดสอบ: ผล Relic ต่อ drop จริง, crit/lifesteal ใน sim (ดูด้วยตาเท่านั้น), Farm + สลับ rebirth กลางรอบ · ตัดสินเอง (ปรับได้): cap hero/สวมใส่/level ส่วนตัว ใช้ rebirth ที่ปลดสูงสุด, ความยาก/cap drop/ตาราง drop ใช้ rebirth ที่เล่น · Relic นับเฉพาะ hero ในทีม · rebirth ใหม่ MaxLevel = level ที่พามา · อัตราตีบวกไม่แสดงใน UI (อยู่ Secret)

@@ -1,5 +1,5 @@
 --!strict
--- Owner of Boxes (stacks keyed kind:rebirth:band): receive (over cap = lost), open (bounded by bag space), convert 5 normal/boss -> 1 class box, timed auto-open.
+-- Owner of Boxes (stacks keyed kind:rebirth:band): receive (over cap = lost), open (bounded by bag space), convert 5 normal/boss -> 1 class box, timed auto-open, take (trade) + trade reservations.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -17,11 +17,14 @@ local Replication = require(script.Parent.Replication)
 local Inventory = require(script.Parent.Inventory)
 local Loot = require(script.Parent.Loot)
 local Modifiers = require(script.Parent.Modifiers)
+local Quest = require(script.Parent.Quest)
 
 -- One pending auto-open timer per player at most; nil = idle (nothing to open, no space, or switched off).
 local autoThreads: { [Player]: thread } = {}
 -- Set once the "bag full" notice was sent, so a stalled auto-open warns only once until it resumes.
 local autoStalled: { [Player]: boolean } = {}
+-- Boxes offered in an open trade (key -> count): opening and converting leave these alone.
+local reserved: { [Player]: { [string]: number } } = {}
 
 local Box = {}
 
@@ -61,6 +64,38 @@ function Box.Grant(player: Player, key: string, n: number): (number, number)
 	return kept, n - kept
 end
 
+local function unreserved(player: Player, data: PlayerData.Data, key: string): number
+	local r = reserved[player]
+	return math.max((data.Boxes[key] or 0) - (if r ~= nil then r[key] or 0 else 0), 0)
+end
+
+-- Trade owns the contents; pass {} to clear.
+function Box.SetReserved(player: Player, boxes: { [string]: number })
+	if next(boxes) ~= nil then
+		reserved[player] = table.clone(boxes)
+	else
+		reserved[player] = nil
+	end
+end
+
+-- Trade only: removes n boxes from a stack (reserved ones included). False if not enough.
+function Box.Take(player: Player, key: string, n: number): boolean
+	local data = PlayerData.Data(player)
+	if data == nil or not Guard.Int(n, 1, 1e6) then
+		return false
+	end
+	local have = data.Boxes[key] or 0
+	if have < n then
+		return false
+	end
+	local r = reserved[player]
+	if r ~= nil and r[key] ~= nil then
+		r[key] = math.max(r[key] - n, 0)
+	end
+	set(player, key, have - n)
+	return true
+end
+
 -- Opens up to `count` boxes of one stack, bounded by bag space. Returns how many opened.
 local function openStack(player: Player, key: string, count: number, silent: boolean): number
 	local data = PlayerData.Data(player)
@@ -69,7 +104,7 @@ local function openStack(player: Player, key: string, count: number, silent: boo
 	if data == nil or parsed == nil or def == nil then
 		return 0
 	end
-	local have = data.Boxes[key] or 0
+	local have = unreserved(player, data, key)
 	local fits = Inventory.FreeSpace(player) // def.GearPerOpen
 	local n = math.min(count, have, fits, Game.OpenBatchMax)
 	if n <= 0 then
@@ -78,7 +113,7 @@ local function openStack(player: Player, key: string, count: number, silent: boo
 		end
 		return 0
 	end
-	set(player, key, have - n)
+	set(player, key, (data.Boxes[key] or 0) - n)
 	local rng = Rng.new()
 	local low, high = Boxes.BandRange(parsed.Band, parsed.Rebirth)
 	local bundle: Loot.Bundle = { Gear = {}, Materials = {}, Boxes = {} }
@@ -89,6 +124,7 @@ local function openStack(player: Player, key: string, count: number, silent: boo
 	if not silent then
 		Replication.Notify(player, "BoxOpened", { Box = key, Opened = n, Summary = summary })
 	end
+	Quest.Progress(player, "OpenBox", n)
 	return n
 end
 
@@ -110,10 +146,10 @@ local function nextAutoStack(player: Player): (string?, boolean)
 	local best: string? = nil
 	local bestOrder, bestBand = math.huge, -1
 	local blocked = false
-	for key, count in data.Boxes do
+	for key in data.Boxes do
 		local parsed = Boxes.Parse(key)
 		local def = if parsed ~= nil then Boxes.ById[parsed.Kind] else nil
-		if parsed ~= nil and def ~= nil and count > 0 then
+		if parsed ~= nil and def ~= nil and unreserved(player, data, key) > 0 then
 			if def.GearPerOpen > free then
 				blocked = true
 			elseif def.Order < bestOrder or (def.Order == bestOrder and parsed.Band > bestBand) then
@@ -172,14 +208,14 @@ local function convert(player: Player, source: string, class: string, count: num
 		return
 	end
 	local target = Boxes.Key(`Class_{class}`, parsed.Rebirth, parsed.Band)
-	local have = data.Boxes[source] or 0
+	local have = unreserved(player, data, source)
 	local room = Box.Cap(player, target) - (data.Boxes[target] or 0)
 	local n = math.min(count, have // Boxes.ConvertCost, room)
 	if n <= 0 then
 		Replication.Notify(player, "Error", if room <= 0 then "BoxFull" else "NotEnoughBoxes")
 		return
 	end
-	set(player, source, have - n * Boxes.ConvertCost)
+	set(player, source, (data.Boxes[source] or 0) - n * Boxes.ConvertCost)
 	set(player, target, (data.Boxes[target] or 0) + n)
 end
 
@@ -198,6 +234,7 @@ function Box.Start()
 		end
 		autoThreads[player] = nil
 		autoStalled[player] = nil
+		reserved[player] = nil
 	end)
 end
 

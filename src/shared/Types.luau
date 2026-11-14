@@ -27,6 +27,7 @@ export type Socket = {
 	Insert: string?,
 }
 
+-- Id = Config.Enchant.Traits entry; Value in percent points (MoveSpeed: flat).
 export type Enchant = {
 	Id: string,
 	Value: number,
@@ -85,10 +86,49 @@ export type Rates = {
 }
 
 -- Receipts: purchaseId -> os.time() granted, so ProcessReceipt never grants twice.
--- Owned: pass id -> true for passes granted through a gift rather than owned on the account.
+-- Owned: Config.Shop pass key -> true for passes granted through a gift rather than owned on the account.
+-- GiftTo: gift product key -> recipient UserId picked before the prompt (read when the receipt arrives).
 export type Purchases = {
 	Receipts: { [string]: number },
 	Owned: { [string]: boolean },
+	GiftTo: { [string]: number },
+}
+
+-- Key = Period.Key of the period this progress belongs to; a different key means it has reset.
+-- Progress is per quest Kind (one counter feeds every quest of that kind in the period).
+export type QuestPeriod = {
+	Key: string,
+	Progress: { [string]: number },
+	Claimed: { [string]: boolean },
+}
+
+export type QuestState = {
+	Daily: QuestPeriod,
+	Weekly: QuestPeriod,
+	Monthly: QuestPeriod,
+}
+
+-- Season = Period.Key("Monthly"). Free/Paid: tostring(tier) -> claimed.
+export type PassState = {
+	Season: string,
+	Points: number,
+	Premium: boolean,
+	Free: { [string]: boolean },
+	Paid: { [string]: boolean },
+}
+
+-- Month = Period.Key("Monthly"); Bought: shop item id -> bought this month.
+export type ShopState = {
+	Month: string,
+	Bought: { [string]: number },
+}
+
+-- Gold is in gold-level units (Formula.Economy.Gold); Boxes by box kind (key built at grant time).
+export type Reward = {
+	Ruby: number?,
+	Gold: number?,
+	Materials: { [string]: number }?,
+	Boxes: { [string]: number }?,
 }
 
 export type Settings = {
@@ -114,6 +154,9 @@ export type ProfileData = {
 	SkillTree: { [string]: number },
 	SkillOff: { [string]: boolean },
 	Purchases: Purchases,
+	Quests: QuestState,
+	Pass: PassState,
+	Shop: ShopState,
 	LastSeen: number,
 	OfflineRate: Rates,
 	NextUid: number,
@@ -130,6 +173,8 @@ export type HeroStats = {
 	Speed: number,
 	Splash: number, -- extra targets hit per attack
 	Heal: number, -- heal per cast (0 = never heals)
+	Lifesteal: number, -- share of damage dealt healed back (artifacts)
+	Crit: number, -- chance for a hit to deal Config.Inserts.CritMult damage (artifacts)
 	Power: number, -- single number for UI comparisons
 }
 
@@ -175,6 +220,30 @@ export type TimelinePayload = {
 	Team: { { Key: string, Class: ClassId, Row: Row, MaxHp: number } },
 	Events: buffer,
 	EventCount: number,
+}
+
+-- What one side puts into a trade. Boxes keyed by Config.Boxes.Key.
+export type TradeOffer = {
+	Gear: { string },
+	Stacks: { [string]: number },
+	Boxes: { [string]: number },
+	Gold: number,
+	Ruby: number,
+}
+
+-- Trade as one side sees it (sent on every change; nil = no trade).
+export type TradeView = {
+	Id: number,
+	PartnerId: number,
+	PartnerName: string,
+	Mine: TradeOffer,
+	Theirs: TradeOffer,
+	TheirGear: { [string]: GearItem }, -- partner's offered pieces, by their uid
+	MeReady: boolean,
+	ThemReady: boolean,
+	MeConfirmed: boolean,
+	ThemConfirmed: boolean,
+	ConfirmAt: number, -- workspace:GetServerTimeNow() from which the final confirm is accepted
 }
 
 -- One replicated change: path into ProfileData, then the new value (nil = removed).

@@ -1,5 +1,5 @@
 --!strict
--- Cached account modifiers per player (skill tree + account level milestones). Owners of those inputs call MarkDirty.
+-- Cached account modifiers per player (skill tree, account level, rebirth count, team relics). Owners of those inputs call MarkDirty.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -22,7 +22,8 @@ function Modifiers.Get(player: Player): Formula.Mods
 	if data == nil then
 		return Formula.Mods.Build({}, {}, 1) -- not cached: the profile is not loaded yet
 	end
-	local mods = Formula.Mods.Build(data.SkillTree, data.SkillOff, data.AccountLevel)
+	local relics = Formula.Gear.Relics(Formula.Gear.TeamGear(data))
+	local mods = Formula.Mods.Build(data.SkillTree, data.SkillOff, data.AccountLevel, data.Rebirth.Count, relics)
 	cache[player] = mods
 	return mods
 end
