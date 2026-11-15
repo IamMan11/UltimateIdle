@@ -1,5 +1,5 @@
 --!strict
--- Shared UI widgets: Label, Button, Window (page shell with backdrop/Esc close), TextInput, Stepper, Bar, Tabs; hooks: store, tick, other players.
+-- Shared UI widgets: Label, Icon, Button (optional icon), Window (page shell with backdrop/Esc close), TextInput, Stepper, Bar, Tabs; hooks: store, tick, other players.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -10,6 +10,7 @@ local Theme = require(script.Parent.Theme)
 local Text = require(ReplicatedStorage.Shared.Text)
 local State = require(script.Parent.Parent.Parent.State)
 local Groups = require(script.Parent.Groups)
+local Icons = require(ReplicatedStorage.Shared.Config.Icons)
 
 local e = React.createElement
 
@@ -146,8 +147,34 @@ function Widgets.Label(props: LabelProps): React.ReactNode
 	})
 end
 
+export type IconProps = {
+	image: string, -- Config.Icons value
+	size: number?,
+	position: UDim2?,
+	anchor: Vector2?,
+	transparency: number?,
+	layoutOrder: number?,
+}
+
+-- Source art is 32 px pixel art: nearest sampling at 32 px and up, smooth below (nearest drops pixels when shrinking).
+function Widgets.Icon(props: IconProps): React.ReactNode
+	local size = props.size or 32
+	return e("ImageLabel", {
+		Size = UDim2.fromOffset(size, size),
+		Position = props.position,
+		AnchorPoint = props.anchor,
+		BackgroundTransparency = 1,
+		Image = props.image,
+		ImageTransparency = props.transparency or 0,
+		ResampleMode = if size >= 32 then Enum.ResamplerMode.Pixelated else Enum.ResamplerMode.Default,
+		LayoutOrder = props.layoutOrder,
+	})
+end
+
 export type ButtonProps = {
 	text: string,
+	icon: string?, -- Config.Icons value: drawn at the left, text left-aligned after it
+	iconSize: number?,
 	onClick: (() -> ())?,
 	size: UDim2?,
 	position: UDim2?,
@@ -163,6 +190,8 @@ export type ButtonProps = {
 function Widgets.Button(props: ButtonProps): React.ReactNode
 	local bg = props.color or (if props.selected then Theme.Hover else Theme.PanelAlt)
 	local light = bg == Theme.Confirm
+	local icon = props.icon
+	local iconSize = props.iconSize or 32
 	return e("TextButton", {
 		Size = props.size or UDim2.fromOffset(120, 36),
 		Position = props.position,
@@ -177,6 +206,7 @@ function Widgets.Button(props: ButtonProps): React.ReactNode
 		FontFace = Theme.FontBold,
 		TextSize = props.textSize or 17,
 		TextTruncate = Enum.TextTruncate.AtEnd,
+		TextXAlignment = if icon ~= nil then Enum.TextXAlignment.Left else Enum.TextXAlignment.Center,
 		LayoutOrder = props.layoutOrder,
 		[React.Event.Activated] = function()
 			if not props.disabled and props.onClick ~= nil then
@@ -185,6 +215,19 @@ function Widgets.Button(props: ButtonProps): React.ReactNode
 		end,
 	}, {
 		Corner = Widgets.Corner(6),
+		-- Padding moves the text clear of the icon; the icon sits back inside the padded strip.
+		Padding = if icon ~= nil
+			then e("UIPadding", { PaddingLeft = UDim.new(0, iconSize + 10), PaddingRight = UDim.new(0, 4) })
+			else nil,
+		Icon = if icon ~= nil
+			then e(Widgets.Icon, {
+				image = icon,
+				size = iconSize,
+				position = UDim2.new(0, -iconSize - 5, 0.5, 0),
+				anchor = Vector2.new(0, 0.5),
+				transparency = if props.disabled then 0.5 else 0,
+			})
+			else nil,
 		Stroke = if props.selected then Widgets.Stroke(Theme.Accent, 1.5, 0) else nil,
 	})
 end
@@ -367,7 +410,9 @@ function Widgets.Window(props: WindowProps): React.ReactNode
 		for i, tab in Groups.Tabs(group) do
 			buttons[tab.Id] = e(Widgets.Button, {
 				text = tab.Label,
-				size = UDim2.fromOffset(110, 32),
+				icon = Icons[tab.Id],
+				iconSize = 24,
+				size = UDim2.fromOffset(124, 32),
 				textSize = 15,
 				selected = page == tab.Id,
 				layoutOrder = i,

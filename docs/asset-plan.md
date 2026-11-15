@@ -28,7 +28,7 @@
 | Goblin · Orc · Wolf | โมเดลรอบแรก **ผู้ใช้โอเคแล้ว 2026-11-15** · ยังไม่ rig/export · tri 1.9k / 2.4k / 1.4k | `D:\BlenderForUltimateIdle\monsters\` |
 | Boss: มนุษย์หมาป่า · Orc leader · Dirt golem | โมเดลรอบแรก **ผู้ใช้โอเคแล้ว 2026-11-15** · ยังไม่ rig/export · tri 2.5k / 3.5k / 2.6k · สเกล 1.45 / 1.6 / 1.75 | โฟลเดอร์เดียวกัน |
 | VFX โจมตี (4 class + monster + boss) | ยังไม่เริ่ม — ตกลงแล้วว่า mesh 3D + particle | — |
-| Icon ปุ่ม 32px pixel art | รอบแรก 16 อัน **ผู้ใช้โอเคแล้ว 2026-11-15** (`preview\icons_sheet.png`) · ยังไม่อัปโหลด/ต่อ UI | `D:\BlenderForUltimateIdle\icons\` (`build_icons.py <out>`) |
+| Icon ปุ่ม 32px pixel art | รอบแรก 16 อัน **ผู้ใช้โอเคแล้ว 2026-11-15** (`preview\icons_sheet.png`) · **อัปโหลด + ต่อ UI แล้ว 2026-11-15** | `D:\BlenderForUltimateIdle\icons\` (`build_icons.py <out>`) |
 | นำเข้า Roblox + ต่อโค้ด | ยังไม่เริ่ม (โค้ดเกมยังใช้ placeholder) | — |
 
 ## ขั้นตอนที่เหลือ (ทำตามลำดับ)
@@ -79,9 +79,9 @@
 
 ### 7. Icon ปุ่ม 32px pixel art
 - [x] 7.1 (20 อัน: Gold Ruby Inventory Boxes Forge Heroes Team Tree Rebirth Quests Shop Trade Daily Settings Skip Camera Bag View Watch Farm · ไม่มี tier ของ item ใน config จึงไม่ทำ) ไล่รายการปุ่มจริงจาก `src/client/UI/` (หน้า: Boxes Daily Forge HeroSelect Heroes Inventory Quests Rebirth Settings Shop Team Trade Tree + `Core/HUD.luau`) → ทำตารางรายการ icon ให้ผู้ใช้ตัด/เพิ่ม
-- [ ] 7.2 (ทำครบ 16 อันรอบแรกแทนต้นแบบ 4 · รอผู้ใช้ยืนยันสไตล์ · Team/Rebirth วาดใหม่แล้ว) ต้นแบบ 4 อัน (เช่น Inventory · Shop · Team · Settings) วาด 32×32 จริง ขอบคม จานสีจำกัด → ผู้ใช้ยืนยัน
-- [ ] 7.3 ทำครบชุด + currency (gold/ruby) + tier/สถานะ ถ้าผู้ใช้เอา · export PNG (ขยายแบบ nearest ×4/×8) · อัปโหลด
-- [ ] 7.4 ต่อ UI: `ImageLabel.ResampleMode = Pixelated` · เก็บ asset id ที่ `src/shared/Config/` หรือ Theme (ห้าม hard-code ในไฟล์ UI) · `stylua src/` + `selene src/`
+- [x] 7.2 (ทำครบ 16 อันรอบแรกแทนต้นแบบ 4 · รอผู้ใช้ยืนยันสไตล์ · Team/Rebirth วาดใหม่แล้ว) ต้นแบบ 4 อัน (เช่น Inventory · Shop · Team · Settings) วาด 32×32 จริง ขอบคม จานสีจำกัด → ผู้ใช้ยืนยัน
+- [x] 7.3 (upload 20 อันที่ ×4 เป็น Image asset 2026-11-15 · ไม่มี tier/สถานะ) ทำครบชุด + currency (gold/ruby) + tier/สถานะ ถ้าผู้ใช้เอา · export PNG (ขยายแบบ nearest ×4/×8) · อัปโหลด
+- [x] 7.4 (2026-11-15: id อยู่ `src/shared/Config/Icons.luau` · `Widgets.Icon` / `Button` prop `icon` · HUD + แท็บกลุ่ม · Pixelated เฉพาะ ≥ 32px) ต่อ UI: `ImageLabel.ResampleMode = Pixelated` · เก็บ asset id ที่ `src/shared/Config/` หรือ Theme (ห้าม hard-code ในไฟล์ UI) · `stylua src/` + `selene src/`
 
 ### 8. ปิดงาน
 - [ ] 8.1 เล่นจริงใน Studio: ระยะกล้องเล่น · 720p · Device Emulator มือถือ · นับ instance/tri รวมต่อฉาก

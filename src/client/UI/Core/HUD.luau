@@ -13,6 +13,7 @@ local AccountConfig = require(ReplicatedStorage.Shared.Config.Account)
 local Stages = require(ReplicatedStorage.Shared.Config.Stages)
 local TutorialConfig = require(ReplicatedStorage.Shared.Config.Tutorial)
 local Period = require(ReplicatedStorage.Shared.Period)
+local Icons = require(ReplicatedStorage.Shared.Config.Icons)
 local Theme = require(script.Parent.Theme)
 local Widgets = require(script.Parent.Widgets)
 local Device = require(script.Parent.Device)
@@ -97,6 +98,20 @@ export type Props = {
 
 -- Roblox's touch thumbstick/jump button sit at the bottom corners while walking.
 local TOUCH_CONTROLS_HEIGHT = 150
+local PAGE_BUTTON_WIDTH = 140
+
+-- Currency row: icon + "Name  amount".
+local function money(icon: string, text: string, bold: boolean, order: number): React.ReactNode
+	return e("Frame", { Size = UDim2.new(1, 0, 0, 22), BackgroundTransparency = 1, LayoutOrder = order }, {
+		Icon = e(Widgets.Icon, { image = icon, size = 22 }),
+		Label = e(Widgets.Label, {
+			text = text,
+			bold = bold,
+			size = UDim2.new(1, -28, 1, 0),
+			position = UDim2.fromOffset(28, 0),
+		}),
+	})
+end
 
 local function HUD(props: Props): React.ReactNode
 	local data = props.data
@@ -122,7 +137,7 @@ local function HUD(props: Props): React.ReactNode
 	local pageButtons: { [string]: React.ReactNode } = {
 		Layout = if compact
 			then e("UIGridLayout", {
-				CellSize = UDim2.fromOffset(120, 40),
+				CellSize = UDim2.fromOffset(PAGE_BUTTON_WIDTH, 40),
 				CellPadding = UDim2.fromOffset(6, 6),
 				SortOrder = Enum.SortOrder.LayoutOrder,
 			})
@@ -137,7 +152,8 @@ local function HUD(props: Props): React.ReactNode
 		local isGroup = grouped[id] == true
 		pageButtons[id] = e(Widgets.Button, {
 			text = page[2],
-			size = UDim2.fromOffset(120, 40),
+			icon = Icons[id],
+			size = UDim2.fromOffset(PAGE_BUTTON_WIDTH, 40),
 			layoutOrder = i,
 			selected = if isGroup
 				then openGroup == id or hintGroup == id
@@ -194,8 +210,8 @@ local function HUD(props: Props): React.ReactNode
 			else nil,
 		Money = pill({
 			Layout = Widgets.List(Enum.FillDirection.Vertical, 2),
-			Gold = e(Widgets.Label, { text = `{UI.Gold}  {Format.Number(data.Gold)}`, bold = true, layoutOrder = 1 }),
-			Ruby = e(Widgets.Label, { text = `{UI.Ruby}  {Format.Number(data.Ruby)}`, layoutOrder = 2 }),
+			Gold = money(Icons.Gold, `{UI.Gold}  {Format.Number(data.Gold)}`, true, 1),
+			Ruby = money(Icons.Ruby, `{UI.Ruby}  {Format.Number(data.Ruby)}`, false, 2),
 			Account = e(Widgets.Label, {
 				text = `Account Lv {data.AccountLevel}`,
 				color = Theme.Subtext,
@@ -209,25 +225,26 @@ local function HUD(props: Props): React.ReactNode
 		}),
 		Pages = e("Frame", {
 			Size = if compact
-				then UDim2.fromOffset(246, 46 * math.ceil(#pages / 2))
-				else UDim2.fromOffset(120, 46 * #pages),
+				then UDim2.fromOffset(PAGE_BUTTON_WIDTH * 2 + 6, 46 * math.ceil(#pages / 2))
+				else UDim2.fromOffset(PAGE_BUTTON_WIDTH, 46 * #pages),
 			Position = if compact then UDim2.fromOffset(12, 8) else UDim2.new(0, 12, 0.5, 0),
 			AnchorPoint = if compact then Vector2.zero else Vector2.new(0, 0.5),
 			BackgroundTransparency = 1,
 		}, pageButtons),
 		Controls = e("Frame", {
-			Size = UDim2.fromOffset(190, 266),
+			Size = UDim2.fromOffset(220, 266),
 			Position = UDim2.new(1, -12, 1, if touchWalk then -12 - TOUCH_CONTROLS_HEIGHT else -12),
 			AnchorPoint = Vector2.new(1, 1),
 			BackgroundTransparency = 1,
 		}, {
 			Layout = Widgets.List(Enum.FillDirection.Vertical, 6, Enum.HorizontalAlignment.Right),
 			Skip = e(Widgets.Button, {
+				icon = Icons.Skip,
 				text = if not data.Settings.SkipWave
 					then UI.SkipOff
 					elseif battle.Skip then UI.SkipOn
 					else UI.SkipWaiting,
-				size = UDim2.fromOffset(190, 40),
+				size = UDim2.fromOffset(220, 40),
 				textSize = if data.Settings.SkipWave and not battle.Skip then 13 else nil,
 				selected = data.Settings.SkipWave,
 				layoutOrder = 1,
@@ -236,16 +253,18 @@ local function HUD(props: Props): React.ReactNode
 				end,
 			}),
 			Camera = e(Widgets.Button, {
+				icon = Icons.Camera,
 				text = if ui.CameraMode == "Lane" then UI.CamLane else UI.CamWalk,
-				size = UDim2.fromOffset(190, 40),
+				size = UDim2.fromOffset(220, 40),
 				layoutOrder = 2,
 				onClick = function()
 					State.SetCamera(if ui.CameraMode == "Lane" then "Walk" else "Lane", ui.View)
 				end,
 			}),
 			View = e(Widgets.Button, {
+				icon = Icons.View,
 				text = if ui.View == "2D" then UI.Cam2D else UI.Cam3D,
-				size = UDim2.fromOffset(190, 40),
+				size = UDim2.fromOffset(220, 40),
 				layoutOrder = 3,
 				disabled = ui.CameraMode ~= "Lane",
 				onClick = function()
@@ -253,8 +272,9 @@ local function HUD(props: Props): React.ReactNode
 				end,
 			}),
 			Watch = e(Widgets.Button, {
+				icon = Icons.Watch,
 				text = watchLabel(),
-				size = UDim2.fromOffset(190, 40),
+				size = UDim2.fromOffset(220, 40),
 				layoutOrder = 5,
 				textSize = 15,
 				selected = ui.Watch ~= nil,
@@ -262,11 +282,12 @@ local function HUD(props: Props): React.ReactNode
 				onClick = nextWatch,
 			}),
 			Mode = e(Widgets.Button, {
+				icon = Icons.Farm,
 				text = if not farmUnlocked
 					then UI.FarmLocked
 					elseif mode == "Farm" then UI.ModeFarm
 					else UI.ModeProgress,
-				size = UDim2.fromOffset(190, 40),
+				size = UDim2.fromOffset(220, 40),
 				layoutOrder = 4,
 				disabled = not farmUnlocked,
 				textSize = 15,
