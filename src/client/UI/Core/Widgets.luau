@@ -9,6 +9,7 @@ local React = require(ReplicatedStorage.Packages.React)
 local Theme = require(script.Parent.Theme)
 local Text = require(ReplicatedStorage.Shared.Text)
 local State = require(script.Parent.Parent.Parent.State)
+local Groups = require(script.Parent.Groups)
 
 local e = React.createElement
 
@@ -347,6 +348,7 @@ export type WindowProps = {
 	size: UDim2?,
 	maxSize: Vector2?,
 	zIndex: number?,
+	group: string?, -- page group id (Groups): shows its tabs in the title row
 	children: any,
 }
 
@@ -354,6 +356,28 @@ export type WindowProps = {
 function Widgets.Window(props: WindowProps): React.ReactNode
 	Widgets.useEscape(props.onClose)
 	local onClose = props.onClose
+	local group = props.group
+	local page = State.Ui.Page
+	React.useEffect(function()
+		Groups.Remember()
+	end, { page })
+	local tabs: { [string]: React.ReactNode }? = nil
+	if group ~= nil then
+		local buttons: { [string]: React.ReactNode } = { Layout = Widgets.List(Enum.FillDirection.Horizontal, 6) }
+		for i, tab in Groups.Tabs(group) do
+			buttons[tab.Id] = e(Widgets.Button, {
+				text = tab.Label,
+				size = UDim2.fromOffset(110, 32),
+				textSize = 15,
+				selected = page == tab.Id,
+				layoutOrder = i,
+				onClick = function()
+					Groups.Select(tab.Id)
+				end,
+			})
+		end
+		tabs = buttons
+	end
 	return e("TextButton", {
 		Size = UDim2.fromScale(1, 1),
 		BackgroundColor3 = Theme.Backdrop,
@@ -389,6 +413,15 @@ function Widgets.Window(props: WindowProps): React.ReactNode
 				textSize = 24,
 				size = UDim2.new(1, -110, 0, 32),
 			}),
+			Tabs = if tabs ~= nil
+				then e("Frame", {
+					Size = UDim2.fromOffset(0, 32),
+					AutomaticSize = Enum.AutomaticSize.X,
+					Position = UDim2.new(1, if onClose ~= nil then -108 else 0, 0, 0),
+					AnchorPoint = Vector2.new(1, 0),
+					BackgroundTransparency = 1,
+				}, tabs)
+				else nil,
 			Close = if onClose ~= nil
 				then e(Widgets.Button, {
 					text = Text.UI.Close,

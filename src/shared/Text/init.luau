@@ -57,8 +57,16 @@ local INSERT_STAT: { [string]: string } = {
 	DropPct = "drop chance (team)",
 }
 local BOX = { Normal = "Box", Boss = "Boss Box" }
-local MONSTER =
-	{ Slime = "Slime", Goblin = "Goblin", SkeletonArcher = "Skeleton Archer", Orc = "Orc", OgreKing = "Ogre King" }
+local MONSTER = {
+	Slime = "Slime",
+	Goblin = "Goblin",
+	SkeletonArcher = "Skeleton Archer",
+	Orc = "Orc",
+	Wolf = "Wolf",
+	Werewolf = "Werewolf",
+	OrcLeader = "Orc Leader",
+	DirtGolem = "Dirt Golem",
+}
 local ROW = { Front = "Front", Middle = "Middle", Back = "Back" }
 local SKILL: { [string]: string } = {
 	IronSkin = "Iron Skin",
@@ -356,6 +364,7 @@ Text.UI = table.freeze({
 	FarmLocked = "Farm unlocks at level " .. tostring(Account.Unlocks.Farm.StageLevel or 0),
 	Heroes = "Heroes",
 	Bag = "Bag",
+	Inventory = "Inventory",
 	Boxes = "Boxes",
 	Settings = "Settings",
 	Close = "Close",

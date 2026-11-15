@@ -1,5 +1,5 @@
 --!strict
--- Always-on HUD: level/wave, tutorial banner, currencies, team levels/xp, page buttons, skip-wave / camera / watch-lane / mode toggles.
+-- Always-on HUD: level/wave, tutorial banner, currencies, page buttons, skip-wave / camera / watch-lane / mode toggles.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -8,7 +8,6 @@ local RunService = game:GetService("RunService")
 local React = require(ReplicatedStorage.Packages.React)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Format = require(ReplicatedStorage.Shared.Format)
-local Formula = require(ReplicatedStorage.Shared.Formula)
 local Text = require(ReplicatedStorage.Shared.Text)
 local AccountConfig = require(ReplicatedStorage.Shared.Config.Account)
 local Stages = require(ReplicatedStorage.Shared.Config.Stages)
@@ -17,6 +16,7 @@ local Period = require(ReplicatedStorage.Shared.Period)
 local Theme = require(script.Parent.Theme)
 local Widgets = require(script.Parent.Widgets)
 local Device = require(script.Parent.Device)
+local Groups = require(script.Parent.Groups)
 local State = require(script.Parent.Parent.Parent.State)
 
 local e = React.createElement
@@ -93,7 +93,6 @@ end
 export type Props = {
 	data: Types.ProfileData,
 	compact: boolean?, -- short screen: page buttons in a 2-column grid at the top-left
-	tight: boolean?, -- phone landscape: no team panel (it would sit under the page grid)
 }
 
 -- Roblox's touch thumbstick/jump button sit at the bottom corners while walking.
@@ -105,29 +104,9 @@ local function HUD(props: Props): React.ReactNode
 	local ui = State.Ui
 	local farmUnlocked = AccountConfig.IsUnlocked("Farm", data.AccountLevel, bestLevel(data))
 
-	local team: { [string]: React.ReactNode } = { Layout = Widgets.List(Enum.FillDirection.Vertical, 4) }
-	for i, slot in data.Team do
-		local hero = data.Heroes[slot.HeroId]
-		if hero ~= nil then
-			local need = Formula.Progression.HeroXpToNext(hero.Level)
-			team[`H{i}`] = e("Frame", { Size = UDim2.new(1, 0, 0, 32), BackgroundTransparency = 1, LayoutOrder = i }, {
-				Name = e(Widgets.Label, {
-					text = `{Text.Advancement(hero.Class, hero.Advancement)}  Lv {hero.Level}`,
-					size = UDim2.new(1, 0, 0, 20),
-					textSize = 16,
-				}),
-				Xp = e(Widgets.Bar, { ratio = hero.Xp / need, position = UDim2.fromOffset(0, 24) }),
-			})
-		end
-	end
-
 	local pages = {
-		{ "Heroes", UI.Heroes },
 		{ "Team", UI.Team },
-		{ "Tree", UI.Tree },
-		{ "Bag", UI.Bag },
-		{ "Boxes", UI.Boxes },
-		{ "Forge", UI.Forge },
+		{ "Inventory", UI.Inventory },
 		{ "Rebirth", UI.Rebirth },
 		{ "Quests", Text.Eco.UI.Quests },
 		{ "Shop", Text.Eco.UI.Shop },
@@ -149,14 +128,26 @@ local function HUD(props: Props): React.ReactNode
 			})
 			else Widgets.List(Enum.FillDirection.Vertical, 6),
 	}
+	-- "Team" and "Inventory" are page groups (several pages behind one button); the rest are single pages.
+	local openGroup = Groups.Of(ui.Page)
+	local hintGroup = if tutorialStep ~= nil then Groups.Of(tutorialStep.Page) else nil
+	local grouped = { Team = true, Inventory = true }
 	for i, page in pages do
-		pageButtons[page[1]] = e(Widgets.Button, {
+		local id = page[1]
+		local isGroup = grouped[id] == true
+		pageButtons[id] = e(Widgets.Button, {
 			text = page[2],
 			size = UDim2.fromOffset(120, 40),
 			layoutOrder = i,
-			selected = ui.Page == page[1] or (tutorialStep ~= nil and tutorialStep.Page == page[1]),
+			selected = if isGroup
+				then openGroup == id or hintGroup == id
+				else ui.Page == id or (tutorialStep ~= nil and tutorialStep.Page == id),
 			onClick = function()
-				State.SetPage(page[1])
+				if isGroup then
+					Groups.Toggle(id)
+				else
+					State.SetPage(id)
+				end
 			end,
 		})
 	end
@@ -216,13 +207,6 @@ local function HUD(props: Props): React.ReactNode
 			Position = UDim2.new(1, -12, 0, 60),
 			AnchorPoint = Vector2.new(1, 0),
 		}),
-		Team = if touchWalk
-			then nil
-			else pill(team, {
-				Size = UDim2.fromOffset(220, 24 + 36 * math.max(#data.Team, 1)),
-				Position = UDim2.new(0, 12, 1, -12),
-				AnchorPoint = Vector2.new(0, 1),
-			}),
 		Pages = e("Frame", {
 			Size = if compact
 				then UDim2.fromOffset(246, 46 * math.ceil(#pages / 2))

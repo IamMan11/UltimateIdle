@@ -238,7 +238,8 @@ local function TreePage(props: Props): React.ReactNode
 
 	local gridH = TOP + maxRow * ROW_GAP
 	return e(Widgets.Window, {
-		title = UI.Tree,
+		title = UI.Team,
+		group = "Team",
 		onClose = function()
 			State.SetPage(nil)
 		end,

@@ -25,8 +25,13 @@
 | x2 gold/xp ไม่มีผล | `Shop.Owns` (account cache + `Purchases.Owned`) · Stage `finishLevel` / `Offline.payOffline` | `Config/Shop.luau` PassId |
 | Quest/pass ไม่ขยับ หรือรีเซ็ตผิดเวลา | ผู้เรียก `Quest.Progress` (Stage/Enhance/Enchant/Box) · `shared/Period.luau` (UTC) | `Config/Quests.luau` CapByPeriod |
 | ดูด่านคนอื่นไม่ขึ้น / ค้างภาพเก่า | server `server/Systems/Spectate/` (`watching`, `latest`, `Spectate.Publish` จาก Stage) · client `State.SetWatch` → `Net.LaneTimeline` → `client/Battle/init.luau` `playWatched` | `client/Battle/Playback.luau` |
-| คลิกด่านแล้วไม่สลับมุม/ไม่ดูคนนั้น | `client/Battle/init.luau` `laneAt` (raycast เฉพาะ `Workspace.Arena`, ชื่อ `LaneN`) · กดค้าง/ลาก = ไม่นับคลิก (`CLICK_SECONDS/PIXELS`) | `Battle/Camera.luau` |
+| คลิกฉากแล้วไม่สลับ 2D/3D | `client/Battle/init.luau` `onClick` (เฉพาะโหมด Lane, คลิกที่ไม่โดน UI) · กดค้าง/ลาก = ไม่นับคลิก (`CLICK_SECONDS/PIXELS`) | `Battle/Camera.luau` |
+| ฉากไม่ขึ้น / เห็นฉากจาก lobby / avatar ยังเดินได้ตอนดูด่าน | `client/Battle/Camera.luau` `apply` (`onStage` → `Scenery.Show`, `Rig.SetVisible`, `setFrozen`) · attribute `Lane` | `client/Battle/Scenery.luau` · `shared/Config/Scenery.luau` · `Config/World.luau` `LaneOrigins` |
 | `[Anomaly]` ใน log | `server/Systems/Analytics/` (`checkEarn`, `onTrip`) · เกณฑ์ `shared/Config/Analytics.luau` · ที่มาเงิน = arg `source` ของ `Currency.Add/Spend` | — |
 | UI ใหญ่/เล็กผิด, ปุ่มทับกันบนมือถือ | `client/UI/Core/Device.luau` (`Scale/Compact/Tight`) · `UIScale` ใน `App.luau` · `Settings.UiScale` | `HUD.luau` (compact grid, `touchWalk`) |
 | Tutorial ไม่ขยับ | step ปัจจุบัน `Config/Tutorial.luau` `Event` · ผู้แจ้ง `Tutorial.Event` (Hero equip, SkillTree buy) / `Quest.OnProgress` (ClearLevel, OpenBox, Enhance) | `server/Systems/Tutorial/` |
 | รางวัลรายวัน/โค้ด ไม่ได้ | `server/Systems/Daily/` (`Daily.Day` = Period key UTC) · `server/Systems/Codes/` + `server/Secret/Codes.luau` (key ตัวใหญ่ไม่มีช่องว่าง) · กล่องเต็ม = `Rewards.CanGrant` | — |
+| ปุ่ม Team/Inventory เปิดผิดหน้า / แท็บไม่ขึ้น | `client/UI/Core/Groups.luau` (รายชื่อหน้าในกลุ่ม, `Toggle/Select/Remember`) · `Widgets.Window` prop `group` · `State.Ui.Tabs` | `HUD.luau` (`grouped`) |
+| ตัวละคร/มอนเป็นบล็อกเทา · ลอย/จมพื้น · หันผิดทาง | `client/Battle/Rig.luau` `template` (ชื่อโฟลเดอร์ + ชื่อ model = Id) · `fromTemplate` (feet จาก part ที่มองเห็น, `PivotOffset`) | template ใน `ReplicatedStorage.HeroModels` / `MonsterModels` |
+| ฉากยังเป็น placeholder / ชิ้นฉากหาย | `client/Battle/Scenery.luau` `build` → `fromKit` · ชื่อชิ้นใน `shared/Config/Scenery.luau` `Kit` | `ReplicatedStorage.StageKits.Meadow` |
+| monster ไม่ขยับท่า / ท่าผิดจังหวะ / แขนขาหลุด | `client/Battle/Rig.luau` `animFor` (ชื่อข้อ = ชื่อ Part1 ของ Motor6D หรือชื่อ Bone) · `Rig.Animate` · `Playback.place` (ลำดับเลือก clip, `AttackAt/HurtAt/DiedAt`) | ข้อมูล `shared/Config/MonsterAnims.luau` (generated — แก้ที่ `anims/build_anims.py`) |

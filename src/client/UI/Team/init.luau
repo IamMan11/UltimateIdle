@@ -316,6 +316,7 @@ local function TeamPage(props: Props): React.ReactNode
 
 	return e(Widgets.Window, {
 		title = UI.Team,
+		group = "Team",
 		onClose = function()
 			State.SetPage(nil)
 		end,

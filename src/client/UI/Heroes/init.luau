@@ -346,7 +346,8 @@ local function HeroesPage(props: Props): React.ReactNode
 	end
 
 	return e(Widgets.Window, {
-		title = UI.Heroes,
+		title = UI.Team,
+		group = "Team",
 		onClose = function()
 			State.SetPage(nil)
 		end,

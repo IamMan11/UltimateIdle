@@ -1,5 +1,5 @@
 --!strict
--- Builds the plain lobby + 6 lanes in Workspace at boot (code-built, not mapped by Rojo) and reserves one lane per player.
+-- Builds the plain lobby in Workspace at boot (code-built, not mapped by Rojo) and reserves one lane slot per player (stages are drawn client-side, far from the lobby).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -10,7 +10,6 @@ local GREY = Color3.fromRGB(150, 150, 150)
 local DARK = Color3.fromRGB(105, 105, 105)
 
 local owners: { [number]: Player? } = {}
-local signs: { [number]: TextLabel? } = {}
 
 local function part(name: string, size: Vector3, cframe: CFrame, color: Color3, parent: Instance): Part
 	local p = Instance.new("Part")
@@ -46,45 +45,6 @@ local function build()
 	spawn.Duration = 0
 	spawn.Parent = folder
 
-	for i, origin in World.LaneOrigins do
-		local lane = Instance.new("Model")
-		lane.Name = `Lane{i}`
-		local floor =
-			part("Floor", World.LaneSize, origin * CFrame.new(0, World.FloorY - World.LaneSize.Y / 2, 0), DARK, lane)
-		-- Walkway joining the lane to the lobby edge.
-		local towardLobby = if origin.Position.Z < 0 then 1 else -1
-		part(
-			"Walkway",
-			Vector3.new(6, World.LaneSize.Y, 8),
-			origin * CFrame.new(0, World.FloorY - World.LaneSize.Y / 2, towardLobby * (World.LaneSize.Z / 2 + 3)),
-			GREY,
-			lane
-		)
-		local sign = part(
-			"Sign",
-			Vector3.new(14, 3, 0.4),
-			origin * CFrame.new(World.HeroOffsetX - 10, World.FloorY + 4, 0) * CFrame.Angles(0, math.rad(90), 0),
-			GREY,
-			lane
-		)
-		sign.CanCollide = false
-		local gui = Instance.new("SurfaceGui")
-		gui.Face = Enum.NormalId.Front
-		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-		gui.PixelsPerStud = 30
-		gui.Parent = sign
-		local label = Instance.new("TextLabel")
-		label.Size = UDim2.fromScale(1, 1)
-		label.BackgroundTransparency = 1
-		label.TextScaled = true
-		label.TextColor3 = Color3.new(1, 1, 1)
-		label.Text = `Lane {i}`
-		label.Parent = gui
-		signs[i] = label
-		lane.PrimaryPart = floor
-		lane.Parent = folder
-	end
-
 	folder.Parent = workspace
 end
 
@@ -93,10 +53,6 @@ local function reserve(player: Player)
 		if owners[i] == nil then
 			owners[i] = player
 			player:SetAttribute("Lane", i)
-			local sign = signs[i]
-			if sign ~= nil then
-				sign.Text = player.DisplayName
-			end
 			return
 		end
 	end
@@ -107,10 +63,6 @@ local function release(player: Player)
 	for i, owner in owners do
 		if owner == player then
 			owners[i] = nil
-			local sign = signs[i]
-			if sign ~= nil then
-				sign.Text = `Lane {i}`
-			end
 		end
 	end
 end

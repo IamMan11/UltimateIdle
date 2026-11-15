@@ -1,30 +1,30 @@
 --!strict
--- Lobby and lane layout (server builds the parts, client places units and cameras from the same numbers).
+-- Lobby and stage layout (server builds the lobby; client draws units, scenery and cameras at the far-away stage origins).
 
 local Freeze = require(script.Parent.Parent.Freeze)
 
 local LOBBY_SIZE = Vector3.new(80, 1, 80)
-local LANE_SIZE = Vector3.new(64, 1, 18)
 local LANE_COUNT = 6
 
--- Lane i: 3 lanes north of the lobby, 3 south; +X is "forward" (heroes walk left to right).
+-- Stages sit far outside the walkable map (past the baseplate edge), one per lane slot, side by side along X.
+-- +X is "forward" (heroes walk left to right); cameras stand on the +Z side facing -Z, away from the lobby.
+local STAGE_ROW = Vector3.new(0, 0, -6000)
+local STAGE_SPACING = 900
+
 local origins: { CFrame } = {}
 for i = 1, LANE_COUNT do
-	local col = (i - 1) % 3
-	local north = i <= 3
-	local x = (col - 1) * (LANE_SIZE.X + 6)
-	local z = if north then -(LOBBY_SIZE.Z / 2 + LANE_SIZE.Z / 2 + 6) else LOBBY_SIZE.Z / 2 + LANE_SIZE.Z / 2 + 6
-	origins[i] = CFrame.new(x, 0, z)
+	origins[i] = CFrame.new(STAGE_ROW + Vector3.new((i - (LANE_COUNT + 1) / 2) * STAGE_SPACING, 0, 0))
 end
 
 return Freeze({
 	FolderName = "Arena",
 	LobbySize = LOBBY_SIZE,
-	LaneSize = LANE_SIZE,
 	LaneCount = LANE_COUNT,
 	-- Lane origin = top surface centre; unit x in the sim maps to origin + (x + HeroOffsetX) along +X.
 	LaneOrigins = origins,
 	HeroOffsetX = -18,
+	-- Middle of the battle along X (lane origin space): cameras look here and the scenery is centred on it.
+	StageCenterX = 4,
 	FloorY = 0.5,
 	-- Monsters drawn at once per lane (the sim keeps the rest; only the picture is capped).
 	MaxMonsters = 40,

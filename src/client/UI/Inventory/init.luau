@@ -219,7 +219,8 @@ local function Inventory(props: Props): React.ReactNode
 	end
 
 	return e(Widgets.Window, {
-		title = `{UI.Bag}  {bagCount}/{Game.InventoryCapacity}`,
+		title = `{UI.Inventory}  {bagCount}/{Game.InventoryCapacity}`,
+		group = "Inventory",
 		onClose = function()
 			State.SetPage(nil)
 		end,

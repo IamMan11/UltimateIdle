@@ -1,5 +1,5 @@
 --!strict
--- Draws battle lanes: the player's own timeline plus one watched lane (spectating); click a lane to watch it or change the view angle.
+-- Draws battle stages: the player's own timeline plus one watched lane (spectating); click the stage to change the view angle.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -85,48 +85,11 @@ local function playWatched(userId: number, payload: Types.TimelinePayload?)
 	end
 end
 
--- Lane index under a screen point (the lane floors are in Workspace.Arena.LaneN).
-local function laneAt(position: Vector2): number?
-	local camera = Workspace.CurrentCamera
-	local arena = Workspace:FindFirstChild(World.FolderName)
-	if camera == nil or arena == nil then
-		return nil
-	end
-	local ray = camera:ViewportPointToRay(position.X, position.Y)
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Include
-	params.FilterDescendantsInstances = { arena }
-	local hit = Workspace:Raycast(ray.Origin, ray.Direction * 2000, params)
-	local model = if hit ~= nil then hit.Instance.Parent else nil
-	if model == nil then
-		return nil
-	end
-	return tonumber(string.match(model.Name, "^Lane(%d+)$"))
-end
-
-local function ownerOf(lane: number): Player?
-	for _, p in Players:GetPlayers() do
-		if p:GetAttribute("Lane") == lane then
-			return p
-		end
-	end
-	return nil
-end
-
--- Click/tap on a lane: the lane on screen changes view angle, any other occupied lane becomes the one watched.
-local function onClick(position: Vector2)
-	local lane = laneAt(position)
-	local owner = if lane ~= nil then ownerOf(lane) else nil
-	if owner == nil then
-		return
-	end
+-- Click/tap on the stage (not on UI) flips between the 2D and 3D view.
+local function onClick()
 	local ui = State.Ui
-	local viewed = if ui.Watch ~= nil then ui.Watch else player.UserId
-	if ui.CameraMode == "Lane" and owner.UserId == viewed then
+	if ui.CameraMode == "Lane" then
 		State.SetCamera("Lane", if ui.View == "2D" then "3D" else "2D")
-	else
-		State.SetWatch(if owner == player then nil else owner.UserId)
-		State.SetCamera("Lane", "2D")
 	end
 end
 
@@ -162,7 +125,7 @@ function Battle.Start()
 		pressed[input] = nil
 		local pos = Vector2.new(input.Position.X, input.Position.Y)
 		if os.clock() - press.At < CLICK_SECONDS and (pos - press.Pos).Magnitude < CLICK_PIXELS then
-			onClick(pos)
+			onClick()
 		end
 	end)
 	if State.Timeline ~= nil then

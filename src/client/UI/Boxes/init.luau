@@ -96,7 +96,8 @@ local function BoxesPage(props: Props): React.ReactNode
 	})
 
 	return e(Widgets.Window, {
-		title = UI.Boxes,
+		title = UI.Inventory,
+		group = "Inventory",
 		onClose = function()
 			State.SetPage(nil)
 		end,

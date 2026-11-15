@@ -24,7 +24,13 @@ type Live = {
 	MaxHp: number,
 	LungeUntil: number,
 	Dead: boolean,
+	-- Timeline seconds of the last blow dealt / taken and of death; they pick the animation clip.
+	AttackAt: number,
+	HurtAt: number,
+	DiedAt: number,
 }
+
+local NEVER = -1e9
 
 export type Lane = {
 	Units: { [number]: Live },
@@ -106,6 +112,9 @@ local function handle(lane: Lane, event: Timeline.Event, payload: Types.Timeline
 			MaxHp = event.D,
 			LungeUntil = 0,
 			Dead = false,
+			AttackAt = NEVER,
+			HurtAt = NEVER,
+			DiedAt = NEVER,
 		}
 	elseif code == Code.Stop then
 		local live = units[event.A]
@@ -125,8 +134,10 @@ local function handle(lane: Lane, event: Timeline.Event, payload: Types.Timeline
 		local target = units[event.B]
 		if source ~= nil and now - event.T < 0.5 then
 			source.LungeUntil = event.T + LUNGE_TIME
+			source.AttackAt = event.T
 		end
 		if target ~= nil then
+			target.HurtAt = event.T
 			setBar(target, event.D)
 		end
 	elseif code == Code.Heal then
@@ -138,12 +149,14 @@ local function handle(lane: Lane, event: Timeline.Event, payload: Types.Timeline
 		local live = units[event.A]
 		if live ~= nil then
 			live.Dead = true
+			live.DiedAt = event.T
 			setBar(live, 0)
 			Rig.SetFaded(live.Unit, true)
 			if not live.IsHero then
 				local gen = lane.Generation
 				local id = event.A
-				task.delay(0.4, function()
+				-- Long enough to see the death clip, when the monster has one.
+				task.delay(math.clamp(Rig.ClipLength(live.Unit, "Death"), 0.4, 1), function()
 					if gen == lane.Generation and units[id] == live then
 						release(lane, id, live)
 					end
@@ -184,14 +197,29 @@ local function place(origin: CFrame, live: Live, now: number)
 		x += dir * 0.8
 	end
 	local height = World.FloorY + 3 * live.Unit.Scale
-	local bob = if live.Moving then math.abs(math.sin(now * 8)) * 0.3 else 0
+	local unit = live.Unit
+	-- Animated units bob in their walk clip; block rigs get a bounce instead.
+	local bob = if live.Moving and not Rig.IsAnimated(unit) then math.abs(math.sin(now * 8)) * 0.3 else 0
 	local cf = origin
 		* CFrame.new(x + World.HeroOffsetX, height + bob, live.Z)
 		* (if live.IsHero then FACE_HERO else FACE_MONSTER)
 	if live.Dead and live.IsHero then
 		cf *= CFrame.new(0, -2, 0) * CFrame.Angles(0, 0, math.rad(80))
 	end
-	live.Unit.Model:PivotTo(cf)
+	unit.Model:PivotTo(cf)
+	-- The Hit event is the moment the blow lands, so the attack clip is lined up on its hit time.
+	local attackT = now - live.AttackAt + Rig.HitTime(unit, "Attack")
+	if live.Dead then
+		Rig.Animate(unit, "Death", now - live.DiedAt)
+	elseif attackT < Rig.ClipLength(unit, "Attack") then
+		Rig.Animate(unit, "Attack", attackT)
+	elseif now - live.HurtAt < Rig.ClipLength(unit, "Hit") then
+		Rig.Animate(unit, "Hit", now - live.HurtAt)
+	elseif live.Moving then
+		Rig.Animate(unit, "Walk", now)
+	else
+		Rig.Animate(unit, "Idle", now)
+	end
 end
 
 -- Advances to server time `serverNow` and places units at `origin` (the lane being drawn).
@@ -247,6 +275,9 @@ function Playback.Play(lane: Lane, payload: Types.TimelinePayload): boolean
 			MaxHp = hero.MaxHp,
 			LungeUntil = 0,
 			Dead = false,
+			AttackAt = NEVER,
+			HurtAt = NEVER,
+			DiedAt = NEVER,
 		}
 	end
 	return true

@@ -95,10 +95,9 @@ local function App(): React.ReactNode
 	-- One UIScale for everything: the root is 1/scale of the screen so it covers the screen once scaled.
 	local scale = Device.Scale(viewport, data.Settings.UiScale or 1)
 	local compact = Device.Compact(viewport, scale)
-	local tight = Device.Tight(viewport, scale)
 	return e("Frame", { Size = UDim2.fromScale(1 / scale, 1 / scale), BackgroundTransparency = 1 }, {
 		Scale = e("UIScale", { Scale = scale }),
-		HUD = if needsHero then nil else e(HUD, { data = data, compact = compact, tight = tight }),
+		HUD = if needsHero then nil else e(HUD, { data = data, compact = compact }),
 		Page = page,
 		HeroSelect = if needsHero then e(HeroSelect) else nil,
 		Confirm = if ui.Confirm ~= nil then e(Confirm, { prompt = ui.Confirm }) else nil,

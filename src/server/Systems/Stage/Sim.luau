@@ -79,14 +79,16 @@ local function pickMinion(rng: Random, level: number): Monsters.MonsterDef
 	return last
 end
 
-local function pickBoss(level: number): Monsters.MonsterDef
-	local best: Monsters.MonsterDef? = nil
+-- Any boss unlocked at this level, picked with the level's own rng so replays and spectators see the same one.
+local function pickBoss(rng: Random, level: number): Monsters.MonsterDef
+	local pool: { Monsters.MonsterDef } = {}
 	for _, def in Monsters.List do
-		if def.Boss and def.FromLevel <= level and (best == nil or def.FromLevel > best.FromLevel) then
-			best = def
+		if def.Boss and def.FromLevel <= level then
+			table.insert(pool, def)
 		end
 	end
-	return assert(best, "no boss configured")
+	assert(#pool > 0, "no boss configured")
+	return pool[rng:NextInteger(1, #pool)]
 end
 
 function Sim.Run(
@@ -289,7 +291,7 @@ function Sim.Run(
 				wavesLeft -= 1
 				Timeline.Push(builder, t, Code.Wave, wave.Number, 0, 0, 0)
 				if wave.Number == Stages.WavesPerLevel then
-					spawn(t, pickBoss(level), 0)
+					spawn(t, pickBoss(rng, level), 0)
 					for i = 1, math.max(perWave - Stages.BossWaveMinionDrop, 0) do
 						spawn(t, pickMinion(rng, level), i)
 					end

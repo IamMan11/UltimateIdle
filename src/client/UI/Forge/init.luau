@@ -84,7 +84,8 @@ local function Forge(props: Props): React.ReactNode
 	end
 
 	return e(Widgets.Window, {
-		title = UI.Forge,
+		title = UI.Inventory,
+		group = "Inventory",
 		onClose = function()
 			State.SetPage(nil)
 		end,

@@ -32,6 +32,7 @@ export type ForgeResult = {
 
 export type Ui = {
 	Page: string?,
+	Tabs: { [string]: string }, -- page group id -> page last open in it
 	ForgeUid: string?, -- item selected on the Forge page
 	LastEnhance: ForgeResult?,
 	LastEnchant: ForgeResult?,
@@ -61,6 +62,7 @@ local State = {
 	Battle = { Level = 0, Wave = 0, Mode = "Progress", Skip = false } :: Battle,
 	Ui = {
 		Page = nil,
+		Tabs = {},
 		ForgeUid = nil,
 		LastEnhance = nil,
 		LastEnchant = nil,
