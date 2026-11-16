@@ -125,7 +125,7 @@ local function profile(data: Types.ProfileData): React.ReactNode
 				Size = UDim2.fromScale(1, 1),
 				BackgroundTransparency = 1,
 				Text = `{math.floor(ratio * 100)}%`,
-				TextColor3 = Theme.Text,
+				TextColor3 = Theme.OnDark,
 				FontFace = Theme.FontBold,
 				TextSize = 13,
 				ZIndex = 2,

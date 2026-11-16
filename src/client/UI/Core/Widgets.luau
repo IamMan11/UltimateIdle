@@ -1,8 +1,9 @@
 --!strict
--- Shared UI widgets: Label, Icon, Button (optional icon), Window (page shell with backdrop/Esc close), TextInput, Stepper, Bar, Tabs; hooks: store, viewport, tick, other players.
+-- Shared UI widgets: Label, Icon, Button (raised face on a dark base, optional icon), Window (wood frame + parchment sheet, backdrop/Esc close), TextInput, Stepper, Bar, Tabs; hooks: store, viewport, tick, other players.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
@@ -112,8 +113,8 @@ end
 function Widgets.Stroke(color: Color3?, thickness: number?, transparency: number?): React.ReactNode
 	return e("UIStroke", {
 		Color = color or Theme.Stroke,
-		Thickness = thickness or 1,
-		Transparency = transparency or 0.4,
+		Thickness = thickness or 2,
+		Transparency = transparency or 0,
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 	})
 end
@@ -206,48 +207,116 @@ export type ButtonProps = {
 	layoutOrder: number?,
 }
 
+-- Button geometry: the face sits BUTTON_LIFT above its dark base, rises on hover, drops onto the base when pressed.
+local BUTTON_LIFT = 4
+local BUTTON_HOVER = 2
+local BUTTON_EDGE = 2
+local BUTTON_RADIUS = 10
+local BUTTON_TWEEN = TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
 function Widgets.Button(props: ButtonProps): React.ReactNode
-	local bg = props.color or (if props.selected then Theme.Hover else Theme.PanelAlt)
-	local light = bg == Theme.Confirm
+	local hovered, setHovered = React.useState(false)
+	local pressed, setPressed = React.useState(false)
+	local faceRef = React.useRef(nil :: Frame?)
+	local disabled = props.disabled == true
+	local selected = props.selected == true
+	local bg = props.color or (if selected then Theme.Hover else Theme.Button)
 	local icon = props.icon
 	local iconSize = props.iconSize or 32
+	local drop = if disabled or pressed
+		then BUTTON_LIFT
+		elseif selected then BUTTON_LIFT / 2
+		elseif hovered then -BUTTON_HOVER
+		else 0
+	-- Position is set once by React and moved by the tween afterwards.
+	local first = React.useRef(drop)
+	React.useEffect(function(): () -> ()
+		local face = faceRef.current
+		if face == nil or face.Position.Y.Offset == BUTTON_EDGE + drop then
+			return function() end
+		end
+		local tween =
+			TweenService:Create(face, BUTTON_TWEEN, { Position = UDim2.fromOffset(BUTTON_EDGE, BUTTON_EDGE + drop) })
+		tween:Play()
+		return function()
+			tween:Cancel()
+		end
+	end, { drop })
+
+	local left = if icon ~= nil then iconSize + 12 else 6
 	return e("TextButton", {
 		Size = props.size or UDim2.fromOffset(120, 36),
 		Position = props.position,
 		AnchorPoint = props.anchor,
-		BackgroundColor3 = bg,
-		BackgroundTransparency = if props.disabled then 0.6 else 0,
-		AutoButtonColor = not props.disabled,
-		Active = not props.disabled,
-		Text = props.text,
-		TextColor3 = props.textColor or (if light then Theme.OnLight else Theme.Text),
-		TextTransparency = if props.disabled then 0.5 else 0,
-		FontFace = Theme.FontBold,
-		TextSize = props.textSize or 17,
-		TextTruncate = Enum.TextTruncate.AtEnd,
-		TextXAlignment = if icon ~= nil then Enum.TextXAlignment.Left else Enum.TextXAlignment.Center,
+		BackgroundTransparency = 1,
+		AutoButtonColor = false,
+		Active = not disabled,
+		Text = "",
 		LayoutOrder = props.layoutOrder,
+		[React.Event.MouseEnter] = function()
+			setHovered(true)
+		end,
+		[React.Event.MouseLeave] = function()
+			setHovered(false)
+			setPressed(false)
+		end,
+		[React.Event.MouseButton1Down] = function()
+			setPressed(true)
+		end,
+		[React.Event.MouseButton1Up] = function()
+			setPressed(false)
+		end,
 		[React.Event.Activated] = function()
-			if not props.disabled and props.onClick ~= nil then
+			if not disabled and props.onClick ~= nil then
 				props.onClick()
 			end
 		end,
 	}, {
-		Corner = Widgets.Corner(6),
-		-- Padding moves the text clear of the icon; the icon sits back inside the padded strip.
-		Padding = if icon ~= nil
-			then e("UIPadding", { PaddingLeft = UDim.new(0, iconSize + 10), PaddingRight = UDim.new(0, 4) })
-			else nil,
-		Icon = if icon ~= nil
-			then e(Widgets.Icon, {
-				image = icon,
-				size = iconSize,
-				position = UDim2.new(0, -iconSize - 5, 0.5, 0),
-				anchor = Vector2.new(0, 0.5),
-				transparency = if props.disabled then 0.5 else 0,
-			})
-			else nil,
-		Stroke = if props.selected then Widgets.Stroke(Theme.Accent, 1.5, 0) else nil,
+		Base = e("Frame", {
+			Size = UDim2.new(1, 0, 1, -BUTTON_LIFT),
+			Position = UDim2.fromOffset(0, BUTTON_LIFT),
+			BackgroundColor3 = Theme.Outline,
+			BorderSizePixel = 0,
+			Visible = not disabled,
+		}, { Corner = Widgets.Corner(BUTTON_RADIUS) }),
+		Face = e("Frame", {
+			ref = faceRef,
+			Size = UDim2.new(1, -BUTTON_EDGE * 2, 1, -BUTTON_LIFT - BUTTON_EDGE * 2),
+			Position = UDim2.fromOffset(BUTTON_EDGE, BUTTON_EDGE + first.current),
+			BackgroundColor3 = if disabled then Theme.Disabled else bg,
+			BorderSizePixel = 0,
+			ZIndex = 2,
+		}, {
+			Corner = Widgets.Corner(BUTTON_RADIUS - BUTTON_EDGE),
+			Stroke = Widgets.Stroke(
+				if selected then Theme.Accent else Theme.Outline,
+				BUTTON_EDGE,
+				if disabled then 0.55 else 0
+			),
+			Icon = if icon ~= nil
+				then e(Widgets.Icon, {
+					image = icon,
+					size = iconSize,
+					position = UDim2.new(0, 6, 0.5, 0),
+					anchor = Vector2.new(0, 0.5),
+					transparency = if disabled then 0.5 else 0,
+				})
+				else nil,
+			Label = e("TextLabel", {
+				Size = UDim2.new(1, -(left + 6), 1, 0),
+				Position = UDim2.fromOffset(left, 0),
+				BackgroundTransparency = 1,
+				Text = props.text,
+				TextColor3 = if disabled
+					then Theme.Subtext
+					else props.textColor or (if bg == Theme.Danger then Theme.OnDark else Theme.Text),
+				TextTransparency = if disabled then 0.35 else 0,
+				FontFace = Theme.FontBold,
+				TextSize = props.textSize or 17,
+				TextTruncate = Enum.TextTruncate.AtEnd,
+				TextXAlignment = if icon ~= nil then Enum.TextXAlignment.Left else Enum.TextXAlignment.Center,
+			}),
+		}),
 	})
 end
 
@@ -413,6 +482,24 @@ export type WindowProps = {
 	children: any,
 }
 
+local WINDOW_RIM = 10
+local WINDOW_INSET = 10
+local WINDOW_HEADER = 42
+
+-- Parchment sheet inside a wood window frame; content sits on top of it as a sibling.
+function Widgets.Sheet(size: UDim2, position: UDim2): React.ReactNode
+	return e("Frame", {
+		Size = size,
+		Position = position,
+		BackgroundColor3 = Theme.Panel,
+		BorderSizePixel = 0,
+		ZIndex = 0,
+	}, {
+		Corner = Widgets.Corner(8),
+		Stroke = Widgets.Stroke(Theme.Outline, 2),
+	})
+end
+
 -- Page / modal shell: dimmed backdrop that eats clicks, centred window with title + close button + content area.
 function Widgets.Window(props: WindowProps): React.ReactNode
 	Widgets.useEscape(props.onClose)
@@ -437,20 +524,22 @@ function Widgets.Window(props: WindowProps): React.ReactNode
 			Size = props.size or UDim2.fromScale(0.8, 0.8),
 			Position = UDim2.fromScale(0.5, 0.5),
 			AnchorPoint = Vector2.new(0.5, 0.5),
-			BackgroundColor3 = Theme.Panel,
+			BackgroundColor3 = Theme.Wood,
 			BorderSizePixel = 0,
 			AutoButtonColor = false,
 			Text = "",
 		}, {
 			Max = e("UISizeConstraint", { MaxSize = props.maxSize or Vector2.new(1100, 720) }),
-			Corner = Widgets.Corner(12),
-			Stroke = Widgets.Stroke(),
-			Padding = Widgets.Padding(16),
+			Corner = Widgets.Corner(14),
+			Stroke = Widgets.Stroke(Theme.Outline, 3),
+			Padding = Widgets.Padding(WINDOW_RIM),
 			Title = e(Widgets.Label, {
 				text = props.title,
 				bold = true,
 				textSize = 24,
-				size = UDim2.new(1, -110, 0, 32),
+				color = Theme.OnDark,
+				position = UDim2.fromOffset(6, 0),
+				size = UDim2.new(1, -116, 0, 32),
 			}),
 			Close = if onClose ~= nil
 				then e(Widgets.Button, {
@@ -461,10 +550,12 @@ function Widgets.Window(props: WindowProps): React.ReactNode
 					onClick = onClose,
 				})
 				else nil,
+			Sheet = Widgets.Sheet(UDim2.new(1, 0, 1, -WINDOW_HEADER), UDim2.fromOffset(0, WINDOW_HEADER)),
 			Content = e("Frame", {
-				Size = UDim2.new(1, 0, 1, -44),
-				Position = UDim2.fromOffset(0, 44),
+				Size = UDim2.new(1, -WINDOW_INSET * 2, 1, -(WINDOW_HEADER + WINDOW_INSET * 2)),
+				Position = UDim2.fromOffset(WINDOW_INSET, WINDOW_HEADER + WINDOW_INSET),
 				BackgroundTransparency = 1,
+				ZIndex = 2,
 			}, props.children),
 		}),
 	})

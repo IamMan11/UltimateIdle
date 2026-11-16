@@ -148,7 +148,7 @@ A package that exports no types gives `TypeError: Unknown type` for any `Pkg.Typ
 
 ### UI theme
 
-Theme: `src/client/UI/Core/Theme.luau` — plain greys (`Bg`, `Panel`, `PanelAlt`, `Hover`, `Stroke`, `Text`, `Subtext`, `Accent`, `Confirm`, `OnLight`, `Danger`, `Backdrop`, `Bar`), fonts `Font`/`FontBold` (BuilderSans), z layers `ZHud` 1 · `ZPage` 3 · `ZModal` 6 · `ZToast` 10 · `ZDev` 20.
+Theme: `src/client/UI/Core/Theme.luau` — wood frame + parchment panels + dark outline (`Wood`, `Outline`, `OnDark` = text on wood/dark · `Panel` sheet, `PanelAlt` card, `Bg` well, `Hover` selected · `Stroke`, `Text`, `Subtext`, `Accent` · button faces `Button`, `Confirm`, `Danger`, `Disabled` · `OnLight`, `Backdrop`, `Bar`, `BarBack`), fonts `Font`/`FontBold` (BuilderSans), z layers `ZHud` 1 · `ZPage` 3 · `ZModal` 6 · `ZToast` 10 · `ZDev` 20.
 Widgets: `src/client/UI/Core/Widgets.luau` (`Label`, `Button`, `Bar`, `TextInput`, `Stepper`, `Window` = page/modal shell with backdrop + Esc, `useStore`, `useOptional`) · `VirtualList.luau` for long lists · `Confirm.luau` for yes/no.
 Rule: every color comes from Theme; never hard-code a Color3 in a UI file. Pages read `State.Data`, send intent through `State.Send.*`.
 

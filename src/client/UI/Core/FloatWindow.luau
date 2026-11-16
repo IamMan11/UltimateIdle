@@ -15,6 +15,9 @@ local e = React.createElement
 
 local PAD = 14
 local HEADER = 40
+-- Parchment sheet behind the content: gap to the wood edge, and how far it reaches past the content.
+local SHEET_RIM = 6
+local SHEET_INSET = 8
 -- Grab zones: edges resize one side, corners two.
 local EDGE = 8
 local CORNER = 14
@@ -267,8 +270,12 @@ local function FloatWindow(props: Props): React.ReactNode
 	end, { dragging })
 
 	local children: { [string]: React.ReactNode } = {
-		Corner = Widgets.Corner(12),
-		Stroke = Widgets.Stroke(),
+		Corner = Widgets.Corner(14),
+		Stroke = Widgets.Stroke(Theme.Outline, 3),
+		Sheet = Widgets.Sheet(
+			UDim2.new(1, -SHEET_RIM * 2, 1, -(PAD + HEADER - SHEET_INSET + SHEET_RIM)),
+			UDim2.fromOffset(SHEET_RIM, PAD + HEADER - SHEET_INSET)
+		),
 		TitleBar = e("TextButton", {
 			Size = UDim2.new(1, 0, 0, PAD + HEADER),
 			BackgroundTransparency = 1,
@@ -282,6 +289,7 @@ local function FloatWindow(props: Props): React.ReactNode
 				text = props.title,
 				bold = true,
 				textSize = 22,
+				color = Theme.OnDark,
 				position = UDim2.fromOffset(PAD, PAD),
 				size = UDim2.new(1, -(PAD * 2 + 250), 0, 30),
 			}),
@@ -315,6 +323,7 @@ local function FloatWindow(props: Props): React.ReactNode
 			Position = UDim2.fromOffset(PAD, PAD + HEADER),
 			BackgroundTransparency = 1,
 			ClipsDescendants = true,
+			ZIndex = 2,
 		}, props.children),
 		Grip = e(Widgets.Label, {
 			text = "///",
@@ -347,7 +356,7 @@ local function FloatWindow(props: Props): React.ReactNode
 		Size = UDim2.fromScale(rect.Size.X, rect.Size.Y),
 		Position = UDim2.fromScale(rect.Center.X, rect.Center.Y),
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		BackgroundColor3 = Theme.Panel,
+		BackgroundColor3 = Theme.Wood,
 		BorderSizePixel = 0,
 		AutoButtonColor = false,
 		Text = "",
