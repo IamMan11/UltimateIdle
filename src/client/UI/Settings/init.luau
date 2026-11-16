@@ -1,5 +1,5 @@
 --!strict
--- Settings page: auto-salvage per tier, skip-wave toggle, box auto-open (once unlocked in the skill tree), UI size, low detail, replay tutorial, redeem code.
+-- Settings page: auto-salvage per tier, skip-wave toggle, box auto-open (once unlocked in the skill tree), UI size, low detail, replay tutorial.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -19,7 +19,6 @@ export type Props = { data: Types.ProfileData }
 
 local function Settings(props: Props): React.ReactNode
 	local settings = props.data.Settings
-	local code, setCode = React.useState("")
 	local rows: { [string]: React.ReactNode } = {
 		Layout = Widgets.List(Enum.FillDirection.Vertical, 8),
 		Head = e(Widgets.Label, { text = Text.UI.AutoSalvage, bold = true, layoutOrder = 0 }),
@@ -96,24 +95,6 @@ local function Settings(props: Props): React.ReactNode
 			State.Send.TutorialRestart()
 			State.SetPage(nil)
 		end,
-	})
-	rows.Codes = e("Frame", { Size = UDim2.fromOffset(420, 38), BackgroundTransparency = 1, LayoutOrder = 50 }, {
-		Input = e(Widgets.TextInput, {
-			text = code,
-			placeholder = Text.UI.CodePlaceholder,
-			size = UDim2.fromOffset(260, 38),
-			onChanged = setCode,
-		}),
-		Redeem = e(Widgets.Button, {
-			text = Text.UI.Redeem,
-			size = UDim2.fromOffset(140, 38),
-			position = UDim2.fromOffset(270, 0),
-			disabled = #code == 0 or #code > 32,
-			onClick = function()
-				State.Send.RedeemCode(code)
-				setCode("")
-			end,
-		}),
 	})
 	return e(Widgets.Window, {
 		title = Text.UI.Settings,

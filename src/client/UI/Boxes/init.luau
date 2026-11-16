@@ -1,5 +1,5 @@
 --!strict
--- Boxes page: one row per stack (kind · rebirth · level band) with open N / open all; convert a normal or boss stack into class boxes.
+-- Boxes page (opened from a box in the Inventory window, "More"): one row per stack (kind · rebirth · level band) with open N / open all; convert a normal or boss stack into class boxes.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -96,8 +96,7 @@ local function BoxesPage(props: Props): React.ReactNode
 	})
 
 	return e(Widgets.Window, {
-		title = UI.Inventory,
-		group = "Inventory",
+		title = UI.Boxes,
 		onClose = function()
 			State.SetPage(nil)
 		end,

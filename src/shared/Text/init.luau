@@ -25,7 +25,7 @@ local SLOT = {
 }
 local MATERIAL: { [string]: string } = {
 	EnhanceStone = "Enhance Stone",
-	EnchantDust = "Enchant Dust",
+	EnchantDust = "Gem Power Stone",
 	SocketCore = "Socket Core",
 	AncientShard = "Ancient Shard",
 	GemAtk = "Fury Gem",
@@ -119,6 +119,21 @@ local EFFECT_PCT: { [string]: string } = {
 	DropPct = "drop chance",
 	OfflineShare = "offline earnings (of online rate)",
 	BoxCapPct = "box stack size",
+	StackPct = "material stack size",
+}
+-- Short mark drawn on a skill tree node (stands in for an icon), by the node's first effect.
+local EFFECT_MARK: { [string]: string } = {
+	AtkPct = "ATK",
+	HpPct = "HP",
+	DefPct = "DEF",
+	GoldPct = "GOLD",
+	XpPct = "XP",
+	OfflineShare = "AFK",
+	BoxCapPct = "BOX",
+	StackPct = "STK",
+	TeamSlots = "+1",
+	AutoOpen = "AUTO",
+	AutoOpenSpeed = "FAST",
 }
 
 local function pct(v: number): string
@@ -202,6 +217,11 @@ function Text.SocketKind(id: string): string
 	return (SOCKET_KIND :: { [string]: string })[id] or id
 end
 
+-- Trait name alone ("Attack speed"), for the power index.
+function Text.TraitName(id: string): string
+	return TRAIT[id] or id
+end
+
 -- "Attack +10%" / "Move speed +2".
 function Text.Trait(enchant: Types.Enchant): string
 	local name = TRAIT[enchant.Id] or enchant.Id
@@ -262,6 +282,10 @@ function Text.Effect(effect: SkillTree.Effect): string
 		return `Auto-open {math.floor(1 / v * 10 + 0.5) / 10}x faster`
 	end
 	return `{pct(v)} {EFFECT_PCT[kind] or kind}`
+end
+
+function Text.EffectMark(kind: string): string
+	return EFFECT_MARK[kind] or "?"
 end
 
 -- Skill description from its scaled numbers (`r` = Formula.Skills.Resolve result).
@@ -395,7 +419,39 @@ Text.UI = table.freeze({
 	Reset = "Reset",
 	Remove = "Remove",
 	Bench = "Not in team",
-	TeamHint = "Drag a hero onto a row, or select one and click a row. Changes apply from the next level.",
+	TeamHint = "Pick a hero, then click a row. Drag to move. Applies from the next level.",
+	NotOwned = "Not owned",
+	LeaveIdle = "Leave idle",
+	BackToIdle = "Back to idle",
+	Stage = "Stage",
+	SearchLevel = "Search level",
+	GoLatest = "Go to latest level",
+	LevelsFarm = "Levels are picked in Progress mode.",
+	BattlePass = "Battle pass",
+	Gamepass = "Gamepass",
+	Code = "Code",
+	SkipShort = "Skip wave",
+	Filter = "Filter",
+	Next = "Next",
+	Roll = "Roll",
+	Index = "Index",
+	Create = "Create",
+	Use = "Use",
+	Keep = "Keep",
+	Result = "Result",
+	GoldCost = "Gold cost",
+	More = "More",
+	All = "All",
+	Materials = "Materials",
+	PickKeep = "Pick the item to keep.",
+	PickUse = "Now pick a duplicate to use up (same item, tier and socket count).",
+	PowerIndex = "Powers a roll can give",
+	TreeStart = "Start",
+	Max = "MAX",
+	InTeam = "In team",
+	Skill = "Skill",
+	Back = "Back",
+	ResetWindow = "Reset window",
 	Advance = "Advance",
 	AdvanceMax = "Fully advanced",
 	Locked = "Locked",
@@ -409,7 +465,7 @@ Text.UI = table.freeze({
 	Rebirth = "Rebirth",
 	Enhance = "Enhance",
 	Sockets = "Sockets",
-	Enchant = "Enchant",
+	Enchant = "Power",
 	PickItem = "Pick an item on the left",
 	EnhanceNote = "Failure keeps the current plus. Gold and materials are used either way.",
 	EnhanceMax = "Fully enhanced",
@@ -418,8 +474,8 @@ Text.UI = table.freeze({
 	NoDuplicates = "No duplicate to merge",
 	SocketsMax = "All sockets open",
 	NoInserts = "None in bag",
-	EnchantNote = "Rerolls every trait line. Current traits are replaced.",
-	NoTraits = "No traits",
+	EnchantNote = "Rolls every power line again. Current powers are replaced.",
+	NoTraits = "No powers yet",
 	Before = "Before",
 	After = "After",
 	PlayRebirth = "Rebirth to play",
@@ -431,10 +487,10 @@ Text.UI = table.freeze({
 -- Tutorial line per Config.Tutorial step id.
 Text.Tutorial = table.freeze({
 	ClearLevel = "Your heroes fight by themselves. Watch them clear a level.",
-	Equip = "Open Heroes and equip an item your team found.",
-	OpenBox = "Open a box on the Boxes page.",
-	BuyNode = "Buy a node in the Skill Tree.",
-	Enhance = "Enhance an item in the Forge.",
+	Equip = "Open Team and equip an item your team found.",
+	OpenBox = "Open a box in the Inventory.",
+	BuyNode = "Open Team, then Skill Tree, and buy a node.",
+	Enhance = "Enhance an item in the Inventory.",
 } :: { [string]: string })
 
 Text.Error = table.freeze({

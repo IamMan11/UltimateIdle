@@ -65,6 +65,8 @@ export type StageProgress = {
 	MaxLevel: number,
 	FarmLevel: number,
 	LastFarmRound: number, -- levels cleared in the last finished Farm round (paid again if you leave Farm mid-round)
+	-- Level the player chose to stay on in Progress mode (1..MaxLevel): replayed win or lose, Level does not move. nil = advance normally.
+	Pin: number?,
 }
 
 -- Rebirth = the rebirth being played (<= RebirthState.Count); ByRebirth key = tostring(rebirth).
@@ -137,6 +139,8 @@ export type Settings = {
 	SkipWave: boolean,
 	UiScale: number, -- one of Config.Game.UiScales (1 = auto size)
 	LowDetail: boolean, -- fewer monsters drawn, no skill names over heads
+	-- Floating window id (Config.Game.Windows) -> { centre x, centre y, width, height } as screen fractions; width = height = 0 means default size.
+	Windows: { [string]: { number } },
 }
 
 export type TutorialState = {

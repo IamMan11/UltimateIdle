@@ -11,14 +11,6 @@ local UI = Text.UI
 export type Tab = { Id: string, Label: string }
 
 local GROUPS: { [string]: { Title: string, Tabs: { Tab } } } = {
-	Team = {
-		Title = UI.Team,
-		Tabs = {
-			{ Id = "Heroes", Label = UI.Heroes },
-			{ Id = "Team", Label = UI.Team },
-			{ Id = "Tree", Label = UI.Tree },
-		},
-	},
 	Inventory = {
 		Title = UI.Inventory,
 		Tabs = {

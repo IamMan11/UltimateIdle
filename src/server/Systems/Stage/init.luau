@@ -34,6 +34,7 @@ type Run = {
 	Level: number,
 	Mode: Types.StageMode,
 	Rebirth: number,
+	Pinned: boolean, -- played because the player pinned this level: progress does not move
 	HeroIds: { string }, -- the heroes that fought; they share this level's xp
 	Result: Types.SimResult,
 	Payload: Types.TimelinePayload?,
@@ -153,14 +154,17 @@ local function finishLevel(player: Player, token: number)
 			Box.Grant(player, boxId, n)
 		end
 		summary = Loot.Grant(player, bundle)
-		if result.Won then
-			progress.Level = run.Level + 1
-			if progress.Level > progress.MaxLevel then
-				progress.MaxLevel = progress.Level
-				Analytics.Progress(player, run.Rebirth, run.Level)
+		-- A pinned level is replayed as it is: no advance on a win, no retreat on a loss.
+		if not run.Pinned then
+			if result.Won then
+				progress.Level = run.Level + 1
+				if progress.Level > progress.MaxLevel then
+					progress.MaxLevel = progress.Level
+					Analytics.Progress(player, run.Rebirth, run.Level)
+				end
+			else
+				progress.Level = math.max(1, run.Level - Stages.RetreatOnLose)
 			end
-		else
-			progress.Level = math.max(1, run.Level - Stages.RetreatOnLose)
 		end
 	else
 		local cap = Rebirth.Get(run.Rebirth).FarmRoundCap
@@ -204,7 +208,8 @@ startLevel = function(player: Player)
 	end
 	local progress = Stage.Progress(data)
 	local mode: Types.StageMode = data.Stage.Mode
-	local level = if mode == "Farm" then progress.FarmLevel else progress.Level
+	local pinned = mode == "Progress" and progress.Pin ~= nil
+	local level = if mode == "Farm" then progress.FarmLevel else (progress.Pin or progress.Level)
 	local rebirth = data.Stage.Rebirth
 	-- Skip wave only on levels this rebirth has already cleared (MaxLevel = highest level reached).
 	local skip = data.Settings.SkipWave and level < progress.MaxLevel
@@ -221,6 +226,7 @@ startLevel = function(player: Player)
 		Level = level,
 		Mode = mode,
 		Rebirth = rebirth,
+		Pinned = pinned,
 		HeroIds = heroIds,
 		Result = result,
 		Payload = nil,
@@ -289,6 +295,27 @@ local function setMode(player: Player, mode: string)
 	Stage.Restart(player)
 end
 
+-- Pins the played rebirth's Progress level (1..MaxLevel) or, with 0, goes back to advancing from the saved level. Restarts the level in progress.
+local function setLevel(player: Player, level: number)
+	if not RateLimit.Allow(player, "SetStageLevel") then
+		return
+	end
+	local data = PlayerData.Data(player)
+	if data == nil then
+		return
+	end
+	local progress = Stage.Progress(data)
+	local pin: number? = if level == 0 then nil else level
+	if progress.Pin == pin or (pin ~= nil and (pin < 1 or pin > progress.MaxLevel)) then
+		return
+	end
+	progress.Pin = pin
+	syncStage(player, data)
+	if data.Stage.Mode == "Progress" then
+		Stage.Restart(player)
+	end
+end
+
 -- Rebirth being played (<= rebirths owned; checked by the caller). Applies from the next level.
 function Stage.SetPlayRebirth(player: Player, rebirth: number)
 	local data = PlayerData.Data(player)
@@ -316,6 +343,7 @@ end
 
 function Stage.Start()
 	Net.SetStageMode:Server():On(setMode)
+	Net.SetStageLevel:Server():On(setLevel)
 	Replication.OnSynced(function(player)
 		local run = runs[player]
 		if run ~= nil and run.Payload ~= nil then

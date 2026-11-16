@@ -1,5 +1,5 @@
 --!strict
--- Game formulas (pure, shared): scaling curves, xp, damage/wave timing, final stats, skills, account modifiers, team bonuses, gear extras, forge costs, economy gold units.
+-- Game formulas (pure, shared): scaling curves, xp, damage/wave timing, final stats, skills, account modifiers, team bonuses, gear extras, forge costs, bag slots, economy gold units.
 
 local Stats = require(script.Stats)
 local Mods = require(script.Mods)
@@ -22,5 +22,6 @@ return table.freeze({
 	Team = Team,
 	Gear = Gear,
 	Forge = require(script.Forge),
+	Bag = require(script.Bag),
 	Economy = require(script.Economy),
 })

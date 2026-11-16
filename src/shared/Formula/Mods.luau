@@ -15,6 +15,7 @@ export type Mods = {
 	DropPct: number, -- gear / box / material drop chances
 	OfflineShare: number, -- added to Game.OfflineShare
 	BoxCapPct: number,
+	StackPct: number, -- material units per bag slot (Formula.Bag.MaxStack)
 	TeamSlots: number, -- total slots, base included
 	AutoOpen: boolean,
 	AutoOpenInterval: number, -- seconds; only meaningful when AutoOpen
@@ -39,6 +40,7 @@ function Mods.Build(
 		DropPct = 0,
 		OfflineShare = 0,
 		BoxCapPct = 0,
+		StackPct = 0,
 		TeamSlots = Game.BaseTeamSlots,
 		AutoOpen = false,
 		AutoOpenInterval = 0,

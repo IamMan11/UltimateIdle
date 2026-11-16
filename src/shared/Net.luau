@@ -85,6 +85,13 @@ local function tradeOffer(value: unknown): Types.TradeOffer
 	}
 end
 
+-- A screen fraction (window centre / size).
+local function unit(value: unknown): number
+	local n = num(value)
+	assert(n >= 0 and n <= 1, "bad argument")
+	return n
+end
+
 local function scalar(value: unknown): boolean | number | string
 	assert(type(value) == "boolean" or type(value) == "number" or type(value) == "string", "bad argument")
 	return value :: any
@@ -122,8 +129,15 @@ local Net = {
 	SetStageMode = Red.Event("SetStageMode", function(mode: unknown)
 		return str(mode, 16)
 	end),
+	-- 0 = back to the latest level (no pinned level).
+	SetStageLevel = Red.Event("SetStageLevel", function(level: unknown)
+		return int(level, 0, 1e6)
+	end),
 	SetSetting = Red.Event("SetSetting", function(key: unknown, sub: unknown, value: unknown)
 		return str(key, 32), if sub == nil then nil else str(sub, 32), scalar(value)
+	end),
+	SetWindow = Red.Event("SetWindow", function(id: unknown, x: unknown, y: unknown, w: unknown, h: unknown)
+		return str(id, 16), unit(x), unit(y), unit(w), unit(h)
 	end),
 	Equip = Red.Event("Equip", function(heroId: unknown, uid: unknown, slot: unknown)
 		return str(heroId, 16), str(uid, 16), str(slot, 16)

@@ -1,5 +1,5 @@
 --!strict
--- Always-on HUD: level/wave, tutorial banner, currencies, page buttons, skip-wave / camera / watch-lane / mode toggles.
+-- Always-on HUD: top row (leave idle · level / wave / stage · mode), profile card (avatar, account level + xp, rebirths, currencies), level panel, page buttons on the left and along the bottom, skip-wave / 2D-3D / settings at the bottom right, tutorial banner.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -8,6 +8,7 @@ local RunService = game:GetService("RunService")
 local React = require(ReplicatedStorage.Packages.React)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Format = require(ReplicatedStorage.Shared.Format)
+local Formula = require(ReplicatedStorage.Shared.Formula)
 local Text = require(ReplicatedStorage.Shared.Text)
 local AccountConfig = require(ReplicatedStorage.Shared.Config.Account)
 local Stages = require(ReplicatedStorage.Shared.Config.Stages)
@@ -17,11 +18,23 @@ local Icons = require(ReplicatedStorage.Shared.Config.Icons)
 local Theme = require(script.Parent.Theme)
 local Widgets = require(script.Parent.Widgets)
 local Device = require(script.Parent.Device)
-local Groups = require(script.Parent.Groups)
+local LevelPanel = require(script.Parent.LevelPanel)
 local State = require(script.Parent.Parent.Parent.State)
 
 local e = React.createElement
 local UI = Text.UI
+
+local MARGIN = 12
+local BUTTON_H = 40
+local GAP = 6
+local TOP_Y = 8
+local LEAVE_W, INFO_W, MODE_W = 130, 370, 170
+local PROFILE = Vector2.new(300, 100)
+local AVATAR = 52
+local SIDE_W = 140
+local BOTTOM_W = 116
+-- Roblox's touch thumbstick/jump button sit at the bottom corners while walking.
+local TOUCH_CONTROLS_HEIGHT = 150
 
 local function pill(children: { [string]: React.ReactNode }, props: { [string]: any }): React.ReactNode
 	local frameProps: { [string]: any } = {
@@ -55,61 +68,82 @@ local function tradeLabel(_data: Types.ProfileData): string
 	return if n > 0 then `{Text.Eco.UI.Trade} ({n})` else Text.Eco.UI.Trade
 end
 
--- Other players with a lane, in lane order.
-local function otherLanes(): { Player }
-	local list: { Player } = {}
-	for _, p in Players:GetPlayers() do
-		if p ~= Players.LocalPlayer and type(p:GetAttribute("Lane")) == "number" then
-			table.insert(list, p)
-		end
-	end
-	table.sort(list, function(a, b)
-		return (a:GetAttribute("Lane") :: number) < (b:GetAttribute("Lane") :: number)
-	end)
-	return list
-end
-
--- Own lane -> each other lane in order -> own lane.
-local function nextWatch()
-	local list = otherLanes()
-	local current = State.Ui.Watch
-	local index = 0
-	for i, p in list do
-		if p.UserId == current then
-			index = i
-		end
-	end
-	State.SetWatch(if index < #list then list[index + 1].UserId else nil)
-	State.SetCamera("Lane", State.Ui.View)
-end
-
-local function watchLabel(): string
-	local watching = if State.Ui.Watch ~= nil then Players:GetPlayerByUserId(State.Ui.Watch) else nil
-	if watching ~= nil then
-		return `Watch: {watching.DisplayName}`
-	end
-	return if #otherLanes() > 0 then UI.WatchOwn else UI.WatchNone
-end
-
 export type Props = {
 	data: Types.ProfileData,
-	compact: boolean?, -- short screen: page buttons in a 2-column grid at the top-left
+	compact: boolean?, -- short screen: the level panel starts folded
 }
 
--- Roblox's touch thumbstick/jump button sit at the bottom corners while walking.
-local TOUCH_CONTROLS_HEIGHT = 150
-local PAGE_BUTTON_WIDTH = 140
+-- One HUD button: `id` = page id (and icon key), `tab` = page tab it opens (nil = the page's first).
+type PageButton = { Id: string, Label: string, Tab: string?, Key: string }
 
--- Currency row: icon + "Name  amount".
-local function money(icon: string, text: string, bold: boolean, order: number): React.ReactNode
-	return e("Frame", { Size = UDim2.new(1, 0, 0, 22), BackgroundTransparency = 1, LayoutOrder = order }, {
+-- Currency: icon + amount.
+local function money(icon: string, text: string, position: UDim2): React.ReactNode
+	return e("Frame", { Size = UDim2.new(0.5, -4, 0, 22), Position = position, BackgroundTransparency = 1 }, {
 		Icon = e(Widgets.Icon, { image = icon, size = 22 }),
 		Label = e(Widgets.Label, {
 			text = text,
-			bold = bold,
+			bold = true,
+			textSize = 16,
 			size = UDim2.new(1, -28, 1, 0),
 			position = UDim2.fromOffset(28, 0),
 		}),
+	})
+end
+
+local function profile(data: Types.ProfileData): React.ReactNode
+	local player = Players.LocalPlayer
+	local need = Formula.Progression.AccountXpToNext(data.AccountLevel)
+	local ratio = math.clamp(data.AccountXp / math.max(need, 1), 0, 1)
+	local right = AVATAR + 10
+	return pill({
+		Avatar = e("ImageLabel", {
+			Size = UDim2.fromOffset(AVATAR, AVATAR),
+			BackgroundColor3 = Theme.Bg,
+			BorderSizePixel = 0,
+			Image = `rbxthumb://type=AvatarHeadShot&id={player.UserId}&w=150&h=150`,
+		}, { Corner = e("UICorner", { CornerRadius = UDim.new(0.5, 0) }) }),
+		Name = e(Widgets.Label, {
+			text = player.DisplayName,
+			bold = true,
+			position = UDim2.fromOffset(right, 0),
+			size = UDim2.new(1, -right, 0, 22),
+		}),
+		Xp = e("Frame", {
+			Size = UDim2.fromOffset(84, 18),
+			Position = UDim2.fromOffset(right, 28),
+			BackgroundColor3 = Theme.BarBack,
+			BorderSizePixel = 0,
+		}, {
+			Corner = Widgets.Corner(9),
+			Fill = e("Frame", {
+				Size = UDim2.fromScale(ratio, 1),
+				BackgroundColor3 = Theme.Bar,
+				BorderSizePixel = 0,
+			}, { Corner = Widgets.Corner(9) }),
+			-- Over both the light fill and the dark back: outlined so it reads on either.
+			Percent = e("TextLabel", {
+				Size = UDim2.fromScale(1, 1),
+				BackgroundTransparency = 1,
+				Text = `{math.floor(ratio * 100)}%`,
+				TextColor3 = Theme.Text,
+				FontFace = Theme.FontBold,
+				TextSize = 13,
+				ZIndex = 2,
+			}, { Outline = e("UIStroke", { Color = Theme.OnLight, Thickness = 1.5 }) }),
+		}),
+		Level = e(Widgets.Label, {
+			text = `{UI.Level} {data.AccountLevel}   {UI.Rebirth} {data.Rebirth.Count}`,
+			textSize = 15,
+			color = Theme.Subtext,
+			position = UDim2.fromOffset(right + 92, 26),
+			size = UDim2.new(1, -(right + 92), 0, 22),
+		}),
+		Gold = money(Icons.Gold, Format.Number(data.Gold), UDim2.new(0, 0, 1, -22)),
+		Ruby = money(Icons.Ruby, Format.Number(data.Ruby), UDim2.new(0.5, 4, 1, -22)),
+	}, {
+		Size = UDim2.fromOffset(PROFILE.X, PROFILE.Y),
+		Position = UDim2.new(1, -MARGIN, 0, TOP_Y),
+		AnchorPoint = Vector2.new(1, 0),
 	})
 end
 
@@ -117,74 +151,108 @@ local function HUD(props: Props): React.ReactNode
 	local data = props.data
 	local battle = State.Battle
 	local ui = State.Ui
+	local levelsOpen, setLevelsOpen = React.useState(props.compact ~= true)
 	local farmUnlocked = AccountConfig.IsUnlocked("Farm", data.AccountLevel, bestLevel(data))
-
-	local pages = {
-		{ "Team", UI.Team },
-		{ "Inventory", UI.Inventory },
-		{ "Rebirth", UI.Rebirth },
-		{ "Quests", Text.Eco.UI.Quests },
-		{ "Shop", Text.Eco.UI.Shop },
-		{ "Trade", tradeLabel(data) },
-		{ "Daily", if data.Daily.Day ~= Period.Key("Daily") then `{UI.Daily} •` else UI.Daily },
-		{ "Settings", UI.Settings },
-	}
 	local tutorialStep = if data.Tutorial.Done then nil else TutorialConfig.Steps[data.Tutorial.Step]
-	if RunService:IsStudio() then
-		table.insert(pages, { "Dev", UI.Dev })
-	end
-	local compact = props.compact == true
-	local pageButtons: { [string]: React.ReactNode } = {
-		Layout = if compact
-			then e("UIGridLayout", {
-				CellSize = UDim2.fromOffset(PAGE_BUTTON_WIDTH, 40),
-				CellPadding = UDim2.fromOffset(6, 6),
-				SortOrder = Enum.SortOrder.LayoutOrder,
-			})
-			else Widgets.List(Enum.FillDirection.Vertical, 6),
+	local mode = data.Stage.Mode
+	local walking = ui.CameraMode == "Walk"
+	local lift = if Device.IsTouch() and walking then TOUCH_CONTROLS_HEIGHT else 0
+
+	local side: { PageButton } = {
+		{ Id = "Team", Label = UI.Team, Key = "Team" },
+		{ Id = "Inventory", Label = UI.Inventory, Key = "Inventory" },
+		{ Id = "Rebirth", Label = UI.Rebirth, Key = "Rebirth" },
+		{ Id = "Quests", Label = Text.Eco.UI.Quests, Key = "Quests" },
 	}
-	-- "Team" and "Inventory" are page groups (several pages behind one button); the rest are single pages.
-	local openGroup = Groups.Of(ui.Page)
-	local hintGroup = if tutorialStep ~= nil then Groups.Of(tutorialStep.Page) else nil
-	local grouped = { Team = true, Inventory = true }
-	for i, page in pages do
-		local id = page[1]
-		local isGroup = grouped[id] == true
-		pageButtons[id] = e(Widgets.Button, {
-			text = page[2],
-			icon = Icons[id],
-			size = UDim2.fromOffset(PAGE_BUTTON_WIDTH, 40),
-			layoutOrder = i,
-			selected = if isGroup
-				then openGroup == id or hintGroup == id
-				else ui.Page == id or (tutorialStep ~= nil and tutorialStep.Page == id),
+	if RunService:IsStudio() then
+		table.insert(side, { Id = "Dev", Label = UI.Dev, Key = "Dev" })
+	end
+	local bottom: { PageButton } = {
+		{ Id = "Trade", Label = tradeLabel(data), Key = "Trade" },
+		{
+			Id = "Daily",
+			Label = if data.Daily.Day ~= Period.Key("Daily") then `{UI.Daily} •` else UI.Daily,
+			Key = "Daily",
+		},
+		{ Id = "Quests", Label = UI.BattlePass, Tab = "Pass", Key = "BattlePass" },
+		{ Id = "Shop", Label = UI.Gamepass, Tab = "Passes", Key = "Gamepass" },
+		{ Id = "Codes", Label = UI.Code, Key = "Codes" },
+	}
+
+	local function pageButton(button: PageButton, size: UDim2, order: number): React.ReactNode
+		-- A button with a tab is lit only on that tab; the page's plain button on its other tabs.
+		local open = ui.Page == button.Id
+			and (if button.Tab ~= nil then ui.PageTab == button.Tab else ui.PageTab ~= "Pass")
+		local hinted = tutorialStep ~= nil and tutorialStep.Page == button.Id and button.Tab == nil
+		return e(Widgets.Button, {
+			text = button.Label,
+			icon = if button.Tab == nil then Icons[button.Id] else nil,
+			size = size,
+			textSize = 15,
+			layoutOrder = order,
+			selected = open or hinted,
 			onClick = function()
-				if isGroup then
-					Groups.Toggle(id)
-				else
-					State.SetPage(id)
-				end
+				State.OpenPage(button.Id, button.Tab)
 			end,
 		})
 	end
 
-	local mode = data.Stage.Mode
-	local touchWalk = Device.IsTouch() and ui.CameraMode == "Walk"
+	local sideButtons: { [string]: React.ReactNode } = { Layout = Widgets.List(Enum.FillDirection.Vertical, GAP) }
+	for i, button in side do
+		sideButtons[button.Key] = pageButton(button, UDim2.fromOffset(SIDE_W, BUTTON_H), i)
+	end
+	local bottomButtons: { [string]: React.ReactNode } = { Layout = Widgets.List(Enum.FillDirection.Horizontal, GAP) }
+	for i, button in bottom do
+		bottomButtons[button.Key] = pageButton(button, UDim2.fromOffset(BOTTOM_W, BUTTON_H), i)
+	end
+
+	local topW = LEAVE_W + INFO_W + MODE_W + GAP * 2
 	return e("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = Theme.ZHud }, {
-		Top = pill({
-			Label = e(Widgets.Label, {
-				text = `{UI.Level} {battle.Level}   ·   {UI.Wave} {battle.Wave}/{Stages.WavesPerLevel}   ·   {if mode
-						== "Farm"
-					then "Farm"
-					else "Progress"}`,
-				size = UDim2.fromScale(1, 1),
-				bold = true,
-				align = Enum.TextXAlignment.Center,
-			}),
-		}, {
-			Size = UDim2.fromOffset(380, 40),
-			Position = UDim2.new(0.5, 0, 0, 8),
+		Top = e("Frame", {
+			Size = UDim2.fromOffset(topW, BUTTON_H),
+			Position = UDim2.new(0.5, 0, 0, TOP_Y),
 			AnchorPoint = Vector2.new(0.5, 0),
+			BackgroundTransparency = 1,
+		}, {
+			-- Walk around the lobby while the team keeps fighting; the same button brings the lane view back.
+			Leave = e(Widgets.Button, {
+				icon = Icons.Camera,
+				iconSize = 24,
+				text = if walking then UI.BackToIdle else UI.LeaveIdle,
+				size = UDim2.fromOffset(LEAVE_W, BUTTON_H),
+				textSize = 15,
+				selected = walking,
+				onClick = function()
+					State.SetCamera(if walking then "Lane" else "Walk", ui.View)
+				end,
+			}),
+			Info = pill({
+				Label = e(Widgets.Label, {
+					text = `{UI.Level} {battle.Level}   ·   {UI.Wave} {battle.Wave}/{Stages.WavesPerLevel}   ·   {UI.Stage} {data.Stage.Rebirth + 1}`,
+					size = UDim2.fromScale(1, 1),
+					bold = true,
+					align = Enum.TextXAlignment.Center,
+				}),
+			}, {
+				Size = UDim2.fromOffset(INFO_W, BUTTON_H),
+				Position = UDim2.fromOffset(LEAVE_W + GAP, 0),
+			}),
+			Mode = e(Widgets.Button, {
+				icon = Icons.Farm,
+				iconSize = 24,
+				text = if not farmUnlocked
+					then UI.FarmLocked
+					elseif mode == "Farm" then UI.ModeFarm
+					else UI.ModeProgress,
+				size = UDim2.fromOffset(MODE_W, BUTTON_H),
+				position = UDim2.fromScale(1, 0),
+				anchor = Vector2.new(1, 0),
+				textSize = if farmUnlocked then 15 else 12,
+				disabled = not farmUnlocked,
+				onClick = function()
+					State.Send.SetStageMode(if mode == "Farm" then "Progress" else "Farm")
+				end,
+			}),
 		}),
 		Tutorial = if tutorialStep ~= nil
 			then pill({
@@ -204,95 +272,80 @@ local function HUD(props: Props): React.ReactNode
 				}),
 			}, {
 				Size = UDim2.fromOffset(460, 52),
-				Position = UDim2.new(0.5, 0, 0, 56),
+				Position = UDim2.new(0.5, 0, 0, TOP_Y + BUTTON_H + 8),
 				AnchorPoint = Vector2.new(0.5, 0),
 			})
 			else nil,
-		Money = pill({
-			Layout = Widgets.List(Enum.FillDirection.Vertical, 2),
-			Gold = money(Icons.Gold, `{UI.Gold}  {Format.Number(data.Gold)}`, true, 1),
-			Ruby = money(Icons.Ruby, `{UI.Ruby}  {Format.Number(data.Ruby)}`, false, 2),
-			Account = e(Widgets.Label, {
-				text = `Account Lv {data.AccountLevel}`,
-				color = Theme.Subtext,
-				textSize = 15,
-				layoutOrder = 3,
-			}),
-		}, {
-			Size = UDim2.fromOffset(210, 90),
-			Position = UDim2.new(1, -12, 0, 60),
-			AnchorPoint = Vector2.new(1, 0),
+		Profile = profile(data),
+		Levels = e(LevelPanel, {
+			data = data,
+			open = levelsOpen,
+			onToggle = function()
+				setLevelsOpen(not levelsOpen)
+			end,
+			top = TOP_Y + PROFILE.Y + 8,
+			bottom = MARGIN + BUTTON_H + 8 + lift,
 		}),
-		Pages = e("Frame", {
-			Size = if compact
-				then UDim2.fromOffset(PAGE_BUTTON_WIDTH * 2 + 6, 46 * math.ceil(#pages / 2))
-				else UDim2.fromOffset(PAGE_BUTTON_WIDTH, 46 * #pages),
-			Position = if compact then UDim2.fromOffset(12, 8) else UDim2.new(0, 12, 0.5, 0),
-			AnchorPoint = if compact then Vector2.zero else Vector2.new(0, 0.5),
+		Side = e("Frame", {
+			Size = UDim2.fromOffset(SIDE_W, (BUTTON_H + GAP) * #side),
+			Position = UDim2.fromOffset(MARGIN, TOP_Y + BUTTON_H + 16),
 			BackgroundTransparency = 1,
-		}, pageButtons),
+		}, sideButtons),
+		Bottom = e("Frame", {
+			Size = UDim2.fromOffset((BOTTOM_W + GAP) * #bottom, BUTTON_H),
+			Position = UDim2.new(0, MARGIN, 1, -MARGIN - lift),
+			AnchorPoint = Vector2.new(0, 1),
+			BackgroundTransparency = 1,
+		}, bottomButtons),
 		Controls = e("Frame", {
-			Size = UDim2.fromOffset(220, 266),
-			Position = UDim2.new(1, -12, 1, if touchWalk then -12 - TOUCH_CONTROLS_HEIGHT else -12),
+			Size = UDim2.fromOffset(400, BUTTON_H),
+			Position = UDim2.new(1, -MARGIN, 1, -MARGIN - lift),
 			AnchorPoint = Vector2.new(1, 1),
 			BackgroundTransparency = 1,
 		}, {
-			Layout = Widgets.List(Enum.FillDirection.Vertical, 6, Enum.HorizontalAlignment.Right),
+			Layout = e("UIListLayout", {
+				FillDirection = Enum.FillDirection.Horizontal,
+				HorizontalAlignment = Enum.HorizontalAlignment.Right,
+				Padding = UDim.new(0, GAP),
+				SortOrder = Enum.SortOrder.LayoutOrder,
+			}),
 			Skip = e(Widgets.Button, {
 				icon = Icons.Skip,
+				iconSize = 24,
 				text = if not data.Settings.SkipWave
 					then UI.SkipOff
 					elseif battle.Skip then UI.SkipOn
 					else UI.SkipWaiting,
-				size = UDim2.fromOffset(220, 40),
-				textSize = if data.Settings.SkipWave and not battle.Skip then 13 else nil,
+				size = UDim2.fromOffset(170, BUTTON_H),
+				textSize = if data.Settings.SkipWave and not battle.Skip then 11 else 14,
 				selected = data.Settings.SkipWave,
 				layoutOrder = 1,
 				onClick = function()
 					State.Send.SetSetting("SkipWave", nil, not data.Settings.SkipWave)
 				end,
 			}),
-			Camera = e(Widgets.Button, {
-				icon = Icons.Camera,
-				text = if ui.CameraMode == "Lane" then UI.CamLane else UI.CamWalk,
-				size = UDim2.fromOffset(220, 40),
-				layoutOrder = 2,
-				onClick = function()
-					State.SetCamera(if ui.CameraMode == "Lane" then "Walk" else "Lane", ui.View)
-				end,
-			}),
 			View = e(Widgets.Button, {
 				icon = Icons.View,
+				iconSize = 24,
 				text = if ui.View == "2D" then UI.Cam2D else UI.Cam3D,
-				size = UDim2.fromOffset(220, 40),
-				layoutOrder = 3,
-				disabled = ui.CameraMode ~= "Lane",
+				size = UDim2.fromOffset(84, BUTTON_H),
+				textSize = 15,
+				layoutOrder = 2,
+				disabled = walking,
 				onClick = function()
 					State.SetCamera(ui.CameraMode, if ui.View == "2D" then "3D" else "2D")
 				end,
 			}),
-			Watch = e(Widgets.Button, {
-				icon = Icons.Watch,
-				text = watchLabel(),
-				size = UDim2.fromOffset(220, 40),
-				layoutOrder = 5,
+			Settings = e(Widgets.Button, {
+				icon = Icons.Settings,
+				iconSize = 24,
+				text = UI.Settings,
+				size = UDim2.fromOffset(124, BUTTON_H),
 				textSize = 15,
-				selected = ui.Watch ~= nil,
-				disabled = ui.Watch == nil and #otherLanes() == 0,
-				onClick = nextWatch,
-			}),
-			Mode = e(Widgets.Button, {
-				icon = Icons.Farm,
-				text = if not farmUnlocked
-					then UI.FarmLocked
-					elseif mode == "Farm" then UI.ModeFarm
-					else UI.ModeProgress,
-				size = UDim2.fromOffset(220, 40),
-				layoutOrder = 4,
-				disabled = not farmUnlocked,
-				textSize = 15,
+				layoutOrder = 3,
+				selected = ui.Page == "Settings",
 				onClick = function()
-					State.Send.SetStageMode(if mode == "Farm" then "Progress" else "Farm")
+					State.SetPage("Settings")
 				end,
 			}),
 		}),

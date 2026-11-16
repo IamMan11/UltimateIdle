@@ -1,5 +1,5 @@
 --!strict
--- Skill tree page: one column per branch, nodes on a grid with lines to their prerequisites, detail panel to buy (confirm) or toggle.
+-- Skill tree window (floating, on its own): small square nodes on a fixed grid, a Start node with one branch running left, right and down, right-angle lines to prerequisites; scrolls when the window is smaller than the map. No detail panel: clicking a node buys it (confirm), switches a toggle node, or says why it cannot be bought.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -10,16 +10,43 @@ local Format = require(ReplicatedStorage.Shared.Format)
 local SkillTree = require(ReplicatedStorage.Shared.Config.SkillTree)
 local Theme = require(script.Parent.Core.Theme)
 local Widgets = require(script.Parent.Core.Widgets)
+local FloatWindow = require(script.Parent.Core.FloatWindow)
 local State = require(script.Parent.Parent.State)
 
 local e = React.createElement
 local UI = Text.UI
 
-local NODE_W, NODE_H = 104, 52
-local COL_GAP = 112 -- x distance between Col -1 / 0 / 1
-local ROW_GAP = 74
-local TOP = 34
-local DETAIL_H = 120
+local DEFAULT_SIZE = Vector2.new(860, 520)
+local MIN_SIZE = Vector2.new(480, 320)
+-- Grid cell and node size in design units: nodes stay small and the map scrolls instead of stretching.
+local CELL = 56
+local NODE = 36
+local LINE = 3
+
+-- Where each branch runs from the Start node (grid cells, +Y down): a node sits `Row` cells along and `Col` cells across.
+local DIRECTIONS: { [string]: { Along: Vector2, Across: Vector2 } } = {
+	Combat = { Along = Vector2.new(-1, 0), Across = Vector2.new(0, 1) },
+	Economy = { Along = Vector2.new(1, 0), Across = Vector2.new(0, 1) },
+	System = { Along = Vector2.new(0, 1), Across = Vector2.new(1, 0) },
+}
+
+local function cellOf(def: SkillTree.NodeDef): Vector2
+	local direction = DIRECTIONS[def.Branch]
+	return direction.Along * def.Row + direction.Across * def.Col
+end
+
+-- Grid bounds over every node and the Start node at (0, 0).
+local low, high = Vector2.zero, Vector2.zero
+for _, def in SkillTree.List do
+	local cell = cellOf(def)
+	low, high = low:Min(cell), high:Max(cell)
+end
+local COLS, ROWS = high.X - low.X + 1, high.Y - low.Y + 1
+
+-- Centre of a cell on the board, in design units.
+local function at(cell: Vector2): Vector2
+	return Vector2.new((cell.X - low.X + 0.5) * CELL, (cell.Y - low.Y + 0.5) * CELL)
+end
 
 export type Props = { data: Types.ProfileData }
 
@@ -56,7 +83,7 @@ local function costText(cost: SkillTree.Cost): string
 	return table.concat(parts, " · ")
 end
 
--- Error key the server would answer with, so the button can explain itself before sending.
+-- Error key the server would answer with, so a click can explain itself before sending.
 local function missing(data: Types.ProfileData, def: SkillTree.NodeDef): string?
 	local cost = def.Cost
 	if data.Gold < (cost.Gold or 0) then
@@ -82,187 +109,152 @@ local function effectsText(def: SkillTree.NodeDef): string
 	return table.concat(parts, ", ")
 end
 
-local function line(a: Vector2, b: Vector2, color: Color3, key: string): (string, React.ReactNode)
-	local d = b - a
+local function click(data: Types.ProfileData, def: SkillTree.NodeDef)
+	local st = stateOf(data, def)
+	if st == "Owned" then
+		if def.Toggle then
+			State.Send.ToggleNode(def.Id, data.SkillOff[def.Id] == true)
+		end
+		return
+	elseif st == "Locked" then
+		State.PushToast(`{Text.Node(def.Id)}: {UI.Locked}`)
+		return
+	end
+	local problem = missing(data, def)
+	if problem ~= nil then
+		State.PushToast((Text.Error :: { [string]: string })[problem] or problem)
+		return
+	end
+	local cost = costText(def.Cost)
+	State.OpenConfirm({
+		Title = `Unlock {Text.Node(def.Id)}?`,
+		Body = `Spends {if cost ~= "" then cost else "nothing"}. {effectsText(def)}. Skill tree nodes cannot be refunded.`,
+		OkText = `Unlock {Text.Node(def.Id)}`,
+		Danger = false,
+		OnConfirm = function()
+			State.Send.BuyNode(def.Id)
+		end,
+	})
+end
+
+-- One straight piece of a connector (cells share a row or a column).
+local function segment(from: Vector2, to: Vector2, lit: boolean): React.ReactNode
+	local a, b = at(from), at(to)
+	local size = (b - a):Abs() + Vector2.new(LINE, LINE)
 	local mid = (a + b) / 2
-	return key,
-		e("Frame", {
-			Size = UDim2.fromOffset(d.Magnitude, 2),
-			Position = UDim2.new(0.5, mid.X, 0, mid.Y),
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Rotation = math.deg(math.atan2(d.Y, d.X)),
-			BackgroundColor3 = color,
-			BorderSizePixel = 0,
-			ZIndex = 1,
-		})
+	return e("Frame", {
+		Size = UDim2.fromOffset(size.X, size.Y),
+		Position = UDim2.fromOffset(mid.X, mid.Y),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundColor3 = if lit then Theme.Accent else Theme.Stroke,
+		BorderSizePixel = 0,
+		ZIndex = if lit then 2 else 1,
+	})
+end
+
+-- Connector from a node to the one it unlocks: straight, or a right angle that first runs along the branch, then across.
+local function connect(
+	out: { [string]: React.ReactNode },
+	key: string,
+	from: Vector2,
+	to: Vector2,
+	along: Vector2,
+	lit: boolean
+)
+	local corner = from + along * (to - from):Dot(along)
+	if corner == from or corner == to then
+		out[key] = segment(from, to, lit)
+	else
+		out[key .. "_a"] = segment(from, corner, lit)
+		out[key .. "_b"] = segment(corner, to, lit)
+	end
+end
+
+local function node(
+	cell: Vector2,
+	label: string,
+	owned: boolean,
+	locked: boolean,
+	onClick: (() -> ())?
+): React.ReactNode
+	local where = at(cell)
+	return e("TextButton", {
+		Size = UDim2.fromOffset(NODE, NODE),
+		Position = UDim2.fromOffset(where.X, where.Y),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		-- Owned = light, can be bought = mid grey with a bright edge, locked = dark. All opaque so lines never show through.
+		BackgroundColor3 = if owned then Theme.Confirm elseif locked then Theme.Bg else Theme.PanelAlt,
+		AutoButtonColor = onClick ~= nil,
+		Text = label,
+		TextColor3 = if owned then Theme.OnLight elseif locked then Theme.Subtext else Theme.Text,
+		FontFace = Theme.FontBold,
+		TextSize = 10,
+		TextWrapped = true,
+		ZIndex = 3,
+		[React.Event.Activated] = onClick,
+	}, {
+		Corner = Widgets.Corner(4),
+		Stroke = Widgets.Stroke(
+			if locked then Theme.Stroke else Theme.Accent,
+			if locked then 1 else 1.5,
+			if locked then 0.4 else 0
+		),
+	})
 end
 
 local function TreePage(props: Props): React.ReactNode
 	local data = props.data
-	local selected, setSelected = Widgets.useOptional(nil :: string?)
-
-	local maxRow = 1
+	local board: { [string]: React.ReactNode } = {
+		Start = node(Vector2.zero, UI.TreeStart, true, false, nil),
+	}
 	for _, def in SkillTree.List do
-		maxRow = math.max(maxRow, def.Row)
-	end
-
-	local function center(def: SkillTree.NodeDef): Vector2
-		return Vector2.new(def.Col * COL_GAP, TOP + (def.Row - 1) * ROW_GAP + NODE_H / 2)
-	end
-
-	local branches: { [string]: React.ReactNode } = {}
-	for b, branch in SkillTree.Branches do
-		local children: { [string]: React.ReactNode } = {
-			Head = e(Widgets.Label, {
-				text = Text.Branch(branch),
-				bold = true,
-				align = Enum.TextXAlignment.Center,
-				size = UDim2.new(1, 0, 0, 24),
-			}),
-		}
-		for _, def in SkillTree.List do
-			if def.Branch == branch then
-				local st = stateOf(data, def)
-				local c = center(def)
-				for _, req in def.Requires do
-					local reqDef = SkillTree.ById[req]
-					local from = center(reqDef) + Vector2.new(0, NODE_H / 2)
-					local to = c - Vector2.new(0, NODE_H / 2)
-					local k, v =
-						line(from, to, if owns(data, req) then Theme.Accent else Theme.Stroke, `L_{req}_{def.Id}`)
-					children[k] = v
-				end
-				local off = def.Toggle and data.SkillOff[def.Id] == true
-				local label = Text.Node(def.Id)
-				if st == "Owned" and def.Toggle then
-					label ..= if off then `\n{UI.Off}` else `\n{UI.On}`
-				elseif st == "Owned" then
-					label ..= "\n" .. UI.Owned
-				end
-				children[def.Id] = e("TextButton", {
-					Size = UDim2.fromOffset(NODE_W, NODE_H),
-					Position = UDim2.new(0.5, c.X, 0, c.Y),
-					AnchorPoint = Vector2.new(0.5, 0.5),
-					BackgroundColor3 = if st == "Owned" then Theme.Hover else Theme.PanelAlt,
-					BackgroundTransparency = if st == "Locked" then 0.55 else 0,
-					Text = label,
-					TextColor3 = Theme.Text,
-					TextTransparency = if st == "Locked" then 0.45 else 0,
-					FontFace = Theme.FontBold,
-					TextSize = 14,
-					TextWrapped = true,
-					ZIndex = 2,
-					[React.Event.Activated] = function()
-						setSelected(def.Id)
-					end,
-				}, {
-					Corner = Widgets.Corner(6),
-					Stroke = Widgets.Stroke(
-						if selected == def.Id then Theme.Accent else Theme.Stroke,
-						if selected == def.Id then 2 else 1,
-						if selected == def.Id or st == "Owned" then 0 else 0.4
-					),
-				})
-			end
-		end
-		branches[branch] = e("Frame", {
-			Size = UDim2.new(1 / 3, -8, 1, 0),
-			Position = UDim2.new((b - 1) / 3, 4, 0, 0),
-			BackgroundTransparency = 1,
-		}, children)
-	end
-
-	-- Detail panel
-	local detail: { [string]: React.ReactNode } = {}
-	local def = if selected ~= nil then SkillTree.ById[selected] else nil
-	if def ~= nil then
+		local cell = cellOf(def)
 		local st = stateOf(data, def)
-		local reqNames = {}
+		local along = DIRECTIONS[def.Branch].Along
+		if #def.Requires == 0 then
+			connect(board, `L_Start_{def.Id}`, Vector2.zero, cell, along, true)
+		end
 		for _, req in def.Requires do
-			table.insert(reqNames, Text.Node(req))
+			connect(board, `L_{req}_{def.Id}`, cellOf(SkillTree.ById[req]), cell, along, owns(data, req))
 		end
-		local cost = costText(def.Cost)
-		detail.Name = e(Widgets.Label, {
-			text = `{Text.Node(def.Id)}  ·  {Text.Branch(def.Branch)}{if def.Toggle
-				then "  ·  can be switched off"
-				else ""}`,
-			bold = true,
-		})
-		detail.Effect = e(Widgets.Label, { text = effectsText(def), position = UDim2.fromOffset(0, 26) })
-		detail.Cost = e(Widgets.Label, {
-			text = `Cost: {if cost ~= "" then cost else "free"}{if #reqNames > 0
-				then "   ·   Needs: " .. table.concat(reqNames, ", ")
-				else ""}`,
-			color = Theme.Subtext,
-			textSize = 15,
-			position = UDim2.fromOffset(0, 52),
-			size = UDim2.new(1, -200, 0, 22),
-		})
-		local problem = if st == "Available" then missing(data, def) else nil
-		if st == "Owned" and def.Toggle then
-			local off = data.SkillOff[def.Id] == true
-			detail.Action = e(Widgets.Button, {
-				text = if off then "Turn on" else "Turn off",
-				size = UDim2.fromOffset(180, 40),
-				position = UDim2.fromScale(1, 1),
-				anchor = Vector2.new(1, 1),
-				onClick = function()
-					State.Send.ToggleNode(def.Id, off)
-				end,
-			})
-		elseif st ~= "Owned" then
-			detail.Action = e(Widgets.Button, {
-				text = if st == "Locked" then UI.Locked elseif problem ~= nil then Text.Error[problem] else UI.Buy,
-				size = UDim2.fromOffset(180, 40),
-				position = UDim2.fromScale(1, 1),
-				anchor = Vector2.new(1, 1),
-				textSize = if problem ~= nil then 14 else nil,
-				color = if st == "Available" and problem == nil then Theme.Confirm else nil,
-				disabled = st ~= "Available" or problem ~= nil,
-				onClick = function()
-					State.OpenConfirm({
-						Title = `Unlock {Text.Node(def.Id)}?`,
-						Body = `Spends {cost}. {effectsText(def)}. Skill tree nodes cannot be refunded.`,
-						OkText = `Unlock {Text.Node(def.Id)}`,
-						Danger = false,
-						OnConfirm = function()
-							State.Send.BuyNode(def.Id)
-						end,
-					})
-				end,
-			})
+		local first = def.Effects[1]
+		local label = if first ~= nil then Text.EffectMark(first.Kind) else "?"
+		if st == "Owned" and def.Toggle and data.SkillOff[def.Id] == true then
+			label = UI.Off
 		end
-	else
-		detail.Hint = e(Widgets.Label, { text = "Select a node.", color = Theme.Subtext })
+		board[def.Id] = node(cell, label, st == "Owned", st == "Locked", function()
+			click(data, def)
+		end)
 	end
 
-	local gridH = TOP + maxRow * ROW_GAP
-	return e(Widgets.Window, {
-		title = UI.Team,
-		group = "Team",
+	return e(FloatWindow, {
+		id = "Tree",
+		title = UI.Tree,
 		onClose = function()
-			State.SetPage(nil)
+			State.SetTree(false)
 		end,
-		closeOnBackdrop = true,
+		defaultSize = DEFAULT_SIZE,
+		minSize = MIN_SIZE,
+		zIndex = Theme.ZPage + 1,
 	}, {
-		Grid = e("ScrollingFrame", {
-			Size = UDim2.new(1, 0, 1, -(DETAIL_H + 10)),
+		-- The list layout centres the map while it fits and lets it scroll (both ways) once it does not.
+		Map = e("ScrollingFrame", {
+			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
-			CanvasSize = UDim2.fromOffset(0, gridH),
+			CanvasSize = UDim2.fromOffset(COLS * CELL, ROWS * CELL),
+			ScrollingDirection = Enum.ScrollingDirection.XY,
 			ScrollBarThickness = 6,
 			ScrollBarImageColor3 = Theme.Stroke,
-			ScrollingDirection = Enum.ScrollingDirection.Y,
-		}, branches),
-		Detail = e("Frame", {
-			Size = UDim2.new(1, 0, 0, DETAIL_H),
-			Position = UDim2.fromScale(0, 1),
-			AnchorPoint = Vector2.new(0, 1),
-			BackgroundColor3 = Theme.Bg,
 		}, {
-			Corner = Widgets.Corner(8),
-			Padding = Widgets.Padding(12),
-			Content = e("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 }, detail),
+			Layout = e("UIListLayout", {
+				HorizontalAlignment = Enum.HorizontalAlignment.Center,
+				VerticalAlignment = Enum.VerticalAlignment.Center,
+			}),
+			Board = e("Frame", {
+				Size = UDim2.fromOffset(COLS * CELL, ROWS * CELL),
+				BackgroundTransparency = 1,
+			}, board),
 		}),
 	})
 end

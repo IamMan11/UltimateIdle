@@ -4,7 +4,7 @@
 local Freeze = require(script.Parent.Parent.Freeze)
 
 export type Branch = "Combat" | "Economy" | "System"
--- Pct kinds add to a multiplier (0.1 = +10%). TeamSlots adds slots. OfflineShare adds to the offline share.
+-- Pct kinds add to a multiplier (0.1 = +10%). StackPct raises every material's MaxStack (Formula.Bag.MaxStack). TeamSlots adds slots. OfflineShare adds to the offline share.
 -- AutoOpen unlocks box auto-open with Value = seconds between opens; AutoOpenSpeed multiplies that interval.
 export type EffectKind =
 	"AtkPct"
@@ -14,6 +14,7 @@ export type EffectKind =
 	| "XpPct"
 	| "OfflineShare"
 	| "BoxCapPct"
+	| "StackPct"
 	| "TeamSlots"
 	| "AutoOpen"
 	| "AutoOpenSpeed"

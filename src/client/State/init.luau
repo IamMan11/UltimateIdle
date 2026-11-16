@@ -32,8 +32,10 @@ export type ForgeResult = {
 
 export type Ui = {
 	Page: string?,
+	PageTab: string?, -- tab the open page shows (pages with tabs: Quests, Shop); nil = its first tab
+	Tree: boolean, -- skill tree window open (its own window, over any page)
 	Tabs: { [string]: string }, -- page group id -> page last open in it
-	ForgeUid: string?, -- item selected on the Forge page
+	ForgeUid: string?, -- gear picked in the Inventory window (the piece the Sockets / Enhance / Power tabs work on)
 	LastEnhance: ForgeResult?,
 	LastEnchant: ForgeResult?,
 	Confirm: ConfirmPrompt?,
@@ -62,6 +64,8 @@ local State = {
 	Battle = { Level = 0, Wave = 0, Mode = "Progress", Skip = false } :: Battle,
 	Ui = {
 		Page = nil,
+		PageTab = nil,
+		Tree = false,
 		Tabs = {},
 		ForgeUid = nil,
 		LastEnhance = nil,
@@ -143,11 +147,47 @@ end
 
 function State.SetPage(page: string?)
 	State.Ui.Page = if State.Ui.Page == page then nil else page
+	State.Ui.PageTab = nil
 	notify()
 end
 
+-- Opens `page` on `tab`; the same page + tab again closes it (HUD buttons that lead to one tab of a page).
+function State.OpenPage(page: string, tab: string?)
+	if State.Ui.Page == page and State.Ui.PageTab == tab then
+		State.Ui.Page = nil
+		State.Ui.PageTab = nil
+	else
+		State.Ui.Page = page
+		State.Ui.PageTab = tab
+	end
+	notify()
+end
+
+function State.SetPageTab(tab: string?)
+	State.Ui.PageTab = tab
+	notify()
+end
+
+-- Saves where a floating window sits: centre + size as screen fractions (w = h = 0 = default size). Local copy first, the server stores it.
+function State.SetWindow(id: string, x: number, y: number, w: number, h: number)
+	local data = State.Data
+	if data == nil then
+		return
+	end
+	data.Settings.Windows[id] = { x, y, w, h }
+	Net.SetWindow:Client():Fire(id, x, y, w, h)
+	notify()
+end
+
+function State.SetTree(open: boolean)
+	if State.Ui.Tree ~= open then
+		State.Ui.Tree = open
+		notify()
+	end
+end
+
 function State.OpenForge(uid: string?)
-	State.Ui.Page = "Forge"
+	State.Ui.Page = "Inventory"
 	State.Ui.ForgeUid = uid
 	notify()
 end
@@ -241,6 +281,9 @@ State.Send = {
 	end,
 	SetStageMode = function(mode: string)
 		Net.SetStageMode:Client():Fire(mode)
+	end,
+	SetStageLevel = function(level: number)
+		Net.SetStageLevel:Client():Fire(level)
 	end,
 	SetSetting = function(key: string, sub: string?, value: boolean | number)
 		Net.SetSetting:Client():Fire(key, sub, value)

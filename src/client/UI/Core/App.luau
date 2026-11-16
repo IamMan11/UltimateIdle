@@ -2,7 +2,6 @@
 -- Root component: HUD + the open page + modals + toasts in one ScreenGui under one UIScale (viewport x UI-size setting). Re-renders on any store change.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
 
 local React = require(ReplicatedStorage.Packages.React)
 local Widgets = require(script.Parent.Widgets)
@@ -11,45 +10,25 @@ local HUD = require(script.Parent.HUD)
 local Toasts = require(script.Parent.Toasts)
 local Confirm = require(script.Parent.Confirm)
 local HeroSelect = require(script.Parent.Parent.HeroSelect)
-local HeroesPage = require(script.Parent.Parent.Heroes)
 local TeamPage = require(script.Parent.Parent.Team)
 local TreePage = require(script.Parent.Parent.Tree)
 local Inventory = require(script.Parent.Parent.Inventory)
 local BoxesPage = require(script.Parent.Parent.Boxes)
-local ForgePage = require(script.Parent.Parent.Forge)
 local RebirthPage = require(script.Parent.Parent.Rebirth)
 local QuestsPage = require(script.Parent.Parent.Quests)
 local ShopPage = require(script.Parent.Parent.Shop)
 local TradePage = require(script.Parent.Parent.Trade)
 local Settings = require(script.Parent.Parent.Settings)
 local DailyPage = require(script.Parent.Parent.Daily)
+local CodesPage = require(script.Parent.Parent.Codes)
 local Dev = require(script.Parent.Parent.Dev)
 local State = require(script.Parent.Parent.Parent.State)
 
 local e = React.createElement
 
--- Viewport size, updated on resize/rotation.
-local function useViewport(): Vector2
-	local viewport, setViewport = React.useState(Device.Viewport())
-	React.useEffect(function(): () -> ()
-		local camera = Workspace.CurrentCamera
-		local connection = if camera ~= nil
-			then camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
-				setViewport(camera.ViewportSize)
-			end)
-			else nil
-		return function()
-			if connection ~= nil then
-				connection:Disconnect()
-			end
-		end
-	end, {})
-	return viewport
-end
-
 local function App(): React.ReactNode
 	Widgets.useStore()
-	local viewport = useViewport()
+	local viewport = Widgets.useViewport()
 	local data = State.Data
 	if data == nil then
 		return e(Widgets.Label, {
@@ -64,18 +43,12 @@ local function App(): React.ReactNode
 	local needsHero = next(data.Heroes) == nil
 	local page: React.ReactNode = nil
 	if not needsHero then
-		if ui.Page == "Heroes" then
-			page = e(HeroesPage, { data = data })
-		elseif ui.Page == "Team" then
+		if ui.Page == "Team" then
 			page = e(TeamPage, { data = data })
-		elseif ui.Page == "Tree" then
-			page = e(TreePage, { data = data })
-		elseif ui.Page == "Bag" then
+		elseif ui.Page == "Inventory" then
 			page = e(Inventory, { data = data })
 		elseif ui.Page == "Boxes" then
 			page = e(BoxesPage, { data = data })
-		elseif ui.Page == "Forge" then
-			page = e(ForgePage, { data = data })
 		elseif ui.Page == "Rebirth" then
 			page = e(RebirthPage, { data = data })
 		elseif ui.Page == "Quests" then
@@ -86,6 +59,8 @@ local function App(): React.ReactNode
 			page = e(TradePage, { data = data })
 		elseif ui.Page == "Daily" then
 			page = e(DailyPage, { data = data })
+		elseif ui.Page == "Codes" then
+			page = e(CodesPage)
 		elseif ui.Page == "Settings" then
 			page = e(Settings, { data = data })
 		elseif ui.Page == "Dev" then
@@ -99,6 +74,7 @@ local function App(): React.ReactNode
 		Scale = e("UIScale", { Scale = scale }),
 		HUD = if needsHero then nil else e(HUD, { data = data, compact = compact }),
 		Page = page,
+		Tree = if ui.Tree and not needsHero then e(TreePage, { data = data }) else nil,
 		HeroSelect = if needsHero then e(HeroSelect) else nil,
 		Confirm = if ui.Confirm ~= nil then e(Confirm, { prompt = ui.Confirm }) else nil,
 		Toasts = e(Toasts),

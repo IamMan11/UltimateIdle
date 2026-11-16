@@ -48,6 +48,7 @@ local PROFILE_TEMPLATE: Data = {
 		SkipWave = false,
 		UiScale = 1,
 		LowDetail = false,
+		Windows = {},
 	},
 	Tutorial = { Step = 1, Done = false, Rewarded = 0 },
 	Daily = { Day = "", Streak = 0 },

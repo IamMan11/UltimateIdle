@@ -13,10 +13,10 @@ export type Step = {
 
 local steps: { Step } = {
 	{ Id = "ClearLevel", Event = "ClearLevel", Page = nil, Reward = { Gold = 3 } },
-	{ Id = "Equip", Event = "Equip", Page = "Heroes", Reward = { Boxes = { Normal = 1 } } },
-	{ Id = "OpenBox", Event = "OpenBox", Page = "Boxes", Reward = { Gold = 10 } },
-	{ Id = "BuyNode", Event = "BuyNode", Page = "Tree", Reward = { Gold = 10 } },
-	{ Id = "Enhance", Event = "Enhance", Page = "Forge", Reward = { Ruby = 20 } },
+	{ Id = "Equip", Event = "Equip", Page = "Team", Reward = { Boxes = { Normal = 1 } } },
+	{ Id = "OpenBox", Event = "OpenBox", Page = "Inventory", Reward = { Gold = 10 } },
+	{ Id = "BuyNode", Event = "BuyNode", Page = "Team", Reward = { Gold = 10 } },
+	{ Id = "Enhance", Event = "Enhance", Page = "Inventory", Reward = { Ruby = 20 } },
 }
 
 return Freeze({

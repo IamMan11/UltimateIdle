@@ -131,7 +131,7 @@ end
 
 local function ShopPage(props: Props): React.ReactNode
 	local data = props.data
-	local tab, setTab = React.useState("Monthly")
+	local tab = State.Ui.PageTab or "Monthly"
 	Widgets.useTick(1)
 	return e(Widgets.Window, {
 		title = `{UI.Shop}   ·   {Format.Number(data.Gold)} gold   ·   {Format.Number(data.Ruby)} Ruby`,
@@ -140,7 +140,7 @@ local function ShopPage(props: Props): React.ReactNode
 		end,
 		closeOnBackdrop = true,
 	}, {
-		Tabs = e(Widgets.Tabs, { tabs = TABS, current = tab, onSelect = setTab, width = 160 }),
+		Tabs = e(Widgets.Tabs, { tabs = TABS, current = tab, onSelect = State.SetPageTab, width = 160 }),
 		Body = e("Frame", {
 			Size = UDim2.new(1, 0, 1, -46),
 			Position = UDim2.fromOffset(0, 46),

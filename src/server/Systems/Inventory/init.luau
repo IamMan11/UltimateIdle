@@ -1,5 +1,5 @@
 --!strict
--- Owner of Gear (wearables, by uid) and Stacks (materials): create/remove/stack with capacity checks, plus/socket/enchant setters, trade locks + transfer. Other systems never write these tables.
+-- Owner of Gear (wearables, by uid) and Stacks (materials): create/remove/stack with capacity checks (bag slots = gear + material slots + box stacks), plus/socket/enchant setters, trade locks + transfer. Other systems never write these tables.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -10,9 +10,11 @@ local Game = require(ReplicatedStorage.Shared.Config.Game)
 local Items = require(ReplicatedStorage.Shared.Config.Items)
 local Tiers = require(ReplicatedStorage.Shared.Config.Tiers)
 local Materials = require(ReplicatedStorage.Shared.Config.Materials)
+local Formula = require(ReplicatedStorage.Shared.Formula)
 local PlayerData = require(ServerScriptService.Server.Data.PlayerData)
 local Guard = require(ServerScriptService.Server.Util.Guard)
 local Replication = require(script.Parent.Replication)
+local Modifiers = require(script.Parent.Modifiers)
 
 export type GearSpec = {
 	BaseId: string,
@@ -69,13 +71,18 @@ local function wornCount(data: Types.ProfileData): number
 	return n
 end
 
--- Bag items (worn items do not count against capacity).
+-- Bag slots in use: gear not worn + material slots (Formula.Bag) + box stacks. Same number as Formula.Bag.Used.
+-- Only gear is refused when the bag is full: materials and boxes are always granted (rewards and purchases must
+-- never be lost), so this can go past the capacity; nothing new fits until it is back under.
 function Inventory.Count(player: Player): number
 	local data = PlayerData.Data(player)
 	if data == nil then
 		return 0
 	end
-	return (totals[player] or 0) - wornCount(data)
+	return (totals[player] or 0)
+		- wornCount(data)
+		+ Formula.Bag.MaterialSlots(data.Stacks, Modifiers.Get(player).StackPct)
+		+ Formula.Bag.BoxSlots(data.Boxes)
 end
 
 function Inventory.FreeSpace(player: Player): number

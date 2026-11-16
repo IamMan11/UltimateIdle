@@ -1,5 +1,5 @@
 --!strict
--- Stage scenery for the lane on screen: the imported stage kit (ReplicatedStorage.StageKits) or, without one, placeholder ground, path, backdrop, cut-out layers and props. Built once, moved to the viewed lane, out of Workspace while hidden.
+-- Stage scenery for the lane on screen: the imported stage kit (ReplicatedStorage.StageKits) or, without one, placeholder ground, path, backdrop, cut-out layers and props. Built once, moved to the viewed lane, out of Workspace while hidden. BuildGround = ground-only copy for UI previews.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -334,6 +334,30 @@ local function build(): Model
 end
 
 local Scenery = {}
+
+-- Ground and path around the lane only (no props, no backdrop), in lane-origin space, parented to `parent`: for small previews such as a ViewportFrame.
+function Scenery.BuildGround(parent: Instance, halfWidth: number)
+	local kits = ReplicatedStorage:FindFirstChild(Config.Kit.Folder)
+	local kit = if kits ~= nil then kits:FindFirstChild(Config.Kit.Name) else nil
+	if kit == nil then
+		ground(Random.new(Config.Seed), parent)
+		return
+	end
+	local cfg = Config.Kit
+	local toStage = CFrame.new(CENTER_X, FLOOR, 0) * CFrame.Angles(0, math.pi, 0)
+	for _, name in cfg.Terrain do
+		local src = kit:FindFirstChild(cfg.Prefix .. name)
+		if src ~= nil and src:IsA("MeshPart") then
+			local cframe = toStage * src.CFrame
+			-- Only the tiles that reach the stretch being shown, and none of the far hills behind the lane.
+			if math.abs(cframe.X - CENTER_X) - src.Size.X / 2 < halfWidth and math.abs(cframe.Z) < src.Size.Z / 2 then
+				local c = src:Clone()
+				c.CFrame = cframe
+				c.Parent = parent
+			end
+		end
+	end
+end
 
 -- Shows the scenery at `origin` (a lane origin); nil hides it.
 function Scenery.Show(origin: CFrame?)

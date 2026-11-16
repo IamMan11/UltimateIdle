@@ -37,7 +37,7 @@ Idle RPG: ทีม hero ตี monster เองตาม timeline ที่ se
 | Offline 20% + AFK rejoin | design §6 | `src/server/Systems/Offline/` · client `src/client/Afk.luau` |
 | ตั้งค่า (auto-salvage, skip wave, เปิดกล่องอัตโนมัติ, ขนาด UI, low detail) | — | `src/server/Systems/Settings/` |
 | คำสั่ง dev (Studio เท่านั้น): gold xp level box gear mats points ruby quest passpts pass receipt | — | `src/server/Systems/Dev/` · ปุ่ม `src/client/UI/Dev/` |
-| UI: HUD, หน้า Heroes (Gear/Skills+เปลี่ยนอาชีพ)/Team (ลากวาง)/Skill Tree/Bag/Boxes/Forge (ตีบวก/ช่อง/enchant)/Rebirth/Quests (+Battle Pass)/Shop (+Passes/gift)/Trade/Daily/Settings (+โค้ด), เลือก hero ตัวแรก | — (ดู CLAUDE.md § UI theme) | `src/client/UI/` |
+| UI: HUD, หน้าต่าง Team แบบลอย ลาก/ปรับขนาด/จำตำแหน่งได้ (ซ้าย: preview class + แถบ class + ช่องของ 10 ช่อง · กลาง: level path/สกิล/เปลี่ยนอาชีพ หรือ picker ของ · ขวา: preview ทีม + ช่องแถว)/Skill Tree/Inventory แบบลอย (ซ้าย: grid ช่องกระเป๋า 8×7 แบ่งหน้า + search/filter · ขวา: แท็บ Sockets รวมของ / Enhance / Power = enchant)/Boxes (เปิดจากกล่องใน Inventory → More)/Rebirth/Quests (+Battle Pass)/Shop (+Passes/gift)/Trade/Daily/Settings (+โค้ด), เลือก hero ตัวแรก | — (ดู CLAUDE.md § UI theme) | `src/client/UI/` |
 | **สไตล์ภาพ (โมเดล + VFX)** — อ่านก่อนทำ asset ใหม่ทุกครั้ง | [art-style.md](./art-style.md) | — |
 | อาการพัง → ไฟล์เจ้าของ | [debug-map.md](./debug-map.md) | — |
 | ความจำข้าม session | [STATE.md](./STATE.md) | — |

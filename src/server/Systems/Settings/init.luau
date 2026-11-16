@@ -1,5 +1,5 @@
 --!strict
--- Owner of player Settings: auto-salvage tier filter, skip-wave toggle (from the next level), box auto-open switch (needs the skill tree node), UI size, low detail.
+-- Owner of player Settings: auto-salvage tier filter, skip-wave toggle (from the next level), box auto-open switch (needs the skill tree node), UI size, low detail, floating window places.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
@@ -52,8 +52,23 @@ local function set(player: Player, key: string, sub: string?, value: boolean | n
 	end
 end
 
+-- Range is checked by the Net validator (every number is a 0..1 screen fraction).
+local function setWindow(player: Player, id: string, x: number, y: number, w: number, h: number)
+	if not RateLimit.Allow(player, "SetWindow") then
+		return
+	end
+	local data = PlayerData.Data(player)
+	if data == nil or table.find(Game.Windows, id) == nil then
+		return
+	end
+	local rect = { x, y, w, h }
+	data.Settings.Windows[id] = rect
+	Replication.Set(player, { "Settings", "Windows", id }, rect)
+end
+
 function Settings.Start()
 	Net.SetSetting:Server():On(set)
+	Net.SetWindow:Server():On(setWindow)
 end
 
 return Settings

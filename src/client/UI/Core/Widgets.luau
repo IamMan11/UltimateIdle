@@ -1,16 +1,16 @@
 --!strict
--- Shared UI widgets: Label, Icon, Button (optional icon), Window (page shell with backdrop/Esc close), TextInput, Stepper, Bar, Tabs; hooks: store, tick, other players.
+-- Shared UI widgets: Label, Icon, Button (optional icon), Window (page shell with backdrop/Esc close), TextInput, Stepper, Bar, Tabs; hooks: store, viewport, tick, other players.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 
 local React = require(ReplicatedStorage.Packages.React)
 local Theme = require(script.Parent.Theme)
 local Text = require(ReplicatedStorage.Shared.Text)
 local State = require(script.Parent.Parent.Parent.State)
-local Groups = require(script.Parent.Groups)
-local Icons = require(ReplicatedStorage.Shared.Config.Icons)
+local Device = require(script.Parent.Device)
 
 local e = React.createElement
 
@@ -25,6 +25,25 @@ function Widgets.useStore(): number
 		end)
 	end, {})
 	return version
+end
+
+-- Viewport size in pixels, updated on resize/rotation.
+function Widgets.useViewport(): Vector2
+	local viewport, setViewport = React.useState(Device.Viewport())
+	React.useEffect(function(): () -> ()
+		local camera = Workspace.CurrentCamera
+		local connection = if camera ~= nil
+			then camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+				setViewport(camera.ViewportSize)
+			end)
+			else nil
+		return function()
+			if connection ~= nil then
+				connection:Disconnect()
+			end
+		end
+	end, {})
+	return viewport
 end
 
 -- Re-renders the caller every `interval` seconds while mounted (countdowns); returns os.clock() of the last tick.
@@ -391,7 +410,6 @@ export type WindowProps = {
 	size: UDim2?,
 	maxSize: Vector2?,
 	zIndex: number?,
-	group: string?, -- page group id (Groups): shows its tabs in the title row
 	children: any,
 }
 
@@ -399,30 +417,6 @@ export type WindowProps = {
 function Widgets.Window(props: WindowProps): React.ReactNode
 	Widgets.useEscape(props.onClose)
 	local onClose = props.onClose
-	local group = props.group
-	local page = State.Ui.Page
-	React.useEffect(function()
-		Groups.Remember()
-	end, { page })
-	local tabs: { [string]: React.ReactNode }? = nil
-	if group ~= nil then
-		local buttons: { [string]: React.ReactNode } = { Layout = Widgets.List(Enum.FillDirection.Horizontal, 6) }
-		for i, tab in Groups.Tabs(group) do
-			buttons[tab.Id] = e(Widgets.Button, {
-				text = tab.Label,
-				icon = Icons[tab.Id],
-				iconSize = 24,
-				size = UDim2.fromOffset(124, 32),
-				textSize = 15,
-				selected = page == tab.Id,
-				layoutOrder = i,
-				onClick = function()
-					Groups.Select(tab.Id)
-				end,
-			})
-		end
-		tabs = buttons
-	end
 	return e("TextButton", {
 		Size = UDim2.fromScale(1, 1),
 		BackgroundColor3 = Theme.Backdrop,
@@ -458,15 +452,6 @@ function Widgets.Window(props: WindowProps): React.ReactNode
 				textSize = 24,
 				size = UDim2.new(1, -110, 0, 32),
 			}),
-			Tabs = if tabs ~= nil
-				then e("Frame", {
-					Size = UDim2.fromOffset(0, 32),
-					AutomaticSize = Enum.AutomaticSize.X,
-					Position = UDim2.new(1, if onClose ~= nil then -108 else 0, 0, 0),
-					AnchorPoint = Vector2.new(1, 0),
-					BackgroundTransparency = 1,
-				}, tabs)
-				else nil,
 			Close = if onClose ~= nil
 				then e(Widgets.Button, {
 					text = Text.UI.Close,

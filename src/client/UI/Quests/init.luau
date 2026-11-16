@@ -81,7 +81,7 @@ end
 
 local function QuestsPage(props: Props): React.ReactNode
 	local data = props.data
-	local tab, setTab = React.useState("Daily")
+	local tab = State.Ui.PageTab or "Daily"
 	Widgets.useTick(1)
 
 	local body: React.ReactNode
@@ -119,7 +119,7 @@ local function QuestsPage(props: Props): React.ReactNode
 		closeOnBackdrop = true,
 		maxSize = Vector2.new(960, 700),
 	}, {
-		Tabs = e(Widgets.Tabs, { tabs = TABS, current = tab, onSelect = setTab }),
+		Tabs = e(Widgets.Tabs, { tabs = TABS, current = tab, onSelect = State.SetPageTab }),
 		Body = e("Frame", {
 			Size = UDim2.new(1, 0, 1, -46),
 			Position = UDim2.fromOffset(0, 46),
