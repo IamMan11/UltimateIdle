@@ -39,7 +39,7 @@ local TAB_H = 34
 export type Props = { data: Types.ProfileData }
 
 local function close()
-	State.SetPage(nil)
+	State.CloseWindow("Inventory")
 end
 
 local function Inventory(props: Props): React.ReactNode
@@ -110,7 +110,6 @@ local function Inventory(props: Props): React.ReactNode
 		onClose = close,
 		defaultSize = DEFAULT_SIZE,
 		minSize = MIN_SIZE,
-		closeOnEscape = not State.Ui.Tree,
 	}, {
 		Left = e("Frame", { Size = UDim2.new(LEFT, -GAP, 1, 0), BackgroundTransparency = 1 }, {
 			Grid = e(Grid, {

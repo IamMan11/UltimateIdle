@@ -254,7 +254,7 @@ local function Grid(props: Props): React.ReactNode
 			textSize = 15,
 			layoutOrder = 3,
 			onClick = function()
-				State.SetPage("Boxes")
+				State.OpenWindow("Boxes")
 			end,
 		})
 	end

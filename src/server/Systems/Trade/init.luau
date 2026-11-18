@@ -120,10 +120,7 @@ local function checkOffer(player: Player, offer: Offer): string?
 	if data == nil then
 		return "TradeUnavailable"
 	end
-	if #offer.Gear > TradeConfig.MaxGear or count(offer.Stacks) > TradeConfig.MaxKinds then
-		return "TradeTooMany"
-	end
-	if count(offer.Boxes) > TradeConfig.MaxKinds then
+	if #offer.Gear + count(offer.Stacks) + count(offer.Boxes) > TradeConfig.MaxSlots then
 		return "TradeTooMany"
 	end
 	local seen: { [string]: boolean } = {}

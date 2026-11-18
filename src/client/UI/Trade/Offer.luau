@@ -1,7 +1,8 @@
 --!strict
--- Open trade: pick what to give (gear / materials / boxes / gold / Ruby), both offers side by side, Ready -> Confirm -> Cancel.
+-- Open trade: both offers as 3x3 slot grids (mine left, theirs right), Ready -> Confirm under mine, the bag to add from (gear / materials / boxes) + gold / Ruby below.
 -- Every edit sends the whole offer; the server's copy (view.Mine) is the one shown.
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
@@ -9,11 +10,14 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Text = require(ReplicatedStorage.Shared.Text)
 local Format = require(ReplicatedStorage.Shared.Format)
 local Materials = require(ReplicatedStorage.Shared.Config.Materials)
+local TradeConfig = require(ReplicatedStorage.Shared.Config.Trade)
+local Icons = require(ReplicatedStorage.Shared.Config.Icons)
 local Theme = require(script.Parent.Parent.Core.Theme)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
 local ItemInfo = require(script.Parent.Parent.Core.ItemInfo)
 local VirtualList = require(script.Parent.Parent.Core.VirtualList)
 local State = require(script.Parent.Parent.Parent.State)
+local Badge = require(script.Parent.Parent.Core.Badge)
 
 local e = React.createElement
 local UI = Text.Eco.UI
@@ -22,6 +26,19 @@ export type Props = {
 	data: Types.ProfileData,
 	view: Types.TradeView,
 }
+
+local PANEL_W = 320
+local PANEL_PAD = 12
+local MINE_X, THEIRS_X = 60, 580
+local HEAD_H = 44
+local CELL = 72
+local CELL_GAP = 10
+local GRID = CELL * 3 + CELL_GAP * 2
+local MONEY_H = 24
+local PANEL_H = PANEL_PAD * 2 + HEAD_H + 10 + GRID + 6 + MONEY_H
+local ACTION_Y = PANEL_H + 10
+local ACTION_H = 44
+local BAG_Y = ACTION_Y + ACTION_H + 10
 
 local PICK_TABS = {
 	{ Id = "Gear", Label = Text.UI.Bag },
@@ -47,63 +64,129 @@ local function setCount(map: { [string]: number }, key: string, n: number)
 	end
 end
 
-local function lines(offer: Types.TradeOffer, gear: (string) -> Types.GearItem?): { string }
-	local out: { string } = {}
+-- One filled slot of an offer.
+type Entry = {
+	Kind: "Gear" | "Stack" | "Box",
+	Key: string, -- gear uid, material id or box key
+	Text: string,
+}
+
+-- Slots in display order: gear as offered, then materials, then boxes.
+local function entries(offer: Types.TradeOffer, gear: (string) -> Types.GearItem?): { Entry }
+	local out: { Entry } = {}
 	for _, uid in offer.Gear do
 		local item = gear(uid)
-		table.insert(out, if item ~= nil then ItemInfo.Line(item) else "?")
+		table.insert(out, {
+			Kind = "Gear" :: "Gear",
+			Key = uid,
+			Text = if item ~= nil then `{ItemInfo.Name(item)}\nLv {item.Level}` else "?",
+		})
 	end
-	local mats: { string } = {}
-	for id, n in offer.Stacks do
-		table.insert(mats, `{Format.Number(n)} {Text.Material(id)}`)
+	local ids: { string } = {}
+	for id in offer.Stacks do
+		table.insert(ids, id)
 	end
-	table.sort(mats)
-	for _, l in mats do
-		table.insert(out, l)
+	table.sort(ids)
+	for _, id in ids do
+		table.insert(out, {
+			Kind = "Stack" :: "Stack",
+			Key = id,
+			Text = `{Text.Material(id)}\nx{Format.Number(offer.Stacks[id])}`,
+		})
 	end
-	for key, n in offer.Boxes do
-		table.insert(out, `{n} {Text.Box(key)}`)
+	local keys: { string } = {}
+	for key in offer.Boxes do
+		table.insert(keys, key)
 	end
-	if offer.Gold > 0 then
-		table.insert(out, `{Format.Number(offer.Gold)} gold`)
-	end
-	if offer.Ruby > 0 then
-		table.insert(out, `{Format.Number(offer.Ruby)} Ruby`)
+	table.sort(keys)
+	for _, key in keys do
+		table.insert(out, {
+			Kind = "Box" :: "Box",
+			Key = key,
+			Text = `{Text.Box(key)}\nx{Format.Number(offer.Boxes[key])}`,
+		})
 	end
 	return out
 end
 
-local function summary(title: string, status: string, items: { string }, position: UDim2): React.ReactNode
-	local rows: { [string]: React.ReactNode } = { Layout = Widgets.List(Enum.FillDirection.Vertical, 2) }
-	if #items == 0 then
-		rows.Empty = e(Widgets.Label, { text = UI.NothingOffered, color = Theme.Subtext, textSize = 15 })
-	end
-	for i, line in items do
-		rows[`L{i}`] = e(Widgets.Label, { text = line, textSize = 14, layoutOrder = i })
+local function money(icon: string, amount: number, x: number): React.ReactNode
+	return e("Frame", {
+		Size = UDim2.new(0.5, -4, 1, 0),
+		Position = UDim2.new(x, if x > 0 then 4 else 0, 0, 0),
+		BackgroundTransparency = 1,
+	}, {
+		Icon = e(Widgets.Icon, { image = icon, size = 20, position = UDim2.fromOffset(0, 2) }),
+		Label = e(Widgets.Label, {
+			text = Format.Number(amount),
+			bold = amount > 0,
+			textSize = 15,
+			color = if amount > 0 then Theme.Text else Theme.Subtext,
+			size = UDim2.new(1, -26, 1, 0),
+			position = UDim2.fromOffset(26, 0),
+		}),
+	})
+end
+
+-- One side of the trade: who, the 3x3 grid, gold + Ruby. `onRemove` = clicking a filled slot (own side only).
+local function panel(
+	x: number,
+	who: React.ReactNode,
+	offer: Types.TradeOffer,
+	list: { Entry },
+	onRemove: ((Entry) -> ())?
+): React.ReactNode
+	local cells: { [string]: React.ReactNode } = {}
+	for i = 1, TradeConfig.MaxSlots do
+		local entry = list[i]
+		local filled = entry ~= nil
+		cells[`S{i}`] = e("TextButton", {
+			Size = UDim2.fromOffset(CELL, CELL),
+			Position = UDim2.fromOffset(((i - 1) % 3) * (CELL + CELL_GAP), ((i - 1) // 3) * (CELL + CELL_GAP)),
+			BackgroundColor3 = if filled then Theme.Hover else Theme.PanelAlt,
+			BackgroundTransparency = if filled then 0 else 0.4,
+			AutoButtonColor = filled and onRemove ~= nil,
+			Active = filled and onRemove ~= nil,
+			Text = if filled then entry.Text else "",
+			TextColor3 = Theme.Text,
+			FontFace = Theme.Font,
+			TextSize = 11,
+			TextWrapped = true,
+			[React.Event.Activated] = function()
+				if filled and onRemove ~= nil then
+					onRemove(entry)
+				end
+			end,
+		}, {
+			Corner = Widgets.Corner(6),
+			Padding = Widgets.Padding(3),
+			Stroke = Widgets.Stroke(),
+		})
 	end
 	return e("Frame", {
-		Size = UDim2.new(0.31, -8, 1, -136),
-		Position = position,
+		Size = UDim2.fromOffset(PANEL_W, PANEL_H),
+		Position = UDim2.fromOffset(x, 0),
 		BackgroundColor3 = Theme.Bg,
+		BorderSizePixel = 0,
 	}, {
 		Corner = Widgets.Corner(8),
-		Padding = Widgets.Padding(10),
-		Title = e(Widgets.Label, { text = title, bold = true }),
-		Status = e(Widgets.Label, {
-			text = status,
-			textSize = 15,
-			color = Theme.Subtext,
-			position = UDim2.fromOffset(0, 22),
-		}),
-		List = e("ScrollingFrame", {
-			Size = UDim2.new(1, 0, 1, -50),
-			Position = UDim2.fromOffset(0, 50),
+		Stroke = Widgets.Stroke(),
+		Padding = Widgets.Padding(PANEL_PAD),
+		Who = who,
+		Grid = e("Frame", {
+			Size = UDim2.fromOffset(GRID, GRID),
+			Position = UDim2.new(0.5, 0, 0, HEAD_H + 10),
+			AnchorPoint = Vector2.new(0.5, 0),
 			BackgroundTransparency = 1,
-			BorderSizePixel = 0,
-			ScrollBarThickness = 6,
-			CanvasSize = UDim2.new(),
-			AutomaticCanvasSize = Enum.AutomaticSize.Y,
-		}, rows),
+		}, cells),
+		Money = e("Frame", {
+			Size = UDim2.fromOffset(GRID, MONEY_H),
+			Position = UDim2.fromScale(0.5, 1),
+			AnchorPoint = Vector2.new(0.5, 1),
+			BackgroundTransparency = 1,
+		}, {
+			Gold = money(Icons.Gold, offer.Gold, 0),
+			Ruby = money(Icons.Ruby, offer.Ruby, 0.5),
+		}),
 	})
 end
 
@@ -140,6 +223,7 @@ type AmountProps = {
 	label: string,
 	value: number,
 	have: number,
+	order: number,
 	onSet: (number) -> (),
 }
 
@@ -149,7 +233,11 @@ local function AmountInput(props: AmountProps): React.ReactNode
 	React.useEffect(function()
 		setText(if value > 0 then tostring(value) else "")
 	end, { value })
-	return e("Frame", { Size = UDim2.new(0.5, -4, 0, 34), BackgroundTransparency = 1 }, {
+	return e("Frame", {
+		Size = UDim2.new(0.5, -4, 0, 34),
+		BackgroundTransparency = 1,
+		LayoutOrder = props.order,
+	}, {
 		Input = e(Widgets.TextInput, {
 			text = text,
 			placeholder = `{label} (have {Format.Number(have)})`,
@@ -176,10 +264,41 @@ local function Offer(props: Props): React.ReactNode
 	for _, uid in mine.Gear do
 		inOffer[uid] = true
 	end
+	local function myGear(uid: string): Types.GearItem?
+		return data.Gear[uid]
+	end
+	local function theirGear(uid: string): Types.GearItem?
+		return view.TheirGear[uid]
+	end
+	local myList = entries(mine, myGear)
+	local theirList = entries(view.Theirs, theirGear)
+
 	local function send(edit: (Types.TradeOffer) -> ())
 		local o = clone(mine)
 		edit(o)
 		State.Send.TradeOffer(o)
+	end
+	-- Adding one more kind of thing: false (with a toast) when all slots are taken.
+	local function room(): boolean
+		if #myList < TradeConfig.MaxSlots then
+			return true
+		end
+		State.PushToast(Text.Error.TradeTooMany)
+		return false
+	end
+	local function remove(entry: Entry)
+		send(function(o)
+			if entry.Kind == "Gear" then
+				local at = table.find(o.Gear, entry.Key)
+				if at ~= nil then
+					table.remove(o.Gear, at)
+				end
+			elseif entry.Kind == "Stack" then
+				o.Stacks[entry.Key] = nil
+			else
+				o.Boxes[entry.Key] = nil
+			end
+		end)
 	end
 
 	local worn = ItemInfo.WornMap(data)
@@ -203,12 +322,16 @@ local function Offer(props: Props): React.ReactNode
 			rowHeight = 38,
 			renderRow = function(index: number): React.ReactNode
 				local item = bag[index]
+				local offered = inOffer[item.Uid] == true
 				return e(Widgets.Button, {
 					text = ItemInfo.Line(item),
 					size = UDim2.fromScale(1, 1),
 					textSize = 13,
-					selected = inOffer[item.Uid] == true,
+					selected = offered,
 					onClick = function()
+						if not offered and not room() then
+							return
+						end
 						send(function(o)
 							local at = table.find(o.Gear, item.Uid)
 							if at ~= nil then
@@ -226,18 +349,16 @@ local function Offer(props: Props): React.ReactNode
 		if pick == "Materials" then
 			for _, def in Materials.List do
 				local have = data.Stacks[def.Id] or 0
+				local offered = mine.Stacks[def.Id] or 0
 				if have > 0 then
-					rows[def.Id] = countRow(
-						def.Order,
-						Text.Material(def.Id),
-						have,
-						mine.Stacks[def.Id] or 0,
-						function(n)
-							send(function(o)
-								setCount(o.Stacks, def.Id, n)
-							end)
+					rows[def.Id] = countRow(def.Order, Text.Material(def.Id), have, offered, function(n)
+						if offered == 0 and n > 0 and not room() then
+							return
 						end
-					)
+						send(function(o)
+							setCount(o.Stacks, def.Id, n)
+						end)
+					end)
 				end
 			end
 		else
@@ -249,7 +370,11 @@ local function Offer(props: Props): React.ReactNode
 			end
 			table.sort(keys)
 			for i, key in keys do
-				rows[key] = countRow(i, Text.Box(key), data.Boxes[key], mine.Boxes[key] or 0, function(n)
+				local offered = mine.Boxes[key] or 0
+				rows[key] = countRow(i, Text.Box(key), data.Boxes[key], offered, function(n)
+					if offered == 0 and n > 0 and not room() then
+						return
+					end
 					send(function(o)
 						setCount(o.Boxes, key, n)
 					end)
@@ -266,124 +391,134 @@ local function Offer(props: Props): React.ReactNode
 		}, rows)
 	end
 
-	local function myGear(uid: string): Types.GearItem?
-		return data.Gear[uid]
-	end
-	local function theirGear(uid: string): Types.GearItem?
-		return view.TheirGear[uid]
-	end
-	local function status(ready: boolean, confirmed: boolean): string
-		return if confirmed then UI.Confirmed elseif ready then UI.Ready else UI.NotReady
-	end
-
 	local bothReady = view.MeReady and view.ThemReady
 	local wait = math.ceil(view.ConfirmAt - workspace:GetServerTimeNow())
 	local canConfirm = bothReady and wait <= 0 and not view.MeConfirmed
-	local confirmText = if view.MeConfirmed
+	-- One button walks the trade: Ready -> (partner ready) Confirm -> Waiting. Before the partner is ready it takes Ready back.
+	local actionText = if view.MeConfirmed
 		then UI.Waiting
 		elseif bothReady and wait > 0 then `{UI.Confirm} ({wait})`
-		else UI.Confirm
+		elseif bothReady then UI.Confirm
+		elseif view.MeReady then UI.Unready
+		else UI.Ready
+	local partner = Players:GetPlayerByUserId(view.PartnerId)
+	local me = Players.LocalPlayer
 
 	return e("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 }, {
-		Picker = e("Frame", {
-			Size = UDim2.new(0.36, -8, 1, -56),
-			BackgroundColor3 = Theme.Bg,
-		}, {
-			Corner = Widgets.Corner(8),
-			Padding = Widgets.Padding(8),
-			Tabs = e(Widgets.Tabs, { tabs = PICK_TABS, current = pick, onSelect = setPick, width = 110 }),
-			Hint = e(Widgets.Label, {
-				text = UI.AddGear,
-				textSize = 13,
-				color = Theme.Subtext,
-				position = UDim2.fromOffset(0, 40),
-			}),
-			List = e("Frame", {
-				Size = UDim2.new(1, 0, 1, -66),
-				Position = UDim2.fromOffset(0, 66),
-				BackgroundTransparency = 1,
-			}, { Content = picker }),
-		}),
-		Amounts = e("Frame", {
-			Size = UDim2.new(0.31, -8, 0, 34),
-			Position = UDim2.fromScale(0.36, 0),
-			BackgroundTransparency = 1,
-		}, {
-			Layout = Widgets.List(Enum.FillDirection.Horizontal, 8),
-			Gold = e(AmountInput, {
-				label = UI.GoldAmount,
-				value = mine.Gold,
-				have = data.Gold,
-				onSet = function(n: number)
-					send(function(o)
-						o.Gold = n
-					end)
-				end,
-			}),
-			Ruby = e(AmountInput, {
-				label = UI.RubyAmount,
-				value = mine.Ruby,
-				have = data.Ruby,
-				onSet = function(n: number)
-					send(function(o)
-						o.Ruby = n
-					end)
-				end,
-			}),
-		}),
-		Mine = summary(
-			UI.YourOffer,
-			status(view.MeReady, view.MeConfirmed),
-			lines(mine, myGear),
-			UDim2.new(0.36, 0, 0, 42)
+		Mine = panel(
+			MINE_X,
+			e(Badge, { userId = me.UserId, display = me.DisplayName, name = me.Name, avatar = HEAD_H }),
+			mine,
+			myList,
+			remove
 		),
-		Theirs = summary(
-			`{UI.TheirOffer} ({view.PartnerName})`,
-			status(view.ThemReady, view.ThemConfirmed),
-			lines(view.Theirs, theirGear),
-			UDim2.new(0.67, 0, 0, 42)
+		Theirs = panel(
+			THEIRS_X,
+			e(Badge, {
+				userId = view.PartnerId,
+				display = view.PartnerName,
+				name = if partner ~= nil then partner.Name else nil,
+				avatar = HEAD_H,
+			}),
+			view.Theirs,
+			theirList,
+			nil
 		),
 		Note = e(Widgets.Label, {
-			text = UI.TradeNote,
-			textSize = 14,
+			text = `{UI.AddGear}\n\n{UI.TradeNote}`,
+			textSize = 13,
 			color = Theme.Subtext,
-			size = UDim2.new(0.64, -8, 0, 20),
-			position = UDim2.new(0.36, 0, 1, -88),
+			wrap = true,
+			align = Enum.TextXAlignment.Center,
+			size = UDim2.fromOffset(THEIRS_X - MINE_X - PANEL_W - 24, 160),
+			position = UDim2.fromOffset(MINE_X + PANEL_W + 12, (PANEL_H - 160) / 2),
 		}),
-		Buttons = e("Frame", {
-			Size = UDim2.new(1, 0, 0, 44),
-			Position = UDim2.fromScale(0, 1),
-			AnchorPoint = Vector2.new(0, 1),
-			BackgroundTransparency = 1,
-		}, {
-			Layout = Widgets.List(Enum.FillDirection.Horizontal, 10, Enum.HorizontalAlignment.Right),
-			Ready = e(Widgets.Button, {
-				text = if view.MeReady then UI.Unready else UI.Ready,
-				size = UDim2.fromOffset(180, 44),
-				layoutOrder = 1,
-				onClick = function()
-					State.Send.TradeReady(not view.MeReady)
-				end,
-			}),
-			Confirm = e(Widgets.Button, {
-				text = confirmText,
-				size = UDim2.fromOffset(200, 44),
-				color = if canConfirm then Theme.Confirm else nil,
-				disabled = not canConfirm,
-				layoutOrder = 2,
-				onClick = function()
+		Action = e(Widgets.Button, {
+			text = actionText,
+			size = UDim2.fromOffset(200, ACTION_H),
+			position = UDim2.fromOffset(MINE_X + PANEL_W / 2, ACTION_Y),
+			anchor = Vector2.new(0.5, 0),
+			color = if canConfirm or not (view.MeReady or view.MeConfirmed) then Theme.Confirm else nil,
+			disabled = view.MeConfirmed or (bothReady and wait > 0),
+			onClick = function()
+				if bothReady then
 					State.Send.TradeConfirm()
-				end,
+				else
+					State.Send.TradeReady(not view.MeReady)
+				end
+			end,
+		}),
+		Cancel = e(Widgets.Button, {
+			text = UI.CancelTrade,
+			size = UDim2.fromOffset(150, 36),
+			position = UDim2.fromOffset((MINE_X + PANEL_W + THEIRS_X) / 2, ACTION_Y + 4),
+			anchor = Vector2.new(0.5, 0),
+			textSize = 15,
+			color = Theme.Danger,
+			onClick = function()
+				State.Send.TradeCancel()
+			end,
+		}),
+		TheirStatus = e(Widgets.Label, {
+			text = if view.ThemConfirmed then UI.Confirmed elseif view.ThemReady then UI.Ready else UI.NotReady,
+			bold = true,
+			textSize = 20,
+			color = if view.ThemReady then Theme.Text else Theme.Subtext,
+			align = Enum.TextXAlignment.Center,
+			size = UDim2.fromOffset(PANEL_W, ACTION_H),
+			position = UDim2.fromOffset(THEIRS_X, ACTION_Y),
+		}),
+		Bag = e("Frame", {
+			Size = UDim2.new(1, 0, 1, -BAG_Y),
+			Position = UDim2.fromOffset(0, BAG_Y),
+			BackgroundColor3 = Theme.Bg,
+			BorderSizePixel = 0,
+		}, {
+			Corner = Widgets.Corner(8),
+			Stroke = Widgets.Stroke(),
+			Padding = Widgets.Padding(8),
+			Tabs = e(Widgets.Tabs, { tabs = PICK_TABS, current = pick, onSelect = setPick, width = 110 }),
+			Slots = e(Widgets.Label, {
+				text = `{#myList}/{TradeConfig.MaxSlots} {UI.Slots}`,
+				color = if #myList >= TradeConfig.MaxSlots then Theme.Accent else Theme.Subtext,
+				size = UDim2.fromOffset(140, 36),
+				position = UDim2.fromOffset(360, 0),
 			}),
-			Cancel = e(Widgets.Button, {
-				text = UI.CancelTrade,
-				size = UDim2.fromOffset(160, 44),
-				color = Theme.Danger,
-				layoutOrder = 3,
-				onClick = function()
-					State.Send.TradeCancel()
-				end,
+			Amounts = e("Frame", {
+				Size = UDim2.fromOffset(380, 34),
+				Position = UDim2.fromScale(1, 0),
+				AnchorPoint = Vector2.new(1, 0),
+				BackgroundTransparency = 1,
+			}, {
+				Layout = Widgets.List(Enum.FillDirection.Horizontal, 8),
+				Gold = e(AmountInput, {
+					label = UI.GoldAmount,
+					order = 1,
+					value = mine.Gold,
+					have = data.Gold,
+					onSet = function(n: number)
+						send(function(o)
+							o.Gold = n
+						end)
+					end,
+				}),
+				Ruby = e(AmountInput, {
+					label = UI.RubyAmount,
+					order = 2,
+					value = mine.Ruby,
+					have = data.Ruby,
+					onSet = function(n: number)
+						send(function(o)
+							o.Ruby = n
+						end)
+					end,
+				}),
 			}),
+			List = e("Frame", {
+				Size = UDim2.new(1, 0, 1, -44),
+				Position = UDim2.fromOffset(0, 44),
+				BackgroundTransparency = 1,
+			}, { Content = picker }),
 		}),
 	})
 end

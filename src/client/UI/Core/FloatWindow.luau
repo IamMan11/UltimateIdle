@@ -1,7 +1,8 @@
 --!strict
--- Floating page window (no backdrop): moves by its title bar, resizes from edges and corners, keeps its centre + size per id in Settings.Windows. Esc / Close closes.
+-- Floating window (no backdrop, several open at once, order in State.Ui.Windows): moves by its title bar, resizes from edges and corners, keeps its centre + size per id in Settings.Windows. Esc closes the top one; Close closes this one.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local GuiService = game:GetService("GuiService")
 local UserInputService = game:GetService("UserInputService")
 
 local React = require(ReplicatedStorage.Packages.React)
@@ -9,6 +10,7 @@ local Text = require(ReplicatedStorage.Shared.Text)
 local Theme = require(script.Parent.Theme)
 local Widgets = require(script.Parent.Widgets)
 local Device = require(script.Parent.Device)
+local WindowStack = require(script.Parent.WindowStack)
 local State = require(script.Parent.Parent.Parent.State)
 
 local e = React.createElement
@@ -25,15 +27,17 @@ local CORNER = 14
 local KEEP_VISIBLE = 60
 local MAX_DEFAULT = 0.96
 local DEFAULT_MIN = Vector2.new(720, 420)
+-- `fit` content never grows past this (a huge window would blow the text up).
+local FIT_MAX = 1.6
 
 export type Props = {
-	id: string, -- Config.Game.Windows entry
+	id: string, -- State.Ui.Windows id; also the Settings.Windows key unless saveId is given
+	saveId: string?, -- Config.Game.Windows entry the place is saved under (one window with two layouts, e.g. Trade)
 	title: string,
 	onClose: () -> (),
 	defaultSize: Vector2, -- design units (before the UI scale)
 	minSize: Vector2?,
-	zIndex: number?, -- Theme.ZPage when nil; a window opened over another passes a higher one
-	closeOnEscape: boolean?, -- false while another window on top should take Esc
+	fit: Vector2?, -- fixed-layout content: laid out at this size, then scaled to fit the window (centred)
 	children: any,
 }
 
@@ -134,12 +138,16 @@ local function clamp(value: number, low: number, high: number): number
 end
 
 local function FloatWindow(props: Props): React.ReactNode
-	Widgets.useEscape(if props.closeOnEscape == false then nil else props.onClose)
+	local onTop = State.TopWindow() == props.id and State.Ui.Confirm == nil
+	Widgets.useEscape(if onTop then props.onClose else nil)
 	local viewport = Widgets.useViewport()
 	local data = State.Data
 	local scale = Device.Scale(viewport, if data ~= nil then data.Settings.UiScale else 1)
-	local area = viewport / scale
-	local saved: { number }? = if data ~= nil then data.Settings.Windows[props.id] else nil
+	-- The ScreenGui stops below the top-bar inset: screen fractions are of that area, not the full viewport.
+	local insetTop, insetBottom = GuiService:GetGuiInset()
+	local area = (viewport - insetTop - insetBottom) / scale
+	local saveId = props.saveId or props.id
+	local saved: { number }? = if data ~= nil then data.Settings.Windows[saveId] else nil
 	local savedW, savedH = 0, 0
 	if saved ~= nil then
 		savedW, savedH = saved[3] or 0, saved[4] or 0
@@ -154,7 +162,18 @@ local function FloatWindow(props: Props): React.ReactNode
 
 	local minSize = props.minSize or DEFAULT_MIN
 	local minPx = minSize * scale
-	local id = props.id
+	local id = saveId
+
+	React.useEffect(function(): () -> ()
+		local frame = rootRef.current
+		if frame == nil then
+			return function() end
+		end
+		WindowStack.Register(props.id, frame)
+		return function()
+			WindowStack.Unregister(props.id, frame)
+		end
+	end, { props.id })
 
 	local rect: Rect
 	if live ~= nil then
@@ -269,6 +288,24 @@ local function FloatWindow(props: Props): React.ReactNode
 		end
 	end, { dragging })
 
+	local content: any = props.children
+	local fit = props.fit
+	if fit ~= nil then
+		local avail = rect.Size * area - Vector2.new(PAD * 2, PAD * 2 + HEADER)
+		local fitScale = math.clamp(math.min(avail.X / fit.X, avail.Y / fit.Y), 0.05, FIT_MAX)
+		content = {
+			Fit = e("Frame", {
+				Size = UDim2.fromOffset(fit.X, fit.Y),
+				Position = UDim2.fromScale(0.5, 0.5),
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				BackgroundTransparency = 1,
+			}, {
+				Scale = e("UIScale", { Scale = fitScale }),
+				Body = e("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 }, props.children),
+			}),
+		}
+	end
+
 	local children: { [string]: React.ReactNode } = {
 		Corner = Widgets.Corner(14),
 		Stroke = Widgets.Stroke(Theme.Outline, 3),
@@ -324,7 +361,7 @@ local function FloatWindow(props: Props): React.ReactNode
 			BackgroundTransparency = 1,
 			ClipsDescendants = true,
 			ZIndex = 2,
-		}, props.children),
+		}, content),
 		Grip = e(Widgets.Label, {
 			text = "///",
 			color = Theme.Subtext,
@@ -360,7 +397,6 @@ local function FloatWindow(props: Props): React.ReactNode
 		BorderSizePixel = 0,
 		AutoButtonColor = false,
 		Text = "",
-		ZIndex = props.zIndex or Theme.ZPage,
 	}, children)
 end
 

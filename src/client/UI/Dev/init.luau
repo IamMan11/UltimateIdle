@@ -4,6 +4,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
+local FloatWindow = require(script.Parent.Core.FloatWindow)
 local Widgets = require(script.Parent.Core.Widgets)
 local State = require(script.Parent.Parent.State)
 
@@ -39,13 +40,14 @@ local function Dev(): React.ReactNode
 			end,
 		})
 	end
-	return e(Widgets.Window, {
+	return e(FloatWindow, {
+		id = "Dev",
 		title = "Dev",
 		onClose = function()
-			State.SetPage(nil)
+			State.CloseWindow("Dev")
 		end,
-		closeOnBackdrop = true,
-		size = UDim2.fromOffset(520, 350),
+		defaultSize = Vector2.new(508, 336),
+		minSize = Vector2.new(400, 300),
 	}, buttons)
 end
 

@@ -231,11 +231,10 @@ local function TreePage(props: Props): React.ReactNode
 		id = "Tree",
 		title = UI.Tree,
 		onClose = function()
-			State.SetTree(false)
+			State.CloseWindow("Tree")
 		end,
 		defaultSize = DEFAULT_SIZE,
 		minSize = MIN_SIZE,
-		zIndex = Theme.ZPage + 1,
 	}, {
 		-- The list layout centres the map while it fits and lets it scroll (both ways) once it does not.
 		Map = e("ScrollingFrame", {

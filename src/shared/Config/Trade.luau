@@ -4,8 +4,7 @@
 local Freeze = require(script.Parent.Parent.Freeze)
 
 return Freeze({
-	MaxGear = 50, -- gear pieces per side
-	MaxKinds = 20, -- material / box stacks per side
+	MaxSlots = 9, -- things per side: gear pieces + material kinds + box kinds (the 3x3 offer grid)
 	RequestSeconds = 30, -- an unanswered request expires
 	ConfirmDelay = 3, -- seconds after the last offer change (or both ready) before the final confirm counts
 })

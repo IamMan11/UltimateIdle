@@ -259,7 +259,7 @@ local function HeroPanel(props: Props): React.ReactNode
 			position = UDim2.fromScale(0, 1),
 			anchor = Vector2.new(0, 1),
 			onClick = function()
-				State.SetPage("Inventory")
+				State.OpenWindow("Inventory")
 			end,
 		}),
 	})

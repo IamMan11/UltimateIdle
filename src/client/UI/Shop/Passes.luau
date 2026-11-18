@@ -1,5 +1,5 @@
 --!strict
--- Passes tab: each game pass (owned or buy) and gifting one to another player in this server.
+-- Gamepass tab: pass cards in fixed slots (two banners, one wide, two square; empty slots read "Coming soon") + the potion grid (placeholder until potions exist).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -16,99 +16,166 @@ local UI = Text.Eco.UI
 
 export type Props = { data: Types.ProfileData }
 
-local function PassesTab(_props: Props): React.ReactNode
-	local others = Widgets.useOthers()
+local BANNER_H = 110
+local GAP = 12
+local ROW3_Y = 2 * (BANNER_H + GAP)
+local SMALL = 124
+local WIDE_W = 250
+local POTIONS_X = WIDE_W + 2 * (SMALL + GAP) + 28
+local POTION_COLS, POTION_ROWS = 4, 2
+local POTION_BOX_H = 56
+local POTION_H = POTION_BOX_H + 6 + 30 + 18
+local POTION_GAP = 12
 
-	local cards: { [string]: React.ReactNode } = { Layout = Widgets.List(Enum.FillDirection.Horizontal, 12) }
-	for _, def in ShopConfig.Passes do
-		local owned = State.Passes[def.Key] == true
-		cards[def.Key] = e("Frame", {
-			Size = UDim2.new(0.5, -6, 1, 0),
-			BackgroundColor3 = Theme.PanelAlt,
-			LayoutOrder = def.Order,
+-- Pass slots in Config.Shop pass order: position + size (scale, offset pairs).
+local SLOTS: { { Position: UDim2, Size: UDim2 } } = {
+	{ Position = UDim2.fromOffset(0, 0), Size = UDim2.new(1, 0, 0, BANNER_H) },
+	{ Position = UDim2.fromOffset(0, BANNER_H + GAP), Size = UDim2.new(1, 0, 0, BANNER_H) },
+	{ Position = UDim2.fromOffset(0, ROW3_Y), Size = UDim2.fromOffset(WIDE_W, SMALL) },
+	{ Position = UDim2.fromOffset(WIDE_W + GAP, ROW3_Y), Size = UDim2.fromOffset(SMALL, SMALL) },
+	{ Position = UDim2.fromOffset(WIDE_W + SMALL + 2 * GAP, ROW3_Y), Size = UDim2.fromOffset(SMALL, SMALL) },
+}
+
+local function comingSoon(position: UDim2, size: UDim2): React.ReactNode
+	return e("Frame", {
+		Size = size,
+		Position = position,
+		BackgroundColor3 = Theme.Bg,
+		BackgroundTransparency = 0.4,
+		BorderSizePixel = 0,
+	}, {
+		Corner = Widgets.Corner(8),
+		Stroke = Widgets.Stroke(Theme.Stroke, 2, 0.5),
+		Label = e(Widgets.Label, {
+			text = UI.ComingSoon,
+			color = Theme.Subtext,
+			align = Enum.TextXAlignment.Center,
+			size = UDim2.fromScale(1, 1),
+		}),
+	})
+end
+
+local function passCard(def: ShopConfig.PassDef, position: UDim2, size: UDim2, banner: boolean): React.ReactNode
+	local owned = State.Passes[def.Key] == true
+	local forSale = def.PassId > 0
+	local buy = e(Widgets.Button, {
+		text = if owned then UI.Owned elseif forSale then UI.Buy else UI.NotForSale,
+		size = if banner then UDim2.fromOffset(180, 46) else UDim2.new(1, 0, 0, 36),
+		position = if banner then UDim2.fromScale(1, 0.5) else UDim2.fromScale(0, 1),
+		anchor = if banner then Vector2.new(1, 0.5) else Vector2.new(0, 1),
+		textSize = if forSale or owned then 17 else 13,
+		color = if not owned and forSale then Theme.Confirm else nil,
+		disabled = owned or not forSale,
+		onClick = function()
+			State.Send.BuyPass(def.Key)
+		end,
+	})
+	local right = if banner then -200 else 0
+	return e("Frame", {
+		Size = size,
+		Position = position,
+		BackgroundColor3 = if owned then Theme.Hover else Theme.PanelAlt,
+		BorderSizePixel = 0,
+	}, {
+		Corner = Widgets.Corner(8),
+		Stroke = Widgets.Stroke(),
+		Padding = Widgets.Padding(if banner then 16 else 10),
+		Name = e(Widgets.Label, {
+			text = Text.Eco.PassName(def.Key),
+			bold = true,
+			textSize = if banner then 26 else 18,
+			size = UDim2.new(1, right, 0, if banner then 32 else 24),
+		}),
+		Desc = e(Widgets.Label, {
+			text = Text.Eco.PassDesc(def.Key),
+			color = Theme.Subtext,
+			textSize = if banner then 16 else 13,
+			wrap = true,
+			alignY = Enum.TextYAlignment.Top,
+			size = UDim2.new(1, right, 1, if banner then -38 else -(26 + 42)),
+			position = UDim2.fromOffset(0, if banner then 38 else 26),
+		}),
+		Buy = buy,
+	})
+end
+
+local function potion(index: number): React.ReactNode
+	local col = (index - 1) % POTION_COLS
+	local row = (index - 1) // POTION_COLS
+	return e("Frame", {
+		Size = UDim2.new(1 / POTION_COLS, -POTION_GAP, 0, POTION_H),
+		Position = UDim2.new(col / POTION_COLS, POTION_GAP, 0, row * (POTION_H + POTION_GAP)),
+		BackgroundTransparency = 1,
+	}, {
+		Box = e("Frame", {
+			Size = UDim2.new(1, 0, 0, POTION_BOX_H),
+			BackgroundColor3 = Theme.Bg,
+			BackgroundTransparency = 0.4,
+			BorderSizePixel = 0,
 		}, {
 			Corner = Widgets.Corner(8),
-			Padding = Widgets.Padding(12),
-			Name = e(Widgets.Label, { text = Text.Eco.PassName(def.Key), bold = true, textSize = 20 }),
-			Desc = e(Widgets.Label, {
-				text = Text.Eco.PassDesc(def.Key),
-				color = Theme.Subtext,
-				textSize = 15,
-				wrap = true,
-				size = UDim2.new(1, 0, 0, 40),
-				position = UDim2.fromOffset(0, 28),
-			}),
-			Buy = e(Widgets.Button, {
-				text = if owned then UI.Owned elseif def.PassId <= 0 then UI.NotForSale else UI.Buy,
-				size = UDim2.new(1, 0, 0, 36),
-				position = UDim2.fromScale(0, 1),
-				anchor = Vector2.new(0, 1),
-				color = if not owned and def.PassId > 0 then Theme.Confirm else nil,
-				disabled = owned or def.PassId <= 0,
-				onClick = function()
-					State.Send.BuyPass(def.Key)
-				end,
-			}),
-		})
-	end
-
-	local rows: { [string]: React.ReactNode } = { Layout = Widgets.List(Enum.FillDirection.Vertical, 6) }
-	if #others == 0 then
-		rows.Empty = e(Widgets.Label, { text = UI.NobodyHere, color = Theme.Subtext })
-	end
-	for i, other in others do
-		local buttons: { [string]: React.ReactNode } = {
-			Layout = Widgets.List(Enum.FillDirection.Horizontal, 8),
-		}
-		for _, def in ShopConfig.Passes do
-			local productId = ShopConfig.Products[def.GiftProduct] or 0
-			buttons[def.Key] = e(Widgets.Button, {
-				text = if productId > 0
-					then `{UI.Gift} {Text.Eco.PassName(def.Key)} · R$ {ShopConfig.RobuxPrices[def.GiftProduct]}`
-					else `{UI.Gift} {Text.Eco.PassName(def.Key)} · {UI.NotForSale}`,
-				size = UDim2.fromOffset(250, 34),
-				textSize = 14,
-				disabled = productId <= 0,
-				layoutOrder = def.Order,
-				onClick = function()
-					State.Send.GiftPass(def.Key, other.UserId)
-				end,
-			})
-		end
-		rows[`P{other.UserId}`] = e("Frame", {
-			Size = UDim2.new(1, -8, 0, 40),
-			BackgroundTransparency = 1,
-			LayoutOrder = i,
-		}, {
+			Stroke = Widgets.Stroke(Theme.Stroke, 2, 0.5),
 			Name = e(Widgets.Label, {
-				text = other.DisplayName,
-				size = UDim2.new(0, 200, 1, 0),
+				text = UI.Potion,
+				bold = true,
+				textSize = 15,
+				color = Theme.Subtext,
+				align = Enum.TextXAlignment.Center,
+				size = UDim2.new(1, 0, 0, 20),
+				position = UDim2.fromOffset(0, 8),
 			}),
-			Buttons = e("Frame", {
-				Size = UDim2.new(1, -210, 1, 0),
-				Position = UDim2.fromOffset(210, 0),
-				BackgroundTransparency = 1,
-			}, buttons),
-		})
-	end
-
-	return e("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 }, {
-		Cards = e("Frame", { Size = UDim2.new(1, 0, 0, 150), BackgroundTransparency = 1 }, cards),
-		GiftHead = e(Widgets.Label, {
-			text = UI.GiftTo,
-			bold = true,
-			position = UDim2.fromOffset(0, 164),
+			Soon = e(Widgets.Label, {
+				text = UI.ComingSoon,
+				textSize = 12,
+				color = Theme.Subtext,
+				align = Enum.TextXAlignment.Center,
+				size = UDim2.new(1, 0, 0, 16),
+				position = UDim2.fromOffset(0, 30),
+			}),
 		}),
-		Gift = e("ScrollingFrame", {
-			Size = UDim2.new(1, 0, 1, -196),
-			Position = UDim2.fromOffset(0, 196),
-			BackgroundTransparency = 1,
-			BorderSizePixel = 0,
-			ScrollBarThickness = 6,
-			CanvasSize = UDim2.new(),
-			AutomaticCanvasSize = Enum.AutomaticSize.Y,
-		}, rows),
+		Buy = e(Widgets.Button, {
+			text = UI.Buy,
+			size = UDim2.new(0.5, -3, 0, 30),
+			position = UDim2.fromOffset(0, POTION_BOX_H + 6),
+			textSize = 13,
+			disabled = true,
+		}),
+		Use = e(Widgets.Button, {
+			text = UI.Use,
+			size = UDim2.new(0.5, -3, 0, 30),
+			position = UDim2.new(0.5, 3, 0, POTION_BOX_H + 6),
+			textSize = 13,
+			disabled = true,
+		}),
+		Count = e(Widgets.Label, {
+			text = "x0",
+			textSize = 13,
+			color = Theme.Subtext,
+			align = Enum.TextXAlignment.Center,
+			size = UDim2.new(0.5, -3, 0, 16),
+			position = UDim2.new(0.5, 3, 0, POTION_BOX_H + 38),
+		}),
 	})
+end
+
+local function PassesTab(_props: Props): React.ReactNode
+	local children: { [string]: React.ReactNode } = {}
+	for i, slot in SLOTS do
+		local def = ShopConfig.Passes[i]
+		children[`Slot{i}`] = if def ~= nil
+			then passCard(def, slot.Position, slot.Size, i <= 2)
+			else comingSoon(slot.Position, slot.Size)
+	end
+	local potions: { [string]: React.ReactNode } = {}
+	for i = 1, POTION_COLS * POTION_ROWS do
+		potions[`P{i}`] = potion(i)
+	end
+	children.Potions = e("Frame", {
+		Size = UDim2.new(1, -POTIONS_X, 0, POTION_ROWS * (POTION_H + POTION_GAP)),
+		Position = UDim2.fromOffset(POTIONS_X, ROW3_Y),
+		BackgroundTransparency = 1,
+	}, potions)
+	return e("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 }, children)
 end
 
 return PassesTab

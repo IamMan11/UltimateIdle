@@ -21,5 +21,20 @@ return Freeze({
 	-- UI size choices on the Settings page (multiplies the automatic scale).
 	UiScales = { 0.85, 1, 1.15, 1.3 },
 	-- Floating windows whose place and size are saved (Settings.Windows keys).
-	Windows = { "Team", "Tree", "Inventory" },
+	Windows = {
+		"Team",
+		"Tree",
+		"Inventory",
+		"Boxes",
+		"Rebirth",
+		"Quests",
+		"BattlePass",
+		"Shop",
+		"Trade",
+		"TradeOffer",
+		"Daily",
+		"Codes",
+		"Settings",
+		"Dev",
+	},
 })

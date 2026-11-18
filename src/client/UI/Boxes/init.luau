@@ -10,6 +10,7 @@ local Boxes = require(ReplicatedStorage.Shared.Config.Boxes)
 local Heroes = require(ReplicatedStorage.Shared.Config.Heroes)
 local Formula = require(ReplicatedStorage.Shared.Formula)
 local Theme = require(script.Parent.Core.Theme)
+local FloatWindow = require(script.Parent.Core.FloatWindow)
 local Widgets = require(script.Parent.Core.Widgets)
 local VirtualList = require(script.Parent.Core.VirtualList)
 local State = require(script.Parent.Parent.State)
@@ -95,13 +96,14 @@ local function BoxesPage(props: Props): React.ReactNode
 		end,
 	})
 
-	return e(Widgets.Window, {
+	return e(FloatWindow, {
+		id = "Boxes",
 		title = UI.Boxes,
 		onClose = function()
-			State.SetPage(nil)
+			State.CloseWindow("Boxes")
 		end,
-		closeOnBackdrop = true,
-		maxSize = Vector2.new(980, 680),
+		defaultSize = Vector2.new(960, 640),
+		minSize = Vector2.new(560, 400),
 	}, {
 		Empty = if #list == 0 then e(Widgets.Label, { text = "No boxes yet", color = Theme.Subtext }) else nil,
 		List = e(VirtualList, {

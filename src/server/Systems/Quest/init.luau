@@ -1,5 +1,5 @@
 --!strict
--- Owner of Quests: other systems report events via Quest.Progress(kind, n); UTC day/week/month periods reset when touched (load, progress, claim); ClaimQuest pays Ruby + pass points.
+-- Owner of Quests: other systems report events via Quest.Progress(kind, n); UTC day/week/month periods reset when touched (load, progress, claim); ClaimQuest (one quest or a whole period) pays Ruby + pass points.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
@@ -71,29 +71,55 @@ function Quest.OnClaimed(listener: (Player, Quests.QuestDef) -> ())
 	table.insert(claimedListeners, listener)
 end
 
+-- Pays one quest; returns the error key when it is already claimed or not finished.
+local function claimOne(player: Player, data: Types.ProfileData, def: Quests.QuestDef): string?
+	local p = current(player, data, def.Period)
+	if p.Claimed[def.Id] then
+		return "QuestClaimed"
+	end
+	if (p.Progress[def.Kind] or 0) < def.Need then
+		return "QuestNotDone"
+	end
+	p.Claimed[def.Id] = true
+	Replication.Set(player, { "Quests", def.Period, "Claimed", def.Id }, true)
+	Currency.Add(player, "Ruby", def.Ruby, "Quest")
+	for _, listener in claimedListeners do
+		task.spawn(listener, player, def)
+	end
+	return nil
+end
+
+-- `id` = a quest id, or a period name ("Daily" / "Weekly" / "Monthly") = every finished quest of that period.
 local function claim(player: Player, id: string)
 	if not RateLimit.Allow(player, "ClaimQuest") then
 		return
 	end
 	local data = PlayerData.Data(player)
+	if data == nil then
+		return
+	end
+	local all = Quests.ByPeriod[id]
+	if all ~= nil then
+		local ruby, points = 0, 0
+		for _, def in all do
+			if claimOne(player, data, def) == nil then
+				ruby += def.Ruby
+				points += def.PassPoints
+			end
+		end
+		if points > 0 then
+			Replication.Notify(player, "QuestClaimed", { Id = id, Ruby = ruby, Points = points })
+		end
+		return
+	end
 	local def = Quests.ById[id]
-	if data == nil or def == nil then
+	if def == nil then
 		return
 	end
-	local p = current(player, data, def.Period)
-	if p.Claimed[id] then
-		Replication.Notify(player, "Error", "QuestClaimed")
+	local err = claimOne(player, data, def)
+	if err ~= nil then
+		Replication.Notify(player, "Error", err)
 		return
-	end
-	if (p.Progress[def.Kind] or 0) < def.Need then
-		Replication.Notify(player, "Error", "QuestNotDone")
-		return
-	end
-	p.Claimed[id] = true
-	Replication.Set(player, { "Quests", def.Period, "Claimed", id }, true)
-	Currency.Add(player, "Ruby", def.Ruby, "Quest")
-	for _, listener in claimedListeners do
-		task.spawn(listener, player, def)
 	end
 	Replication.Notify(player, "QuestClaimed", { Id = id, Ruby = def.Ruby, Points = def.PassPoints })
 end

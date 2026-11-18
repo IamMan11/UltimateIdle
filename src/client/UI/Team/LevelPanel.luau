@@ -171,7 +171,7 @@ local function LevelPanel(props: Props): React.ReactNode
 			anchor = Vector2.new(1, 0),
 			textSize = 15,
 			onClick = function()
-				State.SetTree(true)
+				State.OpenWindow("Tree")
 			end,
 		}),
 	}

@@ -146,6 +146,7 @@ export type LabelProps = {
 	bold: boolean?,
 	textSize: number?,
 	align: Enum.TextXAlignment?,
+	alignY: Enum.TextYAlignment?,
 	layoutOrder: number?,
 	wrap: boolean?,
 }
@@ -161,6 +162,7 @@ function Widgets.Label(props: LabelProps): React.ReactNode
 		FontFace = if props.bold then Theme.FontBold else Theme.Font,
 		TextSize = props.textSize or 18,
 		TextXAlignment = props.align or Enum.TextXAlignment.Left,
+		TextYAlignment = props.alignY,
 		TextWrapped = props.wrap == true,
 		TextTruncate = if props.wrap then Enum.TextTruncate.None else Enum.TextTruncate.AtEnd,
 		LayoutOrder = props.layoutOrder,

@@ -34,7 +34,7 @@ local function firstOwned(data: Types.ProfileData): string
 end
 
 local function close()
-	State.SetPage(nil)
+	State.CloseWindow("Team")
 end
 
 local function TeamPage(props: Props): React.ReactNode
@@ -53,7 +53,6 @@ local function TeamPage(props: Props): React.ReactNode
 		onClose = close,
 		defaultSize = DEFAULT_SIZE,
 		minSize = MIN_SIZE,
-		closeOnEscape = not State.Ui.Tree,
 	}, {
 		Left = e("Frame", { Size = UDim2.new(LEFT, -GAP, 1, 0), BackgroundTransparency = 1 }, {
 			Panel = e(HeroPanel, {

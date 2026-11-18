@@ -1,5 +1,5 @@
 --!strict
--- Client store: copy of server state (snapshot + deltas), current timeline, open trade + requests, pass ownership, UI state (page/modal/toasts/camera/watched lane), event senders.
+-- Client store: copy of server state (snapshot + deltas), current timeline, open trade + requests, pass ownership, UI state (open windows/modal/toasts/camera/watched lane), event senders.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -31,10 +31,8 @@ export type ForgeResult = {
 }
 
 export type Ui = {
-	Page: string?,
-	PageTab: string?, -- tab the open page shows (pages with tabs: Quests, Shop); nil = its first tab
-	Tree: boolean, -- skill tree window open (its own window, over any page)
-	Tabs: { [string]: string }, -- page group id -> page last open in it
+	Windows: { string }, -- open window ids, bottom -> top (the last one is drawn on top and takes Esc)
+	PageTabs: { [string]: string }, -- window id -> tab it shows (windows with tabs: Quests, Shop); none = its first tab
 	ForgeUid: string?, -- gear picked in the Inventory window (the piece the Sockets / Enhance / Power tabs work on)
 	LastEnhance: ForgeResult?,
 	LastEnchant: ForgeResult?,
@@ -63,10 +61,8 @@ local State = {
 	Timeline = nil :: Types.TimelinePayload?,
 	Battle = { Level = 0, Wave = 0, Mode = "Progress", Skip = false } :: Battle,
 	Ui = {
-		Page = nil,
-		PageTab = nil,
-		Tree = false,
-		Tabs = {},
+		Windows = {},
+		PageTabs = {},
 		ForgeUid = nil,
 		LastEnhance = nil,
 		LastEnchant = nil,
@@ -145,26 +141,54 @@ end
 
 -- UI state ---------------------------------------------------------------
 
-function State.SetPage(page: string?)
-	State.Ui.Page = if State.Ui.Page == page then nil else page
-	State.Ui.PageTab = nil
-	notify()
+function State.IsOpen(id: string): boolean
+	return table.find(State.Ui.Windows, id) ~= nil
 end
 
--- Opens `page` on `tab`; the same page + tab again closes it (HUD buttons that lead to one tab of a page).
-function State.OpenPage(page: string, tab: string?)
-	if State.Ui.Page == page and State.Ui.PageTab == tab then
-		State.Ui.Page = nil
-		State.Ui.PageTab = nil
-	else
-		State.Ui.Page = page
-		State.Ui.PageTab = tab
+function State.TopWindow(): string?
+	local windows = State.Ui.Windows
+	return windows[#windows]
+end
+
+-- Opens `id` on top of the other windows (already open = brought to the top); `tab` given = shown on that tab.
+function State.OpenWindow(id: string, tab: string?)
+	local windows = State.Ui.Windows
+	local index = table.find(windows, id)
+	if index ~= nil then
+		table.remove(windows, index)
+	end
+	table.insert(windows, id)
+	if tab ~= nil then
+		State.Ui.PageTabs[id] = tab
 	end
 	notify()
 end
 
-function State.SetPageTab(tab: string?)
-	State.Ui.PageTab = tab
+function State.CloseWindow(id: string)
+	local index = table.find(State.Ui.Windows, id)
+	if index ~= nil then
+		table.remove(State.Ui.Windows, index)
+		notify()
+	end
+end
+
+-- HUD buttons: the top window (on `tab`, when given) closes; anything else opens or comes to the top.
+function State.ToggleWindow(id: string, tab: string?)
+	if State.TopWindow() == id and (tab == nil or State.Ui.PageTabs[id] == tab) then
+		State.CloseWindow(id)
+	else
+		State.OpenWindow(id, tab)
+	end
+end
+
+function State.RaiseWindow(id: string)
+	if State.IsOpen(id) and State.TopWindow() ~= id then
+		State.OpenWindow(id)
+	end
+end
+
+function State.SetPageTab(id: string, tab: string)
+	State.Ui.PageTabs[id] = tab
 	notify()
 end
 
@@ -179,17 +203,9 @@ function State.SetWindow(id: string, x: number, y: number, w: number, h: number)
 	notify()
 end
 
-function State.SetTree(open: boolean)
-	if State.Ui.Tree ~= open then
-		State.Ui.Tree = open
-		notify()
-	end
-end
-
 function State.OpenForge(uid: string?)
-	State.Ui.Page = "Inventory"
 	State.Ui.ForgeUid = uid
-	notify()
+	State.OpenWindow("Inventory")
 end
 
 function State.SelectForge(uid: string?)
@@ -527,7 +543,7 @@ function State.Start()
 		State.Trade = view
 		if opened and view ~= nil then
 			State.DropRequest(view.PartnerId)
-			State.Ui.Page = "Trade"
+			State.OpenWindow("Trade")
 		end
 		notify()
 	end)

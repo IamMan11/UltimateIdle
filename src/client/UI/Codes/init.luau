@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
 local Text = require(ReplicatedStorage.Shared.Text)
+local FloatWindow = require(script.Parent.Core.FloatWindow)
 local Widgets = require(script.Parent.Core.Widgets)
 local State = require(script.Parent.Parent.State)
 
@@ -15,13 +16,14 @@ local MAX_LENGTH = 32
 
 local function Codes(): React.ReactNode
 	local code, setCode = React.useState("")
-	return e(Widgets.Window, {
+	return e(FloatWindow, {
+		id = "Codes",
 		title = UI.Codes,
 		onClose = function()
-			State.SetPage(nil)
+			State.CloseWindow("Codes")
 		end,
-		closeOnBackdrop = true,
-		size = UDim2.fromOffset(470, 150),
+		defaultSize = Vector2.new(458, 136),
+		minSize = Vector2.new(360, 136),
 	}, {
 		Input = e(Widgets.TextInput, {
 			text = code,

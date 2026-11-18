@@ -174,15 +174,14 @@ local function HUD(props: Props): React.ReactNode
 			Label = if data.Daily.Day ~= Period.Key("Daily") then `{UI.Daily} •` else UI.Daily,
 			Key = "Daily",
 		},
-		{ Id = "Quests", Label = UI.BattlePass, Tab = "Pass", Key = "BattlePass" },
+		{ Id = "BattlePass", Label = UI.BattlePass, Key = "BattlePass" },
 		{ Id = "Shop", Label = UI.Gamepass, Tab = "Passes", Key = "Gamepass" },
 		{ Id = "Codes", Label = UI.Code, Key = "Codes" },
 	}
 
 	local function pageButton(button: PageButton, size: UDim2, order: number): React.ReactNode
-		-- A button with a tab is lit only on that tab; the page's plain button on its other tabs.
-		local open = ui.Page == button.Id
-			and (if button.Tab ~= nil then ui.PageTab == button.Tab else ui.PageTab ~= "Pass")
+		-- A button with a tab is lit only on that tab.
+		local open = State.IsOpen(button.Id) and (button.Tab == nil or ui.PageTabs[button.Id] == button.Tab)
 		local hinted = tutorialStep ~= nil and tutorialStep.Page == button.Id and button.Tab == nil
 		return e(Widgets.Button, {
 			text = button.Label,
@@ -192,7 +191,7 @@ local function HUD(props: Props): React.ReactNode
 			layoutOrder = order,
 			selected = open or hinted,
 			onClick = function()
-				State.OpenPage(button.Id, button.Tab)
+				State.ToggleWindow(button.Id, button.Tab)
 			end,
 		})
 	end
@@ -343,9 +342,9 @@ local function HUD(props: Props): React.ReactNode
 				size = UDim2.fromOffset(124, BUTTON_H),
 				textSize = 15,
 				layoutOrder = 3,
-				selected = ui.Page == "Settings",
+				selected = State.IsOpen("Settings"),
 				onClick = function()
-					State.SetPage("Settings")
+					State.ToggleWindow("Settings")
 				end,
 			}),
 		}),
