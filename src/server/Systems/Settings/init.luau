@@ -1,11 +1,12 @@
 --!strict
--- Owner of player Settings: auto-salvage tier filter, skip-wave toggle (from the next level), box auto-open switch (needs the skill tree node), UI size, low detail, floating window places.
+-- Owner of player Settings: auto-salvage (switch, tiers, item list), skip-wave toggle (from the next level), box auto-open switch (needs the skill tree node), UI size, low detail, floating window places.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local Net = require(ReplicatedStorage.Shared.Net)
 local Tiers = require(ReplicatedStorage.Shared.Config.Tiers)
+local Items = require(ReplicatedStorage.Shared.Config.Items)
 local Game = require(ReplicatedStorage.Shared.Config.Game)
 local PlayerData = require(ServerScriptService.Server.Data.PlayerData)
 local RateLimit = require(ServerScriptService.Server.Util.RateLimit)
@@ -39,6 +40,8 @@ local function set(player: Player, key: string, sub: string?, value: boolean | n
 		settings.LowDetail = value
 	elseif key == "AutoSalvage" and sub ~= nil and Tiers.ById[sub] ~= nil then
 		settings.AutoSalvage[sub] = value
+	elseif key == "AutoSalvageOn" and sub == nil then
+		settings.AutoSalvageOn = value
 	elseif key == "SkipWave" and sub == nil then
 		settings.SkipWave = value
 	elseif key == "AutoOpenBoxes" and sub == nil and Modifiers.Get(player).AutoOpen then
@@ -50,6 +53,28 @@ local function set(player: Player, key: string, sub: string?, value: boolean | n
 	if key == "AutoOpenBoxes" then
 		Box.Refresh(player)
 	end
+end
+
+-- Adds (on) or removes gear bases on the auto-salvage list; unknown ids are skipped.
+local function setSalvageItems(player: Player, ids: { string }, on: boolean)
+	if not RateLimit.Allow(player, "SetSalvageItems") then
+		return
+	end
+	local data = PlayerData.Data(player)
+	if data == nil then
+		return
+	end
+	local list = data.Settings.SalvageItems
+	for _, id in ids do
+		if Items.ById[id] ~= nil then
+			if on then
+				list[id] = true
+			else
+				list[id] = nil
+			end
+		end
+	end
+	Replication.Set(player, { "Settings" }, data.Settings)
 end
 
 -- Range is checked by the Net validator (every number is a 0..1 screen fraction).
@@ -69,6 +94,7 @@ end
 function Settings.Start()
 	Net.SetSetting:Server():On(set)
 	Net.SetWindow:Server():On(setWindow)
+	Net.SetSalvageItems:Server():On(setSalvageItems)
 end
 
 return Settings

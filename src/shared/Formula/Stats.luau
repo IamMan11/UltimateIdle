@@ -107,7 +107,8 @@ function Stats.Hero(class: string, level: number, gear: { Types.GearItem }, adva
 	s.MaxHp *= 1 + extras.HpPct / 100
 	s.Def *= 1 + extras.DefPct / 100
 	s.AtkInterval /= 1 + extras.AtkSpeed / 100
-	s.Speed += extras.MoveSpeed
+	s.Speed *= 1 + extras.MovePct / 100
+	s.Range *= 1 + extras.RangePct / 100
 	s.Lifesteal = extras.Lifesteal
 	s.Crit = extras.Crit
 	s.Splash += extras.Splash

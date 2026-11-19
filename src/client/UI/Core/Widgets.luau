@@ -12,6 +12,7 @@ local Theme = require(script.Parent.Theme)
 local Text = require(ReplicatedStorage.Shared.Text)
 local State = require(script.Parent.Parent.Parent.State)
 local Device = require(script.Parent.Device)
+local Tip = require(script.Parent.Tip)
 
 local e = React.createElement
 
@@ -207,6 +208,7 @@ export type ButtonProps = {
 	selected: boolean?,
 	textSize: number?,
 	layoutOrder: number?,
+	tip: Tip.Content?, -- hover tooltip (Core/Tooltip)
 }
 
 -- Button geometry: the face sits BUTTON_LIFT above its dark base, rises on hover, drops onto the base when pressed.
@@ -255,12 +257,16 @@ function Widgets.Button(props: ButtonProps): React.ReactNode
 		Active = not disabled,
 		Text = "",
 		LayoutOrder = props.layoutOrder,
-		[React.Event.MouseEnter] = function()
+		[React.Event.MouseEnter] = function(rbx: GuiObject)
 			setHovered(true)
+			if props.tip ~= nil then
+				Tip.Show(rbx, props.tip)
+			end
 		end,
-		[React.Event.MouseLeave] = function()
+		[React.Event.MouseLeave] = function(rbx: GuiObject)
 			setHovered(false)
 			setPressed(false)
+			Tip.Hide(rbx)
 		end,
 		[React.Event.MouseButton1Down] = function()
 			setPressed(true)

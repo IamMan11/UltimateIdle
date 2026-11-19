@@ -18,6 +18,7 @@ local ItemInfo = require(script.Parent.Parent.Core.ItemInfo)
 local VirtualList = require(script.Parent.Parent.Core.VirtualList)
 local State = require(script.Parent.Parent.Parent.State)
 local Badge = require(script.Parent.Parent.Core.Badge)
+local Tip = require(script.Parent.Parent.Core.Tip)
 
 local e = React.createElement
 local UI = Text.Eco.UI
@@ -69,10 +70,12 @@ type Entry = {
 	Kind: "Gear" | "Stack" | "Box",
 	Key: string, -- gear uid, material id or box key
 	Text: string,
+	Tip: Tip.Content?,
 }
 
 -- Slots in display order: gear as offered, then materials, then boxes.
-local function entries(offer: Types.TradeOffer, gear: (string) -> Types.GearItem?): { Entry }
+-- `own` = the player's side (gear redrawn live in the tooltip); the partner's pieces are snapshots.
+local function entries(offer: Types.TradeOffer, gear: (string) -> Types.GearItem?, own: boolean): { Entry }
 	local out: { Entry } = {}
 	for _, uid in offer.Gear do
 		local item = gear(uid)
@@ -80,6 +83,7 @@ local function entries(offer: Types.TradeOffer, gear: (string) -> Types.GearItem
 			Kind = "Gear" :: "Gear",
 			Key = uid,
 			Text = if item ~= nil then `{ItemInfo.Name(item)}\nLv {item.Level}` else "?",
+			Tip = if own then Tip.Gear(item) else Tip.Snapshot(item),
 		})
 	end
 	local ids: { string } = {}
@@ -92,6 +96,7 @@ local function entries(offer: Types.TradeOffer, gear: (string) -> Types.GearItem
 			Kind = "Stack" :: "Stack",
 			Key = id,
 			Text = `{Text.Material(id)}\nx{Format.Number(offer.Stacks[id])}`,
+			Tip = Tip.Material(id, offer.Stacks[id]),
 		})
 	end
 	local keys: { string } = {}
@@ -104,6 +109,7 @@ local function entries(offer: Types.TradeOffer, gear: (string) -> Types.GearItem
 			Kind = "Box" :: "Box",
 			Key = key,
 			Text = `{Text.Box(key)}\nx{Format.Number(offer.Boxes[key])}`,
+			Tip = Tip.Box(key, offer.Boxes[key]),
 		})
 	end
 	return out
@@ -151,6 +157,8 @@ local function panel(
 			FontFace = Theme.Font,
 			TextSize = 11,
 			TextWrapped = true,
+			[React.Event.MouseEnter] = Tip.Enter(if filled then entry.Tip else nil),
+			[React.Event.MouseLeave] = Tip.Leave,
 			[React.Event.Activated] = function()
 				if filled and onRemove ~= nil then
 					onRemove(entry)
@@ -270,8 +278,8 @@ local function Offer(props: Props): React.ReactNode
 	local function theirGear(uid: string): Types.GearItem?
 		return view.TheirGear[uid]
 	end
-	local myList = entries(mine, myGear)
-	local theirList = entries(view.Theirs, theirGear)
+	local myList = entries(mine, myGear, true)
+	local theirList = entries(view.Theirs, theirGear, false)
 
 	local function send(edit: (Types.TradeOffer) -> ())
 		local o = clone(mine)
@@ -328,6 +336,7 @@ local function Offer(props: Props): React.ReactNode
 					size = UDim2.fromScale(1, 1),
 					textSize = 13,
 					selected = offered,
+					tip = Tip.Gear(item),
 					onClick = function()
 						if not offered and not room() then
 							return

@@ -21,7 +21,7 @@
 | โบนัส skill tree / level ส่วนตัวไม่มีผล | `shared/Formula/Mods.luau` · cache `server/Systems/Modifiers/` (เจ้าของ input ต้องเรียก `MarkDirty`) | `shared/Config/SkillTree.luau` · `Config/Account.luau` |
 | เปิดกล่องอัตโนมัติไม่ทำงาน | `Box.Refresh` (ต้องปลด node + `Settings.AutoOpenBoxes` + มีที่ว่าง) | `server/Systems/Box/init.luau` |
 | ของสวมไม่ได้ทั้งที่ level ถึง | wear cap: `Config/Rebirth.luau` `WearCaps` ตาม `Advancement` | `Hero.WearCap` |
-| ของไม่ drop / ถูกย่อยหมด | `Settings.AutoSalvage` · ความจุ `Inventory.FreeSpace` · `server/Secret/DropTables.luau` | — |
+| ของไม่ drop / ถูกย่อยหมด | `Settings.AutoSalvageOn` + `AutoSalvage` (tier) + `SalvageItems` (base) → `Loot.Grant` · ความจุ `Inventory.FreeSpace` · `server/Secret/DropTables.luau` | — |
 | แก้/ใส่/ย่อยของไม่ได้ "That item is in an open trade" | lock ค้าง: `Inventory.SetLocks` ล้างตอนจบ trade (`Trade` `release`) | `server/Systems/Trade/init.luau` |
 | Trade ยืนยันไม่ได้ / ขึ้น TradePolicy | `ConfirmAt` (หน่วงหลังแก้ข้อเสนอ) · PolicyService cache `policy[player]` · `Config/Account.luau` Unlocks.Trade | `Config/Trade.luau` |
 | ซื้อ Robux แล้วไม่ได้ของ / ได้ซ้ำ | `server/Systems/Shop/init.luau` `handleReceipt` (`Purchases.Receipts`, `PlayerData.WaitSaved`) · product id ใน `Config/Shop.luau` | `references/monetization-and-liveops.md` |

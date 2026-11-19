@@ -207,16 +207,21 @@ function Loot.SalvageValue(tierId: string, level: number): (number, number)
 	return math.floor(tier.SalvageGold * Formula.Scaling.Item(level)), tier.SalvageStones
 end
 
--- Grants gear (auto-salvage filter first, then bag space; overflow is salvaged) and materials. Boxes are not handled here.
+-- Grants gear (auto-salvage filter first — see Types.Settings, then bag space; overflow is salvaged) and materials. Boxes are not handled here.
 function Loot.Grant(player: Player, bundle: Bundle): Summary
 	local summary: Summary = { Gear = 0, Salvaged = 0, Gold = 0, Materials = {} }
 	local data = PlayerData.Data(player)
 	if data == nil then
 		return summary
 	end
+	local settings = data.Settings
 	local stones = 0
 	for _, spec in bundle.Gear do
-		local created = if data.Settings.AutoSalvage[spec.Tier] then nil else Inventory.CreateGear(player, spec)
+		-- Auto-salvage needs all three: switch on, tier ticked, base on the list.
+		local auto = settings.AutoSalvageOn
+			and settings.AutoSalvage[spec.Tier] == true
+			and settings.SalvageItems[spec.BaseId] == true
+		local created = if auto then nil else Inventory.CreateGear(player, spec)
 		if created ~= nil then
 			summary.Gear += 1
 		else

@@ -1,5 +1,5 @@
 --!strict
--- Inventory window, left side: search + filter, 8 x 7 grid of bag slots in pages (back / page / next), a line about the picked slot and its actions (gear: salvage · box: open, open all, more).
+-- Inventory window, left side: search + Auto (auto-salvage window) + Filter (modal, State.Ui.BagFilter), 8 x 7 grid of bag slots in pages (back / page / next), a line about the picked slot and its actions (gear: salvage · box: open, open all, more). Click pins a slot's card; gear: double click or drag onto a Team slot = wear it.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -14,6 +14,8 @@ local Widgets = require(script.Parent.Parent.Core.Widgets)
 local ItemInfo = require(script.Parent.Parent.Core.ItemInfo)
 local State = require(script.Parent.Parent.Parent.State)
 local Entries = require(script.Parent.Entries)
+local Tip = require(script.Parent.Parent.Core.Tip)
+local Equip = require(script.Parent.Parent.Core.Equip)
 
 local e = React.createElement
 local UI = Text.UI
@@ -25,13 +27,6 @@ local FOOT_H = 34
 local INFO_H = 22
 local GAP = 8
 local CELL_GAP = 6
-
-local KINDS: { { Id: Entries.Kind, Label: string } } = {
-	{ Id = "Gear", Label = UI.Gear },
-	{ Id = "Material", Label = UI.Materials },
-	{ Id = "Box", Label = UI.Boxes },
-}
-local SORTS: { Entries.SortKey } = { "Level", "Score", "Tier" }
 
 export type Props = {
 	data: Types.ProfileData,
@@ -55,22 +50,22 @@ local function confirmSalvage(item: Types.GearItem)
 	})
 end
 
-local function row(children: { [string]: React.ReactNode }, order: number): React.ReactNode
-	children.Layout = Widgets.List(Enum.FillDirection.Horizontal, 6)
-	return e("Frame", { Size = UDim2.new(1, 0, 0, 30), BackgroundTransparency = 1, LayoutOrder = order }, children)
-end
-
 local function Grid(props: Props): React.ReactNode
 	local data = props.data
 	local query, setQuery = React.useState("")
-	local kind, setKind = Widgets.useOptional(nil :: Entries.Kind?)
-	local tier, setTier = Widgets.useOptional(nil :: string?)
-	local sort, setSort = React.useState("Level" :: Entries.SortKey)
-	local filterOpen, setFilterOpen = React.useState(false)
+	local filter = State.Ui.BagFilter
+	local kind, tier, sort = filter.Kind, filter.Tier, filter.Sort
 	local page, setPage = React.useState(1)
+	-- A new filter starts from the first page.
+	React.useEffect(function()
+		setPage(1)
+	end, { kind, tier, sort } :: { any })
 	local picked, setPicked = Widgets.useOptional(nil :: string?)
 
-	local entries = Entries.Build(data, { Query = query, Kind = kind, Tier = tier, Sort = sort })
+	local entries = Entries.Build(
+		data,
+		{ Query = query, Kind = kind :: Entries.Kind?, Tier = tier, Sort = sort :: Entries.SortKey }
+	)
 	local pages = math.max(math.ceil(#entries / PAGE), 1)
 	local shown = math.clamp(page, 1, pages)
 
@@ -99,6 +94,10 @@ local function Grid(props: Props): React.ReactNode
 		if isPicked then
 			chosen = entry
 		end
+		local tip = if entry.Kind == "Gear"
+			then Tip.BagGear(data.Gear[entry.Id], entry.WornBy)
+			elseif entry.Kind == "Box" then Tip.Box(entry.Id, entry.Count)
+			else Tip.Material(entry.Id, entry.Count)
 		cells[entry.Key] = e("TextButton", {
 			BackgroundColor3 = if isKeep or isUse or isPicked then Theme.Hover else Theme.PanelAlt,
 			AutoButtonColor = true,
@@ -108,10 +107,28 @@ local function Grid(props: Props): React.ReactNode
 			TextSize = 11,
 			TextWrapped = true,
 			LayoutOrder = i,
-			[React.Event.Activated] = function()
+			[React.Event.MouseEnter] = Tip.Enter(tip),
+			[React.Event.MouseLeave] = Tip.Leave,
+			-- Gear can be dragged onto a gear slot of the Team window.
+			[React.Event.InputBegan] = function(_rbx: TextButton, input: InputObject)
+				if entry.Kind == "Gear" then
+					Tip.Press(input, entry.Id, entry.Label, function(target: string)
+						local now = State.Data
+						if now ~= nil then
+							Equip.FromBag(now, entry.Id, target)
+						end
+					end)
+				end
+			end,
+			-- Click = pick + pin its card · double click on gear = wear it on the Team window's hero.
+			[React.Event.Activated] = function(rbx: TextButton)
 				setPicked(entry.Key)
+				Tip.Pin(rbx, tip)
 				if entry.Kind == "Gear" then
 					props.onGear(entry.Id)
+					if Tip.Double(entry.Key) then
+						Equip.FromBag(data, entry.Id, nil)
+					end
 				end
 			end,
 		}, {
@@ -134,80 +151,6 @@ local function Grid(props: Props): React.ReactNode
 					position = UDim2.fromOffset(0, -2),
 				})
 				else nil,
-		})
-	end
-
-	-- Filter panel (over the grid while open)
-	local filter: React.ReactNode = nil
-	if filterOpen then
-		local kinds: { [string]: React.ReactNode } = {
-			All = e(Widgets.Button, {
-				text = UI.All,
-				size = UDim2.fromOffset(70, 30),
-				textSize = 14,
-				selected = kind == nil,
-				layoutOrder = 0,
-				onClick = function()
-					setKind(nil)
-					setPage(1)
-				end,
-			}),
-		}
-		for i, k in KINDS do
-			kinds[k.Id] = e(Widgets.Button, {
-				text = k.Label,
-				size = UDim2.fromOffset(96, 30),
-				textSize = 14,
-				selected = kind == k.Id,
-				layoutOrder = i,
-				onClick = function()
-					setKind(k.Id)
-					setPage(1)
-				end,
-			})
-		end
-		local tiers: { [string]: React.ReactNode } = {}
-		for i, t in Tiers.List do
-			tiers[t.Id] = e(Widgets.Button, {
-				text = Text.Tier(t.Id),
-				size = UDim2.fromOffset(96, 30),
-				textSize = 14,
-				selected = tier == t.Id,
-				layoutOrder = i,
-				onClick = function()
-					setTier(if tier == t.Id then nil else t.Id)
-					setPage(1)
-				end,
-			})
-		end
-		local sorts: { [string]: React.ReactNode } = {}
-		for i, key in SORTS do
-			sorts[key] = e(Widgets.Button, {
-				text = key,
-				size = UDim2.fromOffset(70, 30),
-				textSize = 14,
-				selected = sort == key,
-				layoutOrder = i,
-				onClick = function()
-					setSort(key :: Entries.SortKey)
-				end,
-			})
-		end
-		filter = e("TextButton", {
-			Size = UDim2.new(1, 0, 0, 30 * 3 + 6 * 2 + 20),
-			Position = UDim2.fromOffset(0, HEAD_H + 4),
-			BackgroundColor3 = Theme.Bg,
-			AutoButtonColor = false,
-			Text = "",
-			ZIndex = 5,
-		}, {
-			Corner = Widgets.Corner(8),
-			Stroke = Widgets.Stroke(),
-			Padding = Widgets.Padding(10),
-			Layout = Widgets.List(Enum.FillDirection.Vertical, 6),
-			Kinds = row(kinds, 1),
-			Tiers = row(tiers, 2),
-			Sorts = row(sorts, 3),
 		})
 	end
 
@@ -261,7 +204,7 @@ local function Grid(props: Props): React.ReactNode
 
 	local below = INFO_H + FOOT_H + GAP * 2
 	return e("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 }, {
-		Search = e("Frame", { Size = UDim2.new(1, -92, 0, HEAD_H), BackgroundTransparency = 1 }, {
+		Search = e("Frame", { Size = UDim2.new(1, -184, 0, HEAD_H), BackgroundTransparency = 1 }, {
 			Input = e(Widgets.TextInput, {
 				text = query,
 				placeholder = UI.Search,
@@ -271,18 +214,30 @@ local function Grid(props: Props): React.ReactNode
 				end,
 			}),
 		}),
+		AutoSalvage = e(Widgets.Button, {
+			text = UI.AutoSalvageButton,
+			size = UDim2.fromOffset(84, HEAD_H),
+			position = UDim2.new(1, -92, 0, 0),
+			anchor = Vector2.new(1, 0),
+			textSize = 15,
+			-- Lit while auto-salvage is switched on.
+			selected = data.Settings.AutoSalvageOn,
+			onClick = function()
+				State.ToggleWindow("AutoSalvage")
+			end,
+		}),
 		FilterButton = e(Widgets.Button, {
 			text = UI.Filter,
 			size = UDim2.fromOffset(84, HEAD_H),
 			position = UDim2.fromScale(1, 0),
 			anchor = Vector2.new(1, 0),
 			textSize = 15,
-			selected = filterOpen or kind ~= nil or tier ~= nil,
+			-- Lit while the grid is narrowed down.
+			selected = kind ~= nil or tier ~= nil,
 			onClick = function()
-				setFilterOpen(not filterOpen)
+				State.ShowBagFilter(true)
 			end,
 		}),
-		Filter = filter,
 		Cells = e("Frame", {
 			Size = UDim2.new(1, CELL_GAP, 1, -(HEAD_H + GAP + below)),
 			Position = UDim2.fromOffset(0, HEAD_H + GAP),

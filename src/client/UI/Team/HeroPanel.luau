@@ -1,5 +1,5 @@
 --!strict
--- Team window, left column: model preview of the picked class with its name (or "not owned") (buy button when not owned), class strip paged with arrow buttons, then either the 10 gear slots laid out around the body or the class skills (toggle button), Inventory button.
+-- Team window, left column: model preview of the picked class with its name (or "not owned") (buy button when not owned), class strip (4 at a time, arrow buttons when there are more), then either the 10 gear slots laid out around the body or the class skills (toggle button), Inventory button.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -14,6 +14,7 @@ local Classes = require(ReplicatedStorage.Shared.Config.Classes)
 local Theme = require(script.Parent.Parent.Core.Theme)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
 local ItemInfo = require(script.Parent.Parent.Core.ItemInfo)
+local Tip = require(script.Parent.Parent.Core.Tip)
 local ModelView = require(script.Parent.Parent.Core.ModelView)
 local State = require(script.Parent.Parent.Parent.State)
 
@@ -24,7 +25,7 @@ local UI = Text.UI
 local PREVIEW = 0.38
 local STRIP_H = 36
 -- Class buttons shown at once between the arrows.
-local VISIBLE = 2
+local VISIBLE = 4
 local ARROW_W = 32
 local TOGGLE = Vector2.new(84, 26)
 local FOOT_H = 36
@@ -82,7 +83,7 @@ local function HeroPanel(props: Props): React.ReactNode
 		if class ~= nil then
 			local owned = data.Heroes[class.Id]
 			classes[class.Id] = e(Widgets.Button, {
-				text = if owned ~= nil then `{Text.Class(class.Id)}  Lv {owned.Level}` else Text.Class(class.Id),
+				text = Text.Class(class.Id),
 				size = UDim2.new(1 / VISIBLE, -4, 1, 0),
 				position = UDim2.new((i - 1) / VISIBLE, 2, 0, 0),
 				textSize = 14,
@@ -156,10 +157,25 @@ local function HeroPanel(props: Props): React.ReactNode
 			FontFace = Theme.Font,
 			TextSize = 12,
 			TextWrapped = true,
-			[React.Event.Activated] = function()
-				if hero ~= nil then
-					props.onSlot(if open then nil else name)
+			-- Drop target for gear dragged from the Inventory window.
+			ref = function(rbx: TextButton?)
+				Tip.SetTarget(name, rbx)
+			end,
+			[React.Event.MouseEnter] = Tip.Enter(Tip.Gear(item, classId)),
+			[React.Event.MouseLeave] = Tip.Leave,
+			-- Click = make the slot active (picker) + pin its card · double click = take the piece off.
+			[React.Event.Activated] = function(rbx: TextButton)
+				if hero == nil then
+					return
 				end
+				if item ~= nil and Tip.Double("Team:" .. name) then
+					Tip.Unpin()
+					props.onSlot(nil)
+					State.Send.Unequip(classId, name)
+					return
+				end
+				props.onSlot(name)
+				Tip.Pin(rbx, Tip.Gear(item, classId))
 			end,
 		}, {
 			Aspect = e("UIAspectRatioConstraint", { AspectRatio = 1 }),
@@ -203,27 +219,32 @@ local function HeroPanel(props: Props): React.ReactNode
 			Position = UDim2.new(0, 0, PREVIEW, GAP),
 			BackgroundTransparency = 1,
 		}, {
-			Previous = e(Widgets.Button, {
-				text = "<",
-				size = UDim2.new(0, ARROW_W, 1, 0),
-				disabled = offset <= 0,
-				onClick = function()
-					setOffset(math.max(offset - 1, 0))
-				end,
-			}),
-			Next = e(Widgets.Button, {
-				text = ">",
-				size = UDim2.new(0, ARROW_W, 1, 0),
-				position = UDim2.fromScale(1, 0),
-				anchor = Vector2.new(1, 0),
-				disabled = offset >= maxOffset,
-				onClick = function()
-					setOffset(math.min(offset + 1, maxOffset))
-				end,
-			}),
+			-- Arrows only when there are more classes than the strip shows.
+			Previous = if maxOffset > 0
+				then e(Widgets.Button, {
+					text = "<",
+					size = UDim2.new(0, ARROW_W, 1, 0),
+					disabled = offset <= 0,
+					onClick = function()
+						setOffset(math.max(offset - 1, 0))
+					end,
+				})
+				else nil,
+			Next = if maxOffset > 0
+				then e(Widgets.Button, {
+					text = ">",
+					size = UDim2.new(0, ARROW_W, 1, 0),
+					position = UDim2.fromScale(1, 0),
+					anchor = Vector2.new(1, 0),
+					disabled = offset >= maxOffset,
+					onClick = function()
+						setOffset(math.min(offset + 1, maxOffset))
+					end,
+				})
+				else nil,
 			Shown = e("Frame", {
-				Size = UDim2.new(1, -(ARROW_W + 2) * 2, 1, 0),
-				Position = UDim2.fromOffset(ARROW_W + 2, 0),
+				Size = UDim2.new(1, if maxOffset > 0 then -(ARROW_W + 2) * 2 else 0, 1, 0),
+				Position = UDim2.fromOffset(if maxOffset > 0 then ARROW_W + 2 else 0, 0),
 				BackgroundTransparency = 1,
 			}, classes),
 		}),

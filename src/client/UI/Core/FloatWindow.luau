@@ -1,5 +1,5 @@
 --!strict
--- Floating window (no backdrop, several open at once, order in State.Ui.Windows): moves by its title bar, resizes from edges and corners, keeps its centre + size per id in Settings.Windows. Esc closes the top one; Close closes this one.
+-- Floating window (no backdrop, several open at once, order in State.Ui.Windows): moves by its title bar, resizes from edges and corners (everything inside scales with the size), keeps its centre + size per id in Settings.Windows. Esc closes the top one; Close closes this one.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GuiService = game:GetService("GuiService")
@@ -29,6 +29,14 @@ local MAX_DEFAULT = 0.96
 local DEFAULT_MIN = Vector2.new(720, 420)
 -- `fit` content never grows past this (a huge window would blow the text up).
 local FIT_MAX = 1.6
+-- Whole-window scale range when resizing.
+local SCALE_MIN, SCALE_MAX = 0.3, 1.6
+
+-- Resizing scales the whole window (frame, text, content) by the smaller of width / height against defaultSize:
+-- the layout inside always gets at least defaultSize, so nothing overlaps; the longer side gets the extra room.
+local function scaleFor(drawn: Vector2, defaultSize: Vector2): number
+	return math.clamp(math.min(drawn.X / defaultSize.X, drawn.Y / defaultSize.Y), SCALE_MIN, SCALE_MAX)
+end
 
 export type Props = {
 	id: string, -- State.Ui.Windows id; also the Settings.Windows key unless saveId is given
@@ -38,6 +46,10 @@ export type Props = {
 	defaultSize: Vector2, -- design units (before the UI scale)
 	minSize: Vector2?,
 	fit: Vector2?, -- fixed-layout content: laid out at this size, then scaled to fit the window (centred)
+	defaultCenter: Vector2?, -- screen fractions before the player moves it (default: middle)
+	zoom: number?, -- opens the window at defaultSize x zoom on screen (minSize too); see `scaleFor`
+	-- Modal: drawn over an invisible backdrop that blocks everything below (click on it = onClose); takes Esc while up. Mounted by App outside State.Ui.Windows.
+	modal: boolean?,
 	children: any,
 }
 
@@ -61,72 +73,75 @@ local function sides(l: boolean, r: boolean, t: boolean, b: boolean): Sides
 	return { L = l, R = r, T = t, B = b }
 end
 
-local HANDLES: { Handle } = {
-	{
-		Name = "L",
-		Sides = sides(true, false, false, false),
-		Size = UDim2.new(0, EDGE, 1, 0),
-		Position = UDim2.fromScale(0, 0),
-		Anchor = Vector2.new(0, 0),
-		Z = 3,
-	},
-	{
-		Name = "R",
-		Sides = sides(false, true, false, false),
-		Size = UDim2.new(0, EDGE, 1, 0),
-		Position = UDim2.fromScale(1, 0),
-		Anchor = Vector2.new(1, 0),
-		Z = 3,
-	},
-	{
-		Name = "T",
-		Sides = sides(false, false, true, false),
-		Size = UDim2.new(1, 0, 0, EDGE),
-		Position = UDim2.fromScale(0, 0),
-		Anchor = Vector2.new(0, 0),
-		Z = 3,
-	},
-	{
-		Name = "B",
-		Sides = sides(false, false, false, true),
-		Size = UDim2.new(1, 0, 0, EDGE),
-		Position = UDim2.fromScale(0, 1),
-		Anchor = Vector2.new(0, 1),
-		Z = 3,
-	},
-	{
-		Name = "TL",
-		Sides = sides(true, false, true, false),
-		Size = UDim2.fromOffset(CORNER, CORNER),
-		Position = UDim2.fromScale(0, 0),
-		Anchor = Vector2.new(0, 0),
-		Z = 4,
-	},
-	{
-		Name = "TR",
-		Sides = sides(false, true, true, false),
-		Size = UDim2.fromOffset(CORNER, CORNER),
-		Position = UDim2.fromScale(1, 0),
-		Anchor = Vector2.new(1, 0),
-		Z = 4,
-	},
-	{
-		Name = "BL",
-		Sides = sides(true, false, false, true),
-		Size = UDim2.fromOffset(CORNER, CORNER),
-		Position = UDim2.fromScale(0, 1),
-		Anchor = Vector2.new(0, 1),
-		Z = 4,
-	},
-	{
-		Name = "BR",
-		Sides = sides(false, true, false, true),
-		Size = UDim2.fromOffset(CORNER, CORNER),
-		Position = UDim2.fromScale(1, 1),
-		Anchor = Vector2.new(1, 1),
-		Z = 4,
-	},
-}
+-- Grab zones sized in the window's own (zoomed) units so they stay EDGE / CORNER wide on screen.
+local function handles(edge: number, corner: number): { Handle }
+	return {
+		{
+			Name = "L",
+			Sides = sides(true, false, false, false),
+			Size = UDim2.new(0, edge, 1, 0),
+			Position = UDim2.fromScale(0, 0),
+			Anchor = Vector2.new(0, 0),
+			Z = 3,
+		},
+		{
+			Name = "R",
+			Sides = sides(false, true, false, false),
+			Size = UDim2.new(0, edge, 1, 0),
+			Position = UDim2.fromScale(1, 0),
+			Anchor = Vector2.new(1, 0),
+			Z = 3,
+		},
+		{
+			Name = "T",
+			Sides = sides(false, false, true, false),
+			Size = UDim2.new(1, 0, 0, edge),
+			Position = UDim2.fromScale(0, 0),
+			Anchor = Vector2.new(0, 0),
+			Z = 3,
+		},
+		{
+			Name = "B",
+			Sides = sides(false, false, false, true),
+			Size = UDim2.new(1, 0, 0, edge),
+			Position = UDim2.fromScale(0, 1),
+			Anchor = Vector2.new(0, 1),
+			Z = 3,
+		},
+		{
+			Name = "TL",
+			Sides = sides(true, false, true, false),
+			Size = UDim2.fromOffset(corner, corner),
+			Position = UDim2.fromScale(0, 0),
+			Anchor = Vector2.new(0, 0),
+			Z = 4,
+		},
+		{
+			Name = "TR",
+			Sides = sides(false, true, true, false),
+			Size = UDim2.fromOffset(corner, corner),
+			Position = UDim2.fromScale(1, 0),
+			Anchor = Vector2.new(1, 0),
+			Z = 4,
+		},
+		{
+			Name = "BL",
+			Sides = sides(true, false, false, true),
+			Size = UDim2.fromOffset(corner, corner),
+			Position = UDim2.fromScale(0, 1),
+			Anchor = Vector2.new(0, 1),
+			Z = 4,
+		},
+		{
+			Name = "BR",
+			Sides = sides(false, true, false, true),
+			Size = UDim2.fromOffset(corner, corner),
+			Position = UDim2.fromScale(1, 1),
+			Anchor = Vector2.new(1, 1),
+			Z = 4,
+		},
+	}
+end
 
 local function isPointer(input: InputObject): boolean
 	return input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch
@@ -138,7 +153,9 @@ local function clamp(value: number, low: number, high: number): number
 end
 
 local function FloatWindow(props: Props): React.ReactNode
-	local onTop = State.TopWindow() == props.id and State.Ui.Confirm == nil
+	local onTop = if props.modal
+		then State.Ui.Confirm == nil
+		else State.TopWindow() == props.id and not State.ModalOpen()
 	Widgets.useEscape(if onTop then props.onClose else nil)
 	local viewport = Widgets.useViewport()
 	local data = State.Data
@@ -160,7 +177,10 @@ local function FloatWindow(props: Props): React.ReactNode
 	local dragRef = React.useRef(nil :: Drag?)
 	local rootRef = React.useRef(nil :: TextButton?)
 
-	local minSize = props.minSize or DEFAULT_MIN
+	local zoom = props.zoom or 1
+	-- Sizes below are as drawn (after zoom).
+	local minSize = (props.minSize or DEFAULT_MIN) * zoom
+	local defaultSize = props.defaultSize * zoom
 	local minPx = minSize * scale
 	local id = saveId
 
@@ -183,13 +203,13 @@ local function FloatWindow(props: Props): React.ReactNode
 		local size = if hasSize
 			then Vector2.new(savedW, savedH)
 			else Vector2.new(
-				math.min(props.defaultSize.X / area.X, MAX_DEFAULT),
-				math.min(props.defaultSize.Y / area.Y, MAX_DEFAULT)
+				math.min(defaultSize.X / area.X, MAX_DEFAULT),
+				math.min(defaultSize.Y / area.Y, MAX_DEFAULT)
 			)
 		rect = {
 			Center = if saved ~= nil
 				then Vector2.new(clamp(saved[1] or 0.5, 0, 1), clamp(saved[2] or 0.5, 0, 1))
-				else Vector2.new(0.5, 0.5),
+				else props.defaultCenter or Vector2.new(0.5, 0.5),
 			Size = Vector2.new(clamp(size.X, minFraction.X, 1), clamp(size.Y, minFraction.Y, 1)),
 		}
 	end
@@ -289,9 +309,10 @@ local function FloatWindow(props: Props): React.ReactNode
 	end, { dragging })
 
 	local content: any = props.children
+	local k = scaleFor(rect.Size * area, props.defaultSize)
 	local fit = props.fit
 	if fit ~= nil then
-		local avail = rect.Size * area - Vector2.new(PAD * 2, PAD * 2 + HEADER)
+		local avail = rect.Size * area / k - Vector2.new(PAD * 2, PAD * 2 + HEADER)
 		local fitScale = math.clamp(math.min(avail.X / fit.X, avail.Y / fit.Y), 0.05, FIT_MAX)
 		content = {
 			Fit = e("Frame", {
@@ -307,6 +328,8 @@ local function FloatWindow(props: Props): React.ReactNode
 	end
 
 	local children: { [string]: React.ReactNode } = {
+		-- Laid out 1/k larger, drawn at k: the window keeps rect's size on screen.
+		Zoom = if k ~= 1 then e("UIScale", { Scale = k }) else nil,
 		Corner = Widgets.Corner(14),
 		Stroke = Widgets.Stroke(Theme.Outline, 3),
 		Sheet = Widgets.Sheet(
@@ -344,7 +367,8 @@ local function FloatWindow(props: Props): React.ReactNode
 				textSize = 14,
 				disabled = saved == nil,
 				onClick = function()
-					State.SetWindow(id, 0.5, 0.5, 0, 0)
+					local home = props.defaultCenter or Vector2.new(0.5, 0.5)
+					State.SetWindow(id, home.X, home.Y, 0, 0)
 				end,
 			}),
 			Close = e(Widgets.Button, {
@@ -372,7 +396,7 @@ local function FloatWindow(props: Props): React.ReactNode
 			anchor = Vector2.new(1, 1),
 		}),
 	}
-	for _, handle in HANDLES do
+	for _, handle in handles(EDGE / k, CORNER / k) do
 		children["Resize" .. handle.Name] = e("TextButton", {
 			Size = handle.Size,
 			Position = handle.Position,
@@ -388,9 +412,9 @@ local function FloatWindow(props: Props): React.ReactNode
 	end
 
 	-- A button (not a Frame) so clicks inside the window never reach the game behind it.
-	return e("TextButton", {
+	local window = e("TextButton", {
 		ref = rootRef,
-		Size = UDim2.fromScale(rect.Size.X, rect.Size.Y),
+		Size = UDim2.fromScale(rect.Size.X / k, rect.Size.Y / k),
 		Position = UDim2.fromScale(rect.Center.X, rect.Center.Y),
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		BackgroundColor3 = Theme.Wood,
@@ -398,6 +422,18 @@ local function FloatWindow(props: Props): React.ReactNode
 		AutoButtonColor = false,
 		Text = "",
 	}, children)
+	if not props.modal then
+		return window
+	end
+	-- Invisible: no dimming, it only eats clicks below the modal.
+	return e("TextButton", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		AutoButtonColor = false,
+		Text = "",
+		Modal = true,
+		[React.Event.Activated] = props.onClose,
+	}, { Window = window })
 end
 
 return FloatWindow

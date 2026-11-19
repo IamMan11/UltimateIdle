@@ -7,6 +7,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local Types = require(ReplicatedStorage.Shared.Types)
 local Game = require(ReplicatedStorage.Shared.Config.Game)
+local EnchantConfig = require(ReplicatedStorage.Shared.Config.Enchant)
 local Items = require(ReplicatedStorage.Shared.Config.Items)
 local Tiers = require(ReplicatedStorage.Shared.Config.Tiers)
 local Materials = require(ReplicatedStorage.Shared.Config.Materials)
@@ -196,7 +197,7 @@ function Inventory.Adopt(player: Player, item: Types.GearItem): string?
 	end
 	local enchants: { Types.Enchant } = {}
 	for i, enchant in item.Enchants do
-		enchants[i] = { Id = enchant.Id, Value = enchant.Value }
+		enchants[i] = { Id = enchant.Id }
 	end
 	local copy: Types.GearItem = {
 		Uid = uid,
@@ -278,7 +279,7 @@ function Inventory.SetEnchants(player: Player, uid: string, enchants: { Types.En
 		return false
 	end
 	for _, enchant in enchants do
-		if not Guard.Finite(enchant.Value) then
+		if EnchantConfig.ById[enchant.Id] == nil then
 			return false
 		end
 	end

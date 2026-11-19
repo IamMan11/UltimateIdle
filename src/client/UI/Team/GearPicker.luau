@@ -12,6 +12,7 @@ local Rebirth = require(ReplicatedStorage.Shared.Config.Rebirth)
 local Theme = require(script.Parent.Parent.Core.Theme)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
 local ItemInfo = require(script.Parent.Parent.Core.ItemInfo)
+local Tip = require(script.Parent.Parent.Core.Tip)
 local VirtualList = require(script.Parent.Parent.Core.VirtualList)
 local State = require(script.Parent.Parent.Parent.State)
 
@@ -78,7 +79,12 @@ local function GearPicker(props: Props): React.ReactNode
 			renderRow = function(index: number): React.ReactNode
 				local item = candidates[index]
 				local wornBy = worn[item.Uid]
-				return e("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Theme.PanelAlt }, {
+				return e("Frame", {
+					Size = UDim2.fromScale(1, 1),
+					BackgroundColor3 = Theme.PanelAlt,
+					[React.Event.MouseEnter] = Tip.Enter(Tip.Gear(item, hero.Class)),
+					[React.Event.MouseLeave] = Tip.Leave,
+				}, {
 					Corner = Widgets.Corner(6),
 					Line = e(Widgets.Label, {
 						text = `{if wornBy ~= nil then UI.EquippedMark .. " " else ""}{ItemInfo.Line(item)}`,

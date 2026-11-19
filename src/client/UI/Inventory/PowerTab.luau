@@ -8,7 +8,6 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Text = require(ReplicatedStorage.Shared.Text)
 local Formula = require(ReplicatedStorage.Shared.Formula)
 local EnchantConfig = require(ReplicatedStorage.Shared.Config.Enchant)
-local Tiers = require(ReplicatedStorage.Shared.Config.Tiers)
 local Theme = require(script.Parent.Parent.Core.Theme)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
 local ItemInfo = require(script.Parent.Parent.Core.ItemInfo)
@@ -25,29 +24,29 @@ local GAP = 8
 
 export type Props = { data: Types.ProfileData, item: Types.GearItem? }
 
+-- "Godspeed (Legendary)" and its effects under it.
 local function traitText(list: { Types.Enchant }?): string
 	if list == nil or #list == 0 then
 		return UI.NoTraits
 	end
 	local out: { string } = {}
 	for _, enchant in list do
-		table.insert(out, Text.Trait(enchant))
+		table.insert(out, `{Text.TraitName(enchant.Id)} ({Text.TraitRarity(enchant.Id)})`)
+		for _, effect in Text.TraitEffects(enchant.Id) do
+			table.insert(out, effect)
+		end
 	end
 	return table.concat(out, "\n")
 end
 
--- Every power a roll can land on, and how many lines each tier rolls. Chances and value ranges are server-only.
+-- Every power a roll can land on, rarest last, with what it does. Chances are server-only.
 local function indexText(): string
 	local out: { string } = { UI.PowerIndex .. ":" }
-	for _, id in EnchantConfig.Traits do
-		table.insert(out, "  " .. Text.TraitName(id))
-	end
-	table.insert(out, "")
-	for _, tier in Tiers.List do
-		local lines = EnchantConfig.Lines[tier.Id]
-		if lines ~= nil then
-			table.insert(out, `{Text.Tier(tier.Id)}: {lines} line(s) per roll`)
-		end
+	for _, def in EnchantConfig.List do
+		table.insert(
+			out,
+			`{Text.TraitName(def.Id)} ({Text.TraitRarity(def.Id)}): {table.concat(Text.TraitEffects(def.Id), ", ")}`
+		)
 	end
 	return table.concat(out, "\n")
 end
@@ -135,8 +134,8 @@ local function PowerTab(props: Props): React.ReactNode
 					return
 				end
 				State.OpenConfirm({
-					Title = `Roll new powers on {ItemInfo.Name(item)}?`,
-					Body = `Current powers are replaced for good:\n{traitText(item.Enchants)}`,
+					Title = `Roll a new power on {ItemInfo.Name(item)}?`,
+					Body = `The current power is replaced for good:\n{traitText(item.Enchants)}`,
 					OkText = UI.Roll,
 					Danger = true,
 					OnConfirm = function()

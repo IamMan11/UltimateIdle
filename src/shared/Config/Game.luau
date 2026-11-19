@@ -20,11 +20,16 @@ return Freeze({
 	OpenBatchMax = 100,
 	-- UI size choices on the Settings page (multiplies the automatic scale).
 	UiScales = { 0.85, 1, 1.15, 1.3 },
+	-- Team + Inventory windows are drawn at this scale so both fit side by side (Core/FloatWindow `zoom`).
+	WindowZoom = 0.7,
 	-- Floating windows whose place and size are saved (Settings.Windows keys).
 	Windows = {
 		"Team",
 		"Tree",
 		"Inventory",
+		"AutoSalvage",
+		"SalvagePick",
+		"BagFilter",
 		"Boxes",
 		"Rebirth",
 		"Quests",

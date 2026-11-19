@@ -1,5 +1,5 @@
 --!strict
--- Enchant remote: spend gold + dust -> reroll every trait line (count by tier, no repeated trait). Writes go through Inventory.
+-- Enchant remote (player-facing "Power"): spend gold + dust -> roll one new trait for the piece (chances by tier). Writes go through Inventory.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
@@ -18,26 +18,13 @@ local Quest = require(script.Parent.Quest)
 
 local Enchant = {}
 
+-- One power (trait) for a piece of this tier; nil only if the pool is empty.
 function Enchant.Roll(rng: Rng.Rng, tier: string): { Types.Enchant }
-	local lines = EnchantConfig.Lines[tier] or 1
-	local pool = EnchantPools.Get(tier)
-	local weights: { [string]: number } = {}
-	local byId: { [string]: EnchantPools.Trait } = {}
-	for _, trait in pool do
-		weights[trait.Id] = trait.Weight
-		byId[trait.Id] = trait
+	local id = rng:Weighted(EnchantPools.Get(tier))
+	if id == nil or EnchantConfig.ById[id] == nil then
+		return {}
 	end
-	local out: { Types.Enchant } = {}
-	for _ = 1, lines do
-		local id = rng:Weighted(weights)
-		if id == nil then
-			break
-		end
-		weights[id] = nil
-		local trait = byId[id]
-		table.insert(out, { Id = id, Value = rng:Int(trait.Min, trait.Max) })
-	end
-	return out
+	return { { Id = id } }
 end
 
 local function enchant(player: Player, uid: string)

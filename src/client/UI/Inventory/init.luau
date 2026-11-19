@@ -30,7 +30,7 @@ local TABS: { { Id: Tab, Label: string } } = {
 }
 
 local DEFAULT_SIZE = Vector2.new(1160, 640)
-local MIN_SIZE = Vector2.new(900, 520)
+local MIN_SIZE = Vector2.new(640, 360)
 -- Share of the window the grid takes; GAP separates it from the tabs.
 local LEFT = 0.54
 local GAP = 14
@@ -110,6 +110,9 @@ local function Inventory(props: Props): React.ReactNode
 		onClose = close,
 		defaultSize = DEFAULT_SIZE,
 		minSize = MIN_SIZE,
+		zoom = Game.WindowZoom,
+		-- Opens beside the Team window so gear can be dragged between them.
+		defaultCenter = Vector2.new(0.7, 0.55),
 	}, {
 		Left = e("Frame", { Size = UDim2.new(LEFT, -GAP, 1, 0), BackgroundTransparency = 1 }, {
 			Grid = e(Grid, {

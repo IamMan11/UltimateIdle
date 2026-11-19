@@ -27,10 +27,10 @@ export type Socket = {
 	Insert: string?,
 }
 
--- Id = Config.Enchant.Traits entry; Value in percent points (MoveSpeed: flat).
+-- A power (trait) on a piece: Id = Config.Enchant.ById key. Value = old per-line roll, unused since traits carry fixed effects.
 export type Enchant = {
 	Id: string,
-	Value: number,
+	Value: number?,
 }
 
 -- Base stats and descriptions live in Config.Items, keyed by BaseId.
@@ -134,7 +134,10 @@ export type Reward = {
 }
 
 export type Settings = {
-	AutoSalvage: { [string]: boolean }, -- Tier -> salvage on drop
+	-- Auto-salvage (drops only): a drop is salvaged when AutoSalvageOn, its tier is ticked and its BaseId is on the list.
+	AutoSalvage: { [string]: boolean }, -- Tier -> ticked
+	AutoSalvageOn: boolean,
+	SalvageItems: { [string]: boolean }, -- gear BaseId -> on the list
 	AutoOpenBoxes: boolean,
 	SkipWave: boolean,
 	UiScale: number, -- one of Config.Game.UiScales (1 = auto size)

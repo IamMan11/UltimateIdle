@@ -148,8 +148,9 @@ A package that exports no types gives `TypeError: Unknown type` for any `Pkg.Typ
 
 ### UI theme
 
-Theme: `src/client/UI/Core/Theme.luau` — wood frame + parchment panels + dark outline (`Wood`, `Outline`, `OnDark` = text on wood/dark · `Panel` sheet, `PanelAlt` card, `Bg` well, `Hover` selected · `Stroke`, `Text`, `Subtext`, `Accent` · button faces `Button`, `Confirm`, `Danger`, `Disabled` · `OnLight`, `Backdrop`, `Bar`, `BarBack`), fonts `Font`/`FontBold` (BuilderSans), z layers `ZHud` 1 · `ZPage` 3 · `ZModal` 6 · `ZToast` 10 · `ZDev` 20.
+Theme: `src/client/UI/Core/Theme.luau` — wood frame + parchment panels + dark outline (`Wood`, `Outline`, `OnDark` = text on wood/dark · `Panel` sheet, `PanelAlt` card, `Bg` well, `Hover` selected · `Stroke`, `Text`, `Subtext`, `Accent` · button faces `Button`, `Confirm`, `Danger`, `Disabled` · `OnLight`, `Backdrop`, `Bar`, `BarBack`), fonts `Font`/`FontBold` (BuilderSans), z layers `ZHud` 1 · `ZPage` 3 · `ZModal` 6 · `ZTooltip` 8 · `ZToast` 10 · `ZDev` 20.
 Widgets: `src/client/UI/Core/Widgets.luau` (`Label`, `Button`, `Bar`, `TextInput`, `Stepper`, `Window` = page/modal shell with backdrop + Esc, `useStore`, `useOptional`) · `VirtualList.luau` for long lists · `Confirm.luau` for yes/no.
+Hover tooltip: give a slot `[React.Event.MouseEnter] = Tip.Enter(Tip.Gear(item, wearer))` + `[React.Event.MouseLeave] = Tip.Leave` (`Core/Tip.luau`; also `Tip.Material`/`Box`/`Socket`/`Snapshot`), or `Widgets.Button` prop `tip`. The card is drawn once at the root by `Core/Tooltip.luau`. Click = `Tip.Pin` (card stays), `Tip.Double(key)` = double click, `Tip.Press` + `Tip.SetTarget` = drag gear between windows. Team ↔ Inventory link (Team hero/slot in `State.Ui.TeamHero/TeamSlot`, equip from the bag) lives in `Core/Equip.luau`. Resizing a `FloatWindow` scales the whole window by min(width, height) against `defaultSize` (layout never gets smaller than `defaultSize`); prop `zoom` = opening size (`Config.Game.WindowZoom` for Team + Inventory).
 Rule: every color comes from Theme; never hard-code a Color3 in a UI file. Pages read `State.Data`, send intent through `State.Send.*`.
 
 ### Player data — ProfileStore only

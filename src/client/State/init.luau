@@ -30,13 +30,26 @@ export type ForgeResult = {
 	After: { Types.Enchant }?,
 }
 
+export type BagKind = "Gear" | "Material" | "Box"
+export type BagSort = "Level" | "Score" | "Tier"
+-- Inventory grid filter (kept while the game runs, set from the Filter modal).
+export type BagFilter = {
+	Kind: BagKind?, -- nil = everything
+	Tier: string?, -- nil = every tier
+	Sort: BagSort,
+}
+
 export type Ui = {
 	Windows: { string }, -- open window ids, bottom -> top (the last one is drawn on top and takes Esc)
 	PageTabs: { [string]: string }, -- window id -> tab it shows (windows with tabs: Quests, Shop); none = its first tab
 	ForgeUid: string?, -- gear picked in the Inventory window (the piece the Sockets / Enhance / Power tabs work on)
+	TeamHero: string?, -- class shown in the Team window (nil = first owned); Inventory equips onto it
+	TeamSlot: string?, -- active gear slot in the Team window (its picker is open)
 	LastEnhance: ForgeResult?,
 	LastEnchant: ForgeResult?,
 	Confirm: ConfirmPrompt?,
+	BagFilter: BagFilter,
+	BagFilterOpen: boolean, -- Filter modal over the Inventory window
 	Toasts: { Toast },
 	CameraMode: "Lane" | "Walk",
 	View: "2D" | "3D",
@@ -64,9 +77,13 @@ local State = {
 		Windows = {},
 		PageTabs = {},
 		ForgeUid = nil,
+		TeamHero = nil,
+		TeamSlot = nil,
 		LastEnhance = nil,
 		LastEnchant = nil,
 		Confirm = nil,
+		BagFilter = { Sort = "Level" },
+		BagFilterOpen = false,
 		Toasts = {},
 		CameraMode = "Lane",
 		View = "2D",
@@ -168,6 +185,10 @@ function State.CloseWindow(id: string)
 	local index = table.find(State.Ui.Windows, id)
 	if index ~= nil then
 		table.remove(State.Ui.Windows, index)
+		-- The Filter modal belongs to the Inventory window.
+		if id == "Inventory" then
+			State.Ui.BagFilterOpen = false
+		end
 		notify()
 	end
 end
@@ -213,6 +234,12 @@ function State.SelectForge(uid: string?)
 	notify()
 end
 
+function State.SetTeam(heroId: string?, slot: string?)
+	State.Ui.TeamHero = heroId
+	State.Ui.TeamSlot = slot
+	notify()
+end
+
 function State.OpenConfirm(prompt: ConfirmPrompt)
 	State.Ui.Confirm = prompt
 	notify()
@@ -220,6 +247,21 @@ end
 
 function State.CloseConfirm()
 	State.Ui.Confirm = nil
+	notify()
+end
+
+-- A modal (Confirm or the bag Filter) is up: windows below ignore Esc and clicks.
+function State.ModalOpen(): boolean
+	return State.Ui.Confirm ~= nil or State.Ui.BagFilterOpen
+end
+
+function State.SetBagFilter(filter: BagFilter)
+	State.Ui.BagFilter = filter
+	notify()
+end
+
+function State.ShowBagFilter(open: boolean)
+	State.Ui.BagFilterOpen = open
 	notify()
 end
 
@@ -303,6 +345,9 @@ State.Send = {
 	end,
 	SetSetting = function(key: string, sub: string?, value: boolean | number)
 		Net.SetSetting:Client():Fire(key, sub, value)
+	end,
+	SetSalvageItems = function(ids: { string }, on: boolean)
+		Net.SetSalvageItems:Client():Fire(ids, on)
 	end,
 	Equip = function(heroId: string, uid: string, slot: string)
 		Net.Equip:Client():Fire(heroId, uid, slot)
@@ -468,7 +513,8 @@ local function onNotice(kind: string, payload: any)
 		)
 	elseif kind == "Enchanted" then
 		State.Ui.LastEnchant = { Uid = payload.Uid, Before = payload.Before, After = payload.After }
-		State.PushToast("Enchanted: new traits rolled")
+		local after: { Types.Enchant } = payload.After or {}
+		State.PushToast(if after[1] ~= nil then `New power: {Text.TraitName(after[1].Id)}` else "New power rolled")
 	elseif kind == "SocketAdded" then
 		State.PushToast(`Socket opened ({payload.Count} total)`)
 	elseif kind == "Rebirthed" then

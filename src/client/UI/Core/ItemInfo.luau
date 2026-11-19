@@ -1,5 +1,5 @@
 --!strict
--- Display helpers for gear: one-line summary, stat lines for a wearer (incl. traits + inserts), which hero wears what.
+-- Display helpers for gear: one-line summary, stat lines and effect lines for a wearer, which hero wears what.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -29,7 +29,8 @@ function ItemInfo.TierOrder(item: Types.GearItem): number
 	return if tier ~= nil then tier.Order else 0
 end
 
-function ItemInfo.StatLines(item: Types.GearItem, wearer: string?): { string }
+-- Stat lines as worn by `wearer`: base + gems (scaled by level/plus), the power's effects, artifact/relic inserts.
+function ItemInfo.Stats(item: Types.GearItem, wearer: string?): { string }
 	local bonus = Formula.Stats.Gear(item, wearer)
 	local lines = {}
 	if bonus.Atk > 0 then
@@ -45,7 +46,9 @@ function ItemInfo.StatLines(item: Types.GearItem, wearer: string?): { string }
 		table.insert(lines, `Speed +{bonus.Speed}`)
 	end
 	for _, enchant in item.Enchants do
-		table.insert(lines, Text.Trait(enchant))
+		for _, effect in Text.TraitEffects(enchant.Id) do
+			table.insert(lines, effect)
+		end
 	end
 	for _, socket in item.Sockets do
 		local insert = if socket.Insert ~= nil then Inserts.ById[socket.Insert] else nil
@@ -53,9 +56,12 @@ function ItemInfo.StatLines(item: Types.GearItem, wearer: string?): { string }
 			table.insert(lines, `{Text.Material(insert.Id)}: {Text.InsertEffect(insert.Id)}`)
 		end
 	end
-	if #item.Sockets > 0 then
-		table.insert(lines, `Sockets {#item.Sockets}/{Inserts.MaxSockets}`)
-	end
+	return lines
+end
+
+-- The piece's own special effect (weapon ability), marked off when `wearer` is another class. Empty = none.
+function ItemInfo.Effects(item: Types.GearItem, wearer: string?): { string }
+	local lines = {}
 	local def = Items.ById[item.BaseId]
 	if def ~= nil and def.Ability ~= nil then
 		local active = wearer == nil or wearer == def.Class

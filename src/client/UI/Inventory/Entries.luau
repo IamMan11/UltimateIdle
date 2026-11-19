@@ -10,9 +10,10 @@ local Text = require(ReplicatedStorage.Shared.Text)
 local Boxes = require(ReplicatedStorage.Shared.Config.Boxes)
 local Materials = require(ReplicatedStorage.Shared.Config.Materials)
 local ItemInfo = require(script.Parent.Parent.Core.ItemInfo)
+local State = require(script.Parent.Parent.Parent.State)
 
-export type Kind = "Gear" | "Material" | "Box"
-export type SortKey = "Level" | "Score" | "Tier"
+export type Kind = State.BagKind
+export type SortKey = State.BagSort
 
 export type Entry = {
 	Key: string, -- unique per slot
@@ -22,6 +23,7 @@ export type Entry = {
 	Line: string, -- one-line description under the grid
 	Count: number, -- units in this slot (1 for gear)
 	Worn: boolean,
+	WornBy: string?, -- hero id (= class id)
 }
 
 export type Filter = {
@@ -76,6 +78,7 @@ function Entries.Build(data: Types.ProfileData, filter: Filter): { Entry }
 					else ItemInfo.Line(item),
 				Count = 1,
 				Worn = wornBy ~= nil,
+				WornBy = wornBy,
 			})
 		end
 	end

@@ -136,6 +136,10 @@ local Net = {
 	SetSetting = Red.Event("SetSetting", function(key: unknown, sub: unknown, value: unknown)
 		return str(key, 32), if sub == nil then nil else str(sub, 32), scalar(value)
 	end),
+	SetSalvageItems = Red.Event("SetSalvageItems", function(ids: unknown, on: unknown)
+		assert(type(on) == "boolean", "bad argument")
+		return strList(ids, 64, 32), on
+	end),
 	SetWindow = Red.Event("SetWindow", function(id: unknown, x: unknown, y: unknown, w: unknown, h: unknown)
 		return str(id, 16), unit(x), unit(y), unit(w), unit(h)
 	end),

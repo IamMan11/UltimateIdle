@@ -8,6 +8,7 @@ local SkillTree = require(script.Parent.Config.SkillTree)
 local Types = require(script.Parent.Types)
 local Account = require(script.Parent.Config.Account)
 local Inserts = require(script.Parent.Config.Inserts)
+local Enchant = require(script.Parent.Config.Enchant)
 
 local CLASS = { Warrior = "Warrior", Mage = "Mage", Archer = "Archer", Healer = "Healer" }
 local TIER = { Common = "Common", Uncommon = "Uncommon", Rare = "Rare" }
@@ -39,12 +40,42 @@ local MATERIAL: { [string]: string } = {
 	RelicDrop = "Lucky Charm",
 }
 local SOCKET_KIND = { Gem = "Gem", Artifact = "Artifact", Relic = "Relic" }
+-- What a plain material is for (tooltip); inserts get "Goes in a <kind> socket." from Text.MaterialUse.
+local MATERIAL_USE: { [string]: string } = {
+	EnhanceStone = "Used to enhance gear.",
+	EnchantDust = "Used to roll powers on gear.",
+	SocketCore = "Opens a new socket on a gear piece.",
+	AncientShard = "Needed to enhance Ancient gear.",
+}
+-- Power (trait) names by Config.Enchant id, and the names of the stats their effects raise.
 local TRAIT: { [string]: string } = {
+	Strength = "Strength",
+	Vitality = "Vitality",
+	Guard = "Guard",
+	Speed = "Speed",
+	Range = "Range",
+	Haste = "Haste",
+	Vampire = "Vampire",
+	Deadeye = "Deadeye",
+	Godspeed = "Godspeed",
+	God = "God",
+}
+local TRAIT_STAT: { [string]: string } = {
 	AtkPct = "Attack",
 	HpPct = "HP",
 	DefPct = "Defense",
 	AtkSpeed = "Attack speed",
-	MoveSpeed = "Move speed",
+	MovePct = "Move speed",
+	RangePct = "Range",
+	Crit = "Crit chance",
+	Lifesteal = "Lifesteal",
+}
+local RARITY: { [string]: string } = {
+	Common = "Common",
+	Rare = "Rare",
+	Epic = "Epic",
+	Legendary = "Legendary",
+	Mythic = "Mythic",
 }
 local INSERT_STAT: { [string]: string } = {
 	Atk = "attack",
@@ -216,16 +247,41 @@ end
 function Text.SocketKind(id: string): string
 	return (SOCKET_KIND :: { [string]: string })[id] or id
 end
+function Text.MaterialUse(id: string): string
+	local use = MATERIAL_USE[id]
+	if use ~= nil then
+		return use
+	end
+	local def = Inserts.ById[id]
+	return if def ~= nil then `Goes in a {Text.SocketKind(def.Kind)} socket.` else ""
+end
 
--- Trait name alone ("Attack speed"), for the power index.
+-- Power (trait) name: "Godspeed".
 function Text.TraitName(id: string): string
 	return TRAIT[id] or id
 end
 
--- "Attack +10%" / "Move speed +2".
+-- Power rarity: "Legendary".
+function Text.TraitRarity(id: string): string
+	local def = Enchant.ById[id]
+	return if def ~= nil then RARITY[def.Rarity] or def.Rarity else ""
+end
+
+-- What a power does, one line per effect: { "Attack speed +20%", "Move speed +25%" }.
+function Text.TraitEffects(id: string): { string }
+	local def = Enchant.ById[id]
+	local out: { string } = {}
+	if def ~= nil then
+		for _, effect in def.Effects do
+			table.insert(out, `{TRAIT_STAT[effect.Stat] or effect.Stat} +{effect.Value}%`)
+		end
+	end
+	return out
+end
+
+-- One line: "Godspeed: Attack speed +20%, Move speed +25%".
 function Text.Trait(enchant: Types.Enchant): string
-	local name = TRAIT[enchant.Id] or enchant.Id
-	return if enchant.Id == "MoveSpeed" then `{name} +{enchant.Value}` else `{name} +{enchant.Value}%`
+	return `{Text.TraitName(enchant.Id)}: {table.concat(Text.TraitEffects(enchant.Id), ", ")}`
 end
 
 -- What one insert does, e.g. "+3% lifesteal" or "+2 attack (x item level)".
@@ -375,12 +431,10 @@ Text.UI = table.freeze({
 	SettingsSearch = "Search settings",
 	SettingsNone = "No setting matches",
 	GroupGameplay = "Gameplay",
-	GroupSalvage = "Auto-salvage",
 	GroupDisplay = "Display",
 	GroupHelp = "Help",
 	SkipHint = "All 5 waves at once, on levels you have already cleared",
 	AutoOpenHint = "Unlock in the skill tree",
-	SalvageHint = "Salvaged as it drops",
 	Day = "Day",
 	LowDetail = "Low detail",
 	ReplayTutorial = "Replay tutorial",
@@ -415,7 +469,21 @@ Text.UI = table.freeze({
 	OpenAll = "Open all",
 	Convert = "Convert",
 	Empty = "Empty",
-	AutoSalvage = "Auto-salvage on drop",
+	AutoSalvage = "Auto Salvage",
+	AutoSalvageButton = "Auto",
+	SelectTier = "Select tier",
+	AddItem = "Add item",
+	SalvageList = "Salvage",
+	Clear = "Clear",
+	Confirm = "Confirm",
+	SalvageOff = "Auto-salvage is off.",
+	SalvageNeedBoth = "Tick a tier and add items: nothing is salvaged yet.",
+	SalvageActive = "New drops of these items in the ticked tiers are salvaged.",
+	SalvageRemoveHint = "Double click an item to remove it.",
+	SalvageEmpty = "No items yet. Press Add item.",
+	PickHint = "Click or drag to pick. Items on the salvage list are not shown.",
+	PickNone = "No other items in your bag",
+	Picked = "picked",
 	Won = "Cleared",
 	Lost = "Team defeated",
 	Offline = "While you were away",
@@ -442,6 +510,16 @@ Text.UI = table.freeze({
 	Code = "Code",
 	SkipShort = "Skip wave",
 	Filter = "Filter",
+	FilterTitle = "Filter & sort",
+	FilterType = "Type",
+	FilterTier = "Tier",
+	FilterSort = "Sort by",
+	FilterTierHint = "Gear and materials",
+	FilterSortHint = "Gear only, highest first",
+	SortLevel = "Level",
+	SortScore = "Gear score",
+	SortTier = "Tier",
+	Done = "Done",
 	Next = "Next",
 	Roll = "Roll",
 	Index = "Index",
@@ -484,8 +562,22 @@ Text.UI = table.freeze({
 	NoDuplicates = "No duplicate to merge",
 	SocketsMax = "All sockets open",
 	NoInserts = "None in bag",
-	EnchantNote = "Rolls every power line again. Current powers are replaced.",
-	NoTraits = "No powers yet",
+	EnchantNote = "Rolls a new power. The current one is replaced.",
+	NoTraits = "No power yet",
+	TipStatus = "Status",
+	TipEffect = "Effect",
+	TipNone = "None",
+	TipWornBy = "Worn by",
+	TipInBag = "in the bag",
+	TipSocket = "Socket",
+	TipSocketOf = "on",
+	TipPickKind = "Pick a kind for this socket first.",
+	TipTakes = "Takes a",
+	TipBoxUse = "Open it for gear of this level range.",
+	TipMaterial = "Material",
+	TipEquipped = "Equipped",
+	OpenTeamToEquip = "Open Team to equip this",
+	WrongSlot = "That piece does not go in this slot",
 	Before = "Before",
 	After = "After",
 	CurrentRebirth = "Current Rebirth",

@@ -60,7 +60,7 @@ Idle RPG: ทีม hero เดินหน้าซ้าย→ขวา ตี
   - ชนิด: Gem = stat ตรงๆ · Artifact = ผลพิเศษตอนสู้ (ดูดเลือด ตีกระจาย ฯลฯ) · Relic = โบนัสทั้งทีม/เศรษฐกิจ (gold% xp% อัตรา drop)
   - ถอดของออกจากช่องได้ เสีย gold ของไม่หาย · เปลี่ยนชนิดช่อง → ของข้างในคืนกระเป๋า
   - รวมของ: ชิ้นหลักเก็บทุกอย่าง (บวก, gear score, enchant) · ชิ้นวัตถุดิบหายไป
-- **Enchant:** ใช้ item หายากสุ่ม trait ให้ของสวมใส่ เช่น ตีเร็ว +10, ตีแรง +10, วิ่งเร็ว +10 · 1–3 บรรทัดตาม tier สุ่มใหม่ทั้งหมดทุกครั้ง (สมมติ)
+- **Enchant (ผู้เล่นเห็นชื่อ "Power"):** ใช้ Gem Power Stone + gold สุ่ม **trait 1 อันต่อชิ้น** จากรายชื่อ (Strength, Speed, Range, Deadeye, Godspeed, God …) · แต่ละ trait มี effect ชุดตายตัว เช่น Speed = Attack +10%, Move speed +10% · rarity Common → Mythic · tier ของ gear สูง = โอกาสได้ trait หายากมากขึ้น · สุ่มใหม่ = แทนของเดิม · รายชื่อ/effect อยู่ `Config/Enchant.luau` · โอกาสอยู่ `Secret/EnchantPools.luau` (SAID 2026-11-18, ชุดแรกผมร่าง ผู้ใช้แก้ได้)
 
 ## 6. ระบบอื่น
 

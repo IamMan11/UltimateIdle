@@ -1,5 +1,5 @@
 --!strict
--- Root component: HUD + the open floating windows (stacked in State.Ui.Windows order) + modals + toasts in one ScreenGui under one UIScale (viewport x UI-size setting). Re-renders on any store change.
+-- Root component: HUD + the open floating windows (stacked in State.Ui.Windows order) + modals + hover tooltip + toasts in one ScreenGui under one UIScale (viewport x UI-size setting). Re-renders on any store change.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
@@ -13,10 +13,13 @@ local Device = require(script.Parent.Device)
 local HUD = require(script.Parent.HUD)
 local Toasts = require(script.Parent.Toasts)
 local Confirm = require(script.Parent.Confirm)
+local Tooltip = require(script.Parent.Tooltip)
 local HeroSelect = require(script.Parent.Parent.HeroSelect)
 local TeamPage = require(script.Parent.Parent.Team)
 local TreePage = require(script.Parent.Parent.Tree)
 local Inventory = require(script.Parent.Parent.Inventory)
+local Salvage = require(script.Parent.Parent.Salvage)
+local BagFilter = require(script.Parent.Parent.BagFilter)
 local BoxesPage = require(script.Parent.Parent.Boxes)
 local RebirthPage = require(script.Parent.Parent.Rebirth)
 local QuestsPage = require(script.Parent.Parent.Quests)
@@ -38,6 +41,10 @@ local function window(id: string, data: Types.ProfileData): React.ReactNode
 		return e(TreePage, { data = data })
 	elseif id == "Inventory" then
 		return e(Inventory, { data = data })
+	elseif id == "AutoSalvage" then
+		return e(Salvage.Window, { data = data })
+	elseif id == "SalvagePick" then
+		return e(Salvage.Picker, { data = data })
 	elseif id == "Boxes" then
 		return e(BoxesPage, { data = data })
 	elseif id == "Rebirth" then
@@ -73,7 +80,7 @@ local function App(): React.ReactNode
 	-- Pressing anywhere on a window behind another brings it to the top.
 	React.useEffect(function()
 		local connection = UserInputService.InputBegan:Connect(function(input: InputObject)
-			if not isPointer(input) or State.Ui.Confirm ~= nil then
+			if not isPointer(input) or State.ModalOpen() then
 				return
 			end
 			local id = WindowStack.Hit(Vector2.new(input.Position.X, input.Position.Y))
@@ -122,7 +129,13 @@ local function App(): React.ReactNode
 			windows
 		),
 		HeroSelect = if needsHero then e(HeroSelect) else nil,
+		BagFilter = if ui.BagFilterOpen and State.IsOpen("Inventory")
+			then e("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = Theme.ZModal }, {
+				Modal = e(BagFilter),
+			})
+			else nil,
 		Confirm = if ui.Confirm ~= nil then e(Confirm, { prompt = ui.Confirm }) else nil,
+		Tooltip = e(Tooltip, { data = data, scale = scale, hidden = State.ModalOpen() }),
 		Toasts = e(Toasts),
 	})
 end

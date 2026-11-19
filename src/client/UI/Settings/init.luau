@@ -6,7 +6,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local React = require(ReplicatedStorage.Packages.React)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Text = require(ReplicatedStorage.Shared.Text)
-local Tiers = require(ReplicatedStorage.Shared.Config.Tiers)
 local Game = require(ReplicatedStorage.Shared.Config.Game)
 local Formula = require(ReplicatedStorage.Shared.Formula)
 local Theme = require(script.Parent.Core.Theme)
@@ -49,21 +48,6 @@ local function groups(data: Types.ProfileData): { Group }
 	local mods = Formula.Mods.Build(data.SkillTree, data.SkillOff, data.AccountLevel)
 	local scale = settings.UiScale or 1
 
-	local salvage: { Row } = {}
-	for _, tier in Tiers.List do
-		local on = settings.AutoSalvage[tier.Id] == true
-		table.insert(salvage, {
-			Key = tier.Id,
-			Label = Text.Tier(tier.Id),
-			Hint = UI.SalvageHint,
-			Value = onOff(on),
-			On = on,
-			OnClick = function()
-				State.Send.SetSetting("AutoSalvage", tier.Id, not on)
-			end,
-		})
-	end
-
 	return {
 		{
 			Id = "Gameplay",
@@ -94,7 +78,6 @@ local function groups(data: Types.ProfileData): { Group }
 				},
 			},
 		},
-		{ Id = "Salvage", Title = UI.GroupSalvage, Rows = salvage },
 		{
 			Id = "Display",
 			Title = UI.GroupDisplay,

@@ -14,6 +14,7 @@ local LIMITS: { [string]: { Rate: number, Burst: number } } = {
 	SetStageLevel = { Rate = 2, Burst = 5 },
 	SetSetting = { Rate = 5, Burst = 10 },
 	SetWindow = { Rate = 2, Burst = 6 },
+	SetSalvageItems = { Rate = 2, Burst = 5 },
 	Equip = { Rate = 8, Burst = 16 },
 	Unequip = { Rate = 8, Burst = 16 },
 	Salvage = { Rate = 3, Burst = 6 },

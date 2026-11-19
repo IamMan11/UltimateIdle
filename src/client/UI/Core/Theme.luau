@@ -30,6 +30,7 @@ return table.freeze({
 	ZHud = 1,
 	ZPage = 3,
 	ZModal = 6,
+	ZTooltip = 8,
 	ZToast = 10,
 	ZDev = 20,
 })

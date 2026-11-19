@@ -12,15 +12,22 @@ local Inserts = require(ReplicatedStorage.Shared.Config.Inserts)
 local Theme = require(script.Parent.Parent.Core.Theme)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
 local State = require(script.Parent.Parent.Parent.State)
+local Tip = require(script.Parent.Parent.Core.Tip)
 
 local e = React.createElement
 local UI = Text.UI
 
 local ROW_H = 30
 
-local function row(children: { [string]: React.ReactNode }, order: number): React.ReactNode
+local function row(children: { [string]: React.ReactNode }, order: number, tip: Tip.Content?): React.ReactNode
 	children.Layout = Widgets.List(Enum.FillDirection.Horizontal, 6)
-	return e("Frame", { Size = UDim2.new(1, 0, 0, ROW_H), BackgroundTransparency = 1, LayoutOrder = order }, children)
+	return e("Frame", {
+		Size = UDim2.new(1, 0, 0, ROW_H),
+		BackgroundTransparency = 1,
+		LayoutOrder = order,
+		[React.Event.MouseEnter] = if tip ~= nil then Tip.Enter(tip) else nil,
+		[React.Event.MouseLeave] = if tip ~= nil then Tip.Leave else nil,
+	}, children)
 end
 
 -- Adds the rows to `into` (a vertical list's children), LayoutOrder from `order` up.
@@ -69,7 +76,7 @@ return function(data: Types.ProfileData, item: Types.GearItem, into: { [string]:
 				end,
 			})
 		end
-		into[`S{i}`] = row(head, base)
+		into[`S{i}`] = row(head, base, Tip.Socket(item, i))
 
 		if socket.Insert ~= nil then
 			local cost = Formula.Forge.RemoveGold(item)
@@ -90,7 +97,7 @@ return function(data: Types.ProfileData, item: Types.GearItem, into: { [string]:
 						State.Send.RemoveInsert(item.Uid, i)
 					end,
 				}),
-			}, base + 1)
+			}, base + 1, Tip.Socket(item, i))
 		elseif socket.Kind ~= nil then
 			local choices: { [string]: React.ReactNode } = {}
 			local any = false
@@ -103,6 +110,7 @@ return function(data: Types.ProfileData, item: Types.GearItem, into: { [string]:
 						size = UDim2.fromOffset(140, ROW_H),
 						textSize = 13,
 						layoutOrder = def.Order,
+						tip = Tip.Material(def.Id),
 						onClick = function()
 							State.Send.InsertSocket(item.Uid, i, def.Id)
 						end,

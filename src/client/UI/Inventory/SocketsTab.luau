@@ -118,7 +118,9 @@ local function SocketsTab(props: Props): React.ReactNode
 					return
 				end
 				local lost = if use.Plus > 0 or #use.Enchants > 0
-					then ` Its +{use.Plus} and {#use.Enchants} power line(s) are lost too.`
+					then ` Its +{use.Plus}{if #use.Enchants > 0
+						then " and power " .. Text.TraitName(use.Enchants[1].Id)
+						else ""} are lost too.`
 					else ""
 				State.OpenConfirm({
 					Title = `Use up {ItemInfo.Name(use)} for a socket?`,

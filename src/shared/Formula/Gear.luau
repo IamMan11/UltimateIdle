@@ -1,9 +1,10 @@
 --!strict
--- Per-piece extras beyond base stats: enhance multiplier, gem flat stats, artifact effects, enchant traits; team relic totals.
+-- Per-piece extras beyond base stats: enhance multiplier, gem flat stats, artifact effects, power (trait) effects; team relic totals.
 
 local Types = require(script.Parent.Parent.Types)
 local Inserts = require(script.Parent.Parent.Config.Inserts)
 local Enhance = require(script.Parent.Parent.Config.Enhance)
+local Enchant = require(script.Parent.Parent.Config.Enchant)
 local Scaling = require(script.Parent.Scaling)
 
 -- Summed over a hero's worn gear, then applied once in Stats.Hero.
@@ -12,7 +13,8 @@ export type Extras = {
 	HpPct: number,
 	DefPct: number,
 	AtkSpeed: number,
-	MoveSpeed: number,
+	MovePct: number,
+	RangePct: number,
 	Lifesteal: number,
 	Crit: number,
 	Splash: number,
@@ -25,7 +27,17 @@ function Gear.PlusMult(plus: number): number
 end
 
 function Gear.NewExtras(): Extras
-	return { AtkPct = 0, HpPct = 0, DefPct = 0, AtkSpeed = 0, MoveSpeed = 0, Lifesteal = 0, Crit = 0, Splash = 0 }
+	return {
+		AtkPct = 0,
+		HpPct = 0,
+		DefPct = 0,
+		AtkSpeed = 0,
+		MovePct = 0,
+		RangePct = 0,
+		Lifesteal = 0,
+		Crit = 0,
+		Splash = 0,
+	}
 end
 
 -- Flat stats from gems in this piece (level-scaled, before the wrong-class penalty): MaxHp, Atk, Def.
@@ -49,10 +61,17 @@ end
 
 -- Adds this piece's enchant traits and artifact effects to `into`.
 function Gear.AddExtras(into: Extras, item: Types.GearItem)
-	local t: any = into -- trait ids and artifact stats are field names of Extras
+	local t: any = into -- trait effect stats and artifact stats are field names of Extras
 	for _, enchant in item.Enchants do
-		if t[enchant.Id] ~= nil then
-			t[enchant.Id] += enchant.Value
+		local trait = Enchant.ById[enchant.Id]
+		if trait ~= nil then
+			for _, effect in trait.Effects do
+				if t[effect.Stat] ~= nil then
+					-- Crit/Lifesteal are fractions in Extras; trait values are percent points.
+					local fraction = effect.Stat == "Crit" or effect.Stat == "Lifesteal"
+					t[effect.Stat] += if fraction then effect.Value / 100 else effect.Value
+				end
+			end
 		end
 	end
 	for _, socket in item.Sockets do

@@ -1,36 +1,50 @@
 --!strict
--- SERVER ONLY. Enchant trait pools per tier: weight + integer value range. Lines never repeat a trait.
+-- SERVER ONLY. Power roll chances: weight per trait id (Config.Enchant), per gear tier. Higher tiers lean to rarer traits.
 
-export type Trait = { Id: string, Weight: number, Min: number, Max: number }
-
-local POOLS: { [string]: { Trait } } = {
+local WEIGHTS: { [string]: { [string]: number } } = {
 	Common = {
-		{ Id = "AtkPct", Weight = 30, Min = 2, Max = 6 },
-		{ Id = "HpPct", Weight = 30, Min = 2, Max = 6 },
-		{ Id = "DefPct", Weight = 25, Min = 2, Max = 6 },
-		{ Id = "AtkSpeed", Weight = 10, Min = 1, Max = 4 },
-		{ Id = "MoveSpeed", Weight = 5, Min = 1, Max = 1 },
+		Strength = 25,
+		Vitality = 25,
+		Guard = 25,
+		Speed = 7,
+		Range = 6,
+		Haste = 6,
+		Vampire = 2.5,
+		Deadeye = 2.5,
+		Godspeed = 0.8,
+		God = 0.2,
 	},
 	Uncommon = {
-		{ Id = "AtkPct", Weight = 30, Min = 4, Max = 10 },
-		{ Id = "HpPct", Weight = 30, Min = 4, Max = 10 },
-		{ Id = "DefPct", Weight = 25, Min = 4, Max = 10 },
-		{ Id = "AtkSpeed", Weight = 10, Min = 2, Max = 7 },
-		{ Id = "MoveSpeed", Weight = 5, Min = 1, Max = 2 },
+		Strength = 20,
+		Vitality = 20,
+		Guard = 20,
+		Speed = 9,
+		Range = 9,
+		Haste = 9,
+		Vampire = 5,
+		Deadeye = 5,
+		Godspeed = 2.4,
+		God = 0.6,
 	},
 	Rare = {
-		{ Id = "AtkPct", Weight = 30, Min = 6, Max = 15 },
-		{ Id = "HpPct", Weight = 30, Min = 6, Max = 15 },
-		{ Id = "DefPct", Weight = 25, Min = 6, Max = 15 },
-		{ Id = "AtkSpeed", Weight = 10, Min = 3, Max = 10 },
-		{ Id = "MoveSpeed", Weight = 5, Min = 1, Max = 3 },
+		Strength = 14,
+		Vitality = 14,
+		Guard = 14,
+		Speed = 11,
+		Range = 11,
+		Haste = 11,
+		Vampire = 9,
+		Deadeye = 9,
+		Godspeed = 5.5,
+		God = 1.5,
 	},
 }
 
 local EnchantPools = {}
 
-function EnchantPools.Get(tier: string): { Trait }
-	return POOLS[tier] or POOLS.Common
+-- A fresh copy (the caller may edit it).
+function EnchantPools.Get(tier: string): { [string]: number }
+	return table.clone(WEIGHTS[tier] or WEIGHTS.Common)
 end
 
 return table.freeze(EnchantPools)
