@@ -1,5 +1,5 @@
 --!strict
--- Team window, middle column: picked hero's level, xp bar (amount written inside) and the Skill Tree button; below, the level path (what every level gives: stats, a skill, or a class advancement) or the gear picker while a slot is open.
+-- Team window, middle column: picked hero's level, Rebirth button (job change modal), xp bar (amount written inside) and the Skill Tree button; below, the level path (what every level gives: stats, a skill, or a class advancement).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -14,7 +14,6 @@ local Rebirth = require(ReplicatedStorage.Shared.Config.Rebirth)
 local Theme = require(script.Parent.Parent.Core.Theme)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
 local VirtualList = require(script.Parent.Parent.Core.VirtualList)
-local GearPicker = require(script.Parent.GearPicker)
 local State = require(script.Parent.Parent.Parent.State)
 
 local e = React.createElement
@@ -22,6 +21,7 @@ local UI = Text.UI
 
 local HEAD_H = 60
 local XP_H = 18
+local LEVEL_W = 72
 -- Header when the class is not owned: only the Skill Tree button.
 local HEAD_BARE = 40
 local ROW_H = 56
@@ -31,8 +31,6 @@ local NO_GEAR: { Types.GearItem } = {}
 export type Props = {
 	data: Types.ProfileData,
 	classId: string,
-	slot: string?,
-	onSlot: (slot: string?) -> (),
 }
 
 local function pct(ratio: number): number
@@ -40,24 +38,36 @@ local function pct(ratio: number): number
 end
 
 -- Base stats gained on reaching `level` (without gear), or the starting stats at level 1.
-local function statGain(classId: string, level: number, advancement: number): string
-	local now = Formula.Stats.Hero(classId, level, NO_GEAR, advancement)
+local function statGain(classId: string, level: number, advancement: number, path: number?): string
+	local now = Formula.Stats.Hero(classId, level, NO_GEAR, advancement, path)
 	if level <= 1 then
 		return `HP {Format.Number(now.MaxHp)} · Attack {Format.Number(now.Atk)} · Defense {Format.Number(now.Def)}`
 	end
-	local before = Formula.Stats.Hero(classId, level - 1, NO_GEAR, advancement)
+	local before = Formula.Stats.Hero(classId, level - 1, NO_GEAR, advancement, path)
 	return `+{Format.Number(now.MaxHp - before.MaxHp)} HP · +{Format.Number(now.Atk - before.Atk)} Attack · +{Format.Number(
 		now.Def - before.Def
 	)} Defense`
 end
 
 local function LevelPanel(props: Props): React.ReactNode
-	local data, classId, slot = props.data, props.classId, props.slot
+	local data, classId = props.data, props.classId
 	local hero: Types.HeroState? = data.Heroes[classId]
 	local level = if hero ~= nil then hero.Level else 0
 	local advancement = if hero ~= nil then hero.Advancement else 0
 	local cap = Rebirth.Get(data.Rebirth.Count).HeroLevelCap
-	local power = Classes.Totals(advancement).SkillPower
+	local path = if hero ~= nil then hero.Path else nil
+	local power = Classes.Totals(advancement, path).SkillPower
+	-- Stage name on the hero's path; both paths' names while none is chosen.
+	local function stageName(index: number): string
+		if advancement > 0 then
+			return Text.Advancement(classId, index, path)
+		end
+		local names: { string } = {}
+		for _, p in Classes.Paths do
+			table.insert(names, Text.Advancement(classId, index, p.Index))
+		end
+		return table.concat(names, " / ")
+	end
 
 	local skillAt: { [number]: Skills.SkillDef } = {}
 	local classSkills: { Skills.SkillDef } = Skills.ByClass[classId] or {}
@@ -69,23 +79,6 @@ local function LevelPanel(props: Props): React.ReactNode
 		stageAt[stage.HeroLevel] = stage
 	end
 
-	local function advance(stage: Classes.StageDef)
-		local nextName = Text.Advancement(classId, stage.Index)
-		local itemParts = {}
-		for id, n in stage.Items do
-			table.insert(itemParts, `{n} {Text.Material(id)}`)
-		end
-		State.OpenConfirm({
-			Title = `Advance {Text.Class(classId)} to {nextName}?`,
-			Body = `Spends {Format.Number(stage.Gold)} gold and {table.concat(itemParts, ", ")}. Advancement is permanent.`,
-			OkText = `Advance to {nextName}`,
-			Danger = false,
-			OnConfirm = function()
-				State.Send.Advance(classId)
-			end,
-		})
-	end
-
 	local function row(index: number): React.ReactNode
 		local reached = index <= level
 		local title = `Lv {index}`
@@ -93,7 +86,7 @@ local function LevelPanel(props: Props): React.ReactNode
 		local button: React.ReactNode = nil
 		local skill, stage = skillAt[index], stageAt[index]
 		if stage ~= nil then
-			title ..= `  ·  {UI.Advance}: {Text.Advancement(classId, stage.Index)}`
+			title ..= `  ·  {UI.Advance}: {stageName(stage.Index)}`
 			if stage.Index == advancement + 1 and hero ~= nil then
 				local needs = { `{Format.Number(data.Gold)}/{Format.Number(stage.Gold)} gold` }
 				local ok = level >= stage.HeroLevel and data.Gold >= stage.Gold
@@ -112,7 +105,7 @@ local function LevelPanel(props: Props): React.ReactNode
 					color = if ok then Theme.Confirm else nil,
 					disabled = not ok,
 					onClick = function()
-						advance(stage)
+						State.OpenJobChange(classId)
 					end,
 				})
 			else
@@ -122,9 +115,9 @@ local function LevelPanel(props: Props): React.ReactNode
 			end
 		elseif skill ~= nil then
 			title ..= `  ·  {UI.Skill}: {Text.Skill(skill.Id)}`
-			detail = Text.SkillDesc(skill, Formula.Skills.Resolve(skill, advancement), power)
+			detail = Text.SkillDesc(skill, Formula.Skills.Resolve(skill, advancement, path), power)
 		else
-			detail = statGain(classId, index, advancement)
+			detail = statGain(classId, index, advancement, path)
 		end
 		local textWidth = if button ~= nil then -122 else -20
 		return e("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 }, {
@@ -182,7 +175,20 @@ local function LevelPanel(props: Props): React.ReactNode
 			text = `Lv {level}`,
 			bold = true,
 			textSize = 18,
-			size = UDim2.new(1, -150, 0, 28),
+			size = UDim2.fromOffset(LEVEL_W, 28),
+		})
+		-- Job change: lit when the next advancement's level is reached.
+		local nextStage = Classes.Stages[advancement + 1]
+		children.Job = e(Widgets.Button, {
+			text = if nextStage ~= nil then UI.JobButton else UI.Max,
+			size = UDim2.fromOffset(96, 30),
+			position = UDim2.fromOffset(LEVEL_W + 6, 0),
+			textSize = 15,
+			color = if nextStage ~= nil and level >= nextStage.HeroLevel then Theme.Confirm else nil,
+			disabled = nextStage == nil,
+			onClick = function()
+				State.OpenJobChange(classId)
+			end,
 		})
 		children.Xp = e("Frame", {
 			Size = UDim2.new(1, 0, 0, XP_H),
@@ -211,26 +217,15 @@ local function LevelPanel(props: Props): React.ReactNode
 		})
 	end
 	local headH = if hero ~= nil then HEAD_H else HEAD_BARE
-	local body: { [string]: React.ReactNode } = {}
-	if hero ~= nil and slot ~= nil then
-		body.Picker = e(GearPicker, {
-			data = data,
-			heroId = classId,
-			hero = hero,
-			slot = slot,
-			onClose = function()
-				props.onSlot(nil)
-			end,
-		})
-	else
-		-- Keyed by class so the list remounts (and scrolls to that hero's level) when another class is picked.
-		body["Path" .. classId] = e(VirtualList, {
+	-- Keyed by class so the list remounts (and scrolls to that hero's level) when another class is picked.
+	local body: { [string]: React.ReactNode } = {
+		["Path" .. classId] = e(VirtualList, {
 			count = cap,
 			rowHeight = ROW_H,
 			initialIndex = level - 1,
 			renderRow = row,
-		})
-	end
+		}),
+	}
 	children.Body = e("Frame", {
 		Size = UDim2.new(1, 0, 1, -headH),
 		Position = UDim2.fromOffset(0, headH),

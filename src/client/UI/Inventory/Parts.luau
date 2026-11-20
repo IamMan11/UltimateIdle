@@ -1,5 +1,5 @@
 --!strict
--- Small pieces shared by the Inventory window: captioned square slot, "have/need" amount, gear cell text, cost check.
+-- Small pieces shared by the Inventory window: captioned square slot, "have/need" amount, gear cell text, cost check, scroll body, hint line.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -28,6 +28,7 @@ export type SquareProps = {
 	dim: boolean?, -- empty / unavailable
 	onClick: (() -> ())?,
 	layoutOrder: number?,
+	textSize: number?,
 }
 
 -- Square slot (item, material or result). The frame is `size` wide and CAPTION_H taller when it has a caption.
@@ -58,7 +59,7 @@ function Parts.Square(props: SquareProps): React.ReactNode
 			Text = props.text,
 			TextColor3 = if props.dim then Theme.Subtext else Theme.Text,
 			FontFace = Theme.Font,
-			TextSize = 11,
+			TextSize = props.textSize or 11,
 			TextWrapped = true,
 			[React.Event.Activated] = props.onClick,
 		}, {
@@ -109,6 +110,33 @@ function Parts.CostLine(caption: string, amount: string, ok: boolean, position: 
 			position = UDim2.fromOffset(0, 20),
 			size = UDim2.new(1, 0, 0, 18),
 		}),
+	})
+end
+
+-- Vertical scroll body sized to its rows.
+function Parts.Scroll(rows: { [string]: React.ReactNode }): React.ReactNode
+	return e("ScrollingFrame", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ScrollBarThickness = 6,
+		ScrollBarImageColor3 = Theme.Stroke,
+		CanvasSize = UDim2.new(),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		ScrollingDirection = Enum.ScrollingDirection.Y,
+	}, rows)
+end
+
+-- Centred grey hint line in a list.
+function Parts.Hint(text: string, order: number): React.ReactNode
+	return e(Widgets.Label, {
+		text = text,
+		color = Theme.Subtext,
+		textSize = 13,
+		wrap = true,
+		align = Enum.TextXAlignment.Center,
+		size = UDim2.new(1, 0, 0, 32),
+		layoutOrder = order,
 	})
 end
 

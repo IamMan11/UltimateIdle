@@ -255,7 +255,8 @@ local function salvage(player: Player, uids: { string })
 	for _, uid in uids do
 		if not seen[uid] then
 			seen[uid] = true
-			local item = Inventory.RemoveGear(player, uid)
+			local held = Inventory.Get(player, uid)
+			local item = if held ~= nil and held.Locked ~= true then Inventory.RemoveGear(player, uid) else nil
 			if item ~= nil then
 				local g, s = Loot.SalvageValue(item.Tier, item.Level)
 				gold += g

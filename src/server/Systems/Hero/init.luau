@@ -76,7 +76,7 @@ function Hero.GetStats(player: Player, heroId: string): Types.HeroStats?
 			table.insert(gear, item)
 		end
 	end
-	local stats = Formula.Stats.Hero(hero.Class, hero.Level, gear, hero.Advancement)
+	local stats = Formula.Stats.Hero(hero.Class, hero.Level, gear, hero.Advancement, hero.Path)
 	cache[heroId] = stats
 	return stats
 end
@@ -109,7 +109,7 @@ function Hero.GetTeam(player: Player): { Types.SimHero }
 				Class = hero.Class,
 				Row = members[i].Row :: Types.Row,
 				Stats = Formula.Team.Apply(base, Formula.Team.FormationBonus(members, i), mods),
-				Skills = Formula.Skills.Active(hero.Class, hero.Level, hero.Advancement),
+				Skills = Formula.Skills.Active(hero.Class, hero.Level, hero.Advancement, hero.Path),
 			})
 		end
 	end
@@ -310,8 +310,8 @@ local function setTeam(player: Player, entries: { TeamEntry })
 	teamChanged(player)
 end
 
--- Next class advancement stage: hero level + gold + materials, all checked before anything is spent.
-local function advance(player: Player, heroId: string)
+-- Next class advancement stage: hero level + gold + materials, all checked before anything is spent. `path` counts only for the first stage; later stages stay on the hero's path.
+local function advance(player: Player, heroId: string, path: number)
 	if not RateLimit.Allow(player, "Advance") then
 		return
 	end
@@ -321,7 +321,8 @@ local function advance(player: Player, heroId: string)
 		return
 	end
 	local stage = Classes.Stages[hero.Advancement + 1]
-	if stage == nil then
+	local chosen = if hero.Advancement == 0 then path else hero.Path or 1
+	if stage == nil or Classes.Paths[chosen] == nil then
 		return
 	end
 	if hero.Level < stage.HeroLevel then
@@ -343,9 +344,10 @@ local function advance(player: Player, heroId: string)
 		Inventory.SpendStack(player, id, n)
 	end
 	hero.Advancement = stage.Index
+	hero.Path = chosen
 	Hero.MarkDirty(player, heroId)
 	syncHero(player, heroId, hero)
-	Replication.Notify(player, "Advanced", { Hero = heroId, Stage = stage.Index })
+	Replication.Notify(player, "Advanced", { Hero = heroId, Stage = stage.Index, Path = chosen })
 end
 
 function Hero.Start()

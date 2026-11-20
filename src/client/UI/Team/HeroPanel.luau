@@ -10,6 +10,7 @@ local Text = require(ReplicatedStorage.Shared.Text)
 local Formula = require(ReplicatedStorage.Shared.Formula)
 local Heroes = require(ReplicatedStorage.Shared.Config.Heroes)
 local Skills = require(ReplicatedStorage.Shared.Config.Skills)
+local Items = require(ReplicatedStorage.Shared.Config.Items)
 local Classes = require(ReplicatedStorage.Shared.Config.Classes)
 local Theme = require(script.Parent.Parent.Core.Theme)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
@@ -98,9 +99,10 @@ local function HeroPanel(props: Props): React.ReactNode
 
 	local level = if hero ~= nil then hero.Level else 0
 	local advancement = if hero ~= nil then hero.Advancement else 0
+	local path = if hero ~= nil then hero.Path else nil
 	local skills: { [string]: React.ReactNode } = {}
 	if tab == "Skills" then
-		local power = Classes.Totals(advancement).SkillPower
+		local power = Classes.Totals(advancement, path).SkillPower
 		local forClass: { Skills.SkillDef } = Skills.ByClass[classId] or {}
 		local order = 0
 		for _, slotName in Skills.SlotOrder do
@@ -127,7 +129,7 @@ local function HeroPanel(props: Props): React.ReactNode
 							size = UDim2.new(1, -16, 0, 18),
 						}),
 						Desc = e(Widgets.Label, {
-							text = Text.SkillDesc(skill, Formula.Skills.Resolve(skill, advancement), power),
+							text = Text.SkillDesc(skill, Formula.Skills.Resolve(skill, advancement, path), power),
 							color = Theme.Subtext,
 							textSize = 12,
 							wrap = true,
@@ -163,7 +165,7 @@ local function HeroPanel(props: Props): React.ReactNode
 			end,
 			[React.Event.MouseEnter] = Tip.Enter(Tip.Gear(item, classId)),
 			[React.Event.MouseLeave] = Tip.Leave,
-			-- Click = make the slot active (picker) + pin its card · double click = take the piece off.
+			-- Click = make the slot active (picker) + open the Inventory window on gear for this slot + pin its card · double click = take the piece off.
 			[React.Event.Activated] = function(rbx: TextButton)
 				if hero == nil then
 					return
@@ -175,6 +177,7 @@ local function HeroPanel(props: Props): React.ReactNode
 					return
 				end
 				props.onSlot(name)
+				State.OpenBagForSlot(Items.SlotOf[name])
 				Tip.Pin(rbx, Tip.Gear(item, classId))
 			end,
 		}, {
@@ -191,7 +194,7 @@ local function HeroPanel(props: Props): React.ReactNode
 			Overlay = e("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = 2 }, {
 				Name = e(Widgets.Label, {
 					text = if hero ~= nil
-						then Text.Advancement(classId, hero.Advancement)
+						then Text.Advancement(classId, hero.Advancement, hero.Path)
 						else `{Text.Class(classId)}  ·  {UI.NotOwned}`,
 					bold = true,
 					textSize = 17,

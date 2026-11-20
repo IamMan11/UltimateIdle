@@ -44,6 +44,7 @@ export type GearItem = {
 	Plus: number,
 	Sockets: { Socket },
 	Enchants: { Enchant },
+	Locked: boolean?, -- player lock: cannot be salvaged or used up in a socket merge
 }
 
 -- Hero id = ClassId (one hero per class for now).
@@ -52,6 +53,7 @@ export type HeroState = {
 	Level: number,
 	Xp: number,
 	Advancement: number,
+	Path: number?, -- advancement path (Config.Classes.Paths index), chosen with the first advancement; nil = path 1
 	Equipped: { [string]: string }, -- GearSlot -> gear Uid
 }
 

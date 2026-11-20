@@ -1,5 +1,5 @@
 --!strict
--- Inventory window, Sockets tab: Use + Keep slots joined to the Result slot (the kept piece with one more socket), gold cost, Create (merge, confirm). Under it, the kept piece's sockets (SocketRows).
+-- Inventory window, Sockets tab (create socket): Use (empty = "+", narrows the grid to duplicates) + Keep slots joined to the Result slot, gold cost, Create (merge, confirm), Socket Core.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -14,7 +14,6 @@ local Widgets = require(script.Parent.Parent.Core.Widgets)
 local ItemInfo = require(script.Parent.Parent.Core.ItemInfo)
 local State = require(script.Parent.Parent.Parent.State)
 local Parts = require(script.Parent.Parts)
-local socketRows = require(script.Parent.SocketRows)
 
 local e = React.createElement
 local UI = Text.UI
@@ -32,6 +31,9 @@ export type Props = {
 	use: Types.GearItem?,
 	onClearKeep: () -> (),
 	onClearUse: () -> (),
+	finding: boolean, -- the grid is narrowed to duplicates of the kept piece
+	duplicates: number, -- pieces in the bag that can be used up for the kept one
+	onFind: () -> (),
 }
 
 local function line(size: UDim2, position: UDim2, anchor: Vector2): React.ReactNode
@@ -44,11 +46,13 @@ local function line(size: UDim2, position: UDim2, anchor: Vector2): React.ReactN
 	})
 end
 
-local function SocketsTab(props: Props): React.ReactNode
+-- Merge diagram, cost, Create and the Socket Core button.
+local function createRows(props: Props): { [string]: React.ReactNode }
 	local data, keep, use = props.data, props.keep, props.use
 	local full = keep ~= nil and #keep.Sockets >= Inserts.MaxSockets
 	local gold = if keep ~= nil then Formula.Forge.MergeGold(keep) else 0
 	local ready = keep ~= nil and use ~= nil and not full and data.Gold >= gold
+	local canFind = keep ~= nil and not full
 	-- Middle height of the top squares, where the joining line runs.
 	local joinY = Parts.CaptionHeight + SQUARE / 2
 
@@ -58,13 +62,14 @@ local function SocketsTab(props: Props): React.ReactNode
 		Down = line(UDim2.fromOffset(LINE, RESULT_Y - joinY), UDim2.new(0.5, 0, 0, joinY), Vector2.new(0.5, 0)),
 		Use = e(Parts.Square, {
 			caption = UI.Use,
-			text = if use ~= nil then Parts.GearText(use) else "",
+			text = if use ~= nil then Parts.GearText(use) else UI.AddMark,
+			textSize = if use ~= nil then nil else 30,
 			size = SQUARE,
 			position = UDim2.fromScale(USE_X, 0),
 			anchor = Vector2.new(0.5, 0),
-			selected = use ~= nil,
-			dim = use == nil,
-			onClick = if use ~= nil then props.onClearUse else nil,
+			selected = use ~= nil or props.finding,
+			dim = use == nil and not canFind,
+			onClick = if use ~= nil then props.onClearUse elseif canFind then props.onFind else nil,
 		}),
 		Keep = e(Parts.Square, {
 			caption = UI.Keep,
@@ -88,15 +93,15 @@ local function SocketsTab(props: Props): React.ReactNode
 			dim = not (keep ~= nil and use ~= nil and not full),
 		}),
 	})
-	rows.Hint = e(Widgets.Label, {
-		text = if keep == nil then UI.PickKeep elseif full then UI.SocketsMax elseif use == nil then UI.PickUse else "",
-		color = Theme.Subtext,
-		textSize = 13,
-		wrap = true,
-		align = Enum.TextXAlignment.Center,
-		size = UDim2.new(1, 0, 0, 32),
-		layoutOrder = 2,
-	})
+	rows.Hint = Parts.Hint(
+		if keep == nil
+			then UI.PickKeep
+			elseif full then UI.SocketsMax
+			elseif use ~= nil then ""
+			elseif props.duplicates == 0 then UI.NoDuplicate
+			else UI.PickUse,
+		2
+	)
 	rows.Cost = e("Frame", { Size = UDim2.new(1, 0, 0, 40), BackgroundTransparency = 1, LayoutOrder = 3 }, {
 		Line = Parts.CostLine(
 			UI.GoldCost,
@@ -136,20 +141,28 @@ local function SocketsTab(props: Props): React.ReactNode
 			end,
 		}),
 	})
-	if keep ~= nil then
-		socketRows(data, keep, rows, 10)
+	-- A Socket Core adds a socket without a duplicate piece.
+	if keep ~= nil and not full then
+		local cores = data.Stacks[Inserts.CoreItem] or 0
+		rows.Core = e("Frame", { Size = UDim2.new(1, 0, 0, 34), BackgroundTransparency = 1, LayoutOrder = 5 }, {
+			Button = e(Widgets.Button, {
+				text = `Use {Text.Material(Inserts.CoreItem)} (have {cores})`,
+				size = UDim2.fromOffset(260, 34),
+				position = UDim2.fromScale(0.5, 0),
+				anchor = Vector2.new(0.5, 0),
+				textSize = 14,
+				disabled = cores <= 0,
+				onClick = function()
+					State.Send.UseSocketCore(keep.Uid)
+				end,
+			}),
+		})
 	end
+	return rows
+end
 
-	return e("ScrollingFrame", {
-		Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		ScrollBarThickness = 6,
-		ScrollBarImageColor3 = Theme.Stroke,
-		CanvasSize = UDim2.new(),
-		AutomaticCanvasSize = Enum.AutomaticSize.Y,
-		ScrollingDirection = Enum.ScrollingDirection.Y,
-	}, rows)
+local function SocketsTab(props: Props): React.ReactNode
+	return Parts.Scroll(createRows(props))
 end
 
 return SocketsTab

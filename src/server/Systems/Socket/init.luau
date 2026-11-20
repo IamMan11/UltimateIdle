@@ -1,5 +1,5 @@
 --!strict
--- Socket remotes: merge a duplicate (+1 socket), use a Socket Core (+1 socket), pick socket kind, insert, remove (costs gold). Writes go through Inventory.
+-- Socket remotes: merge a duplicate (+1 socket), use a Socket Core (+1 socket), pick socket kind, insert, remove (costs gold), upgrade 3 inserts into a random one of the next tier. Writes go through Inventory.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
@@ -13,6 +13,9 @@ local Guard = require(ServerScriptService.Server.Util.Guard)
 local Replication = require(script.Parent.Replication)
 local Currency = require(script.Parent.Currency)
 local Inventory = require(script.Parent.Inventory)
+local Rewards = require(script.Parent.Rewards)
+local PlayerData = require(ServerScriptService.Server.Data.PlayerData)
+local Rng = require(ServerScriptService.Server.Util.Rng)
 
 local Socket = {}
 
@@ -146,12 +149,59 @@ local function remove(player: Player, uid: string, index: number)
 	Inventory.SetSocket(player, uid, index, { Kind = socket.Kind, Insert = nil })
 end
 
+-- UpgradeCount inserts of one kind and tier (any mix of ids) -> one random insert of that kind, next tier.
+local function upgrade(player: Player, ids: { string })
+	if not RateLimit.Allow(player, "UpgradeInsert") then
+		return
+	end
+	local data = PlayerData.Data(player)
+	local first = Inserts.ById[ids[1]]
+	if data == nil or #ids ~= Inserts.UpgradeCount or first == nil then
+		return
+	end
+	local need: { [string]: number } = {}
+	for _, id in ids do
+		local def = Inserts.ById[id]
+		if def == nil or def.Kind ~= first.Kind or def.Tier ~= first.Tier then
+			return
+		end
+		need[id] = (need[id] or 0) + 1
+	end
+	local nextTier = Inserts.NextTier[first.Tier]
+	local byTier = Inserts.Pools[first.Kind]
+	local pool = if nextTier ~= nil and byTier ~= nil then byTier[nextTier] else nil
+	if pool == nil or #pool == 0 then
+		err(player, "MaxInsertTier")
+		return
+	end
+	for id, n in need do
+		if (data.Stacks[id] or 0) < n then
+			err(player, "NotEnoughItems")
+			return
+		end
+	end
+	local gold = Formula.Forge.UpgradeGold(first.Tier, Rewards.BestLevel(data))
+	if not Currency.Has(player, "Gold", gold) then
+		err(player, "NotEnoughGold")
+		return
+	end
+	-- Counts were checked above with no yield in between, so every spend succeeds.
+	for id, n in need do
+		Inventory.SpendStack(player, id, n)
+	end
+	Currency.Spend(player, "Gold", gold, "Forge")
+	local got = pool[Rng.new():Int(1, #pool)]
+	Inventory.AddStack(player, got, 1)
+	Replication.Notify(player, "InsertUpgraded", { Id = got })
+end
+
 function Socket.Start()
 	Net.MergeSocket:Server():On(merge)
 	Net.UseSocketCore:Server():On(useCore)
 	Net.SetSocketKind:Server():On(setKind)
 	Net.InsertSocket:Server():On(insert)
 	Net.RemoveInsert:Server():On(remove)
+	Net.UpgradeInsert:Server():On(upgrade)
 end
 
 return Socket

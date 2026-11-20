@@ -69,14 +69,21 @@ function Stats.Power(s: Types.HeroStats): number
 		+ s.Heal
 end
 
-function Stats.Hero(class: string, level: number, gear: { Types.GearItem }, advancement: number): Types.HeroStats
+function Stats.Hero(
+	class: string,
+	level: number,
+	gear: { Types.GearItem },
+	advancement: number,
+	path: number?
+): Types.HeroStats
 	local def = Heroes.ById[class]
 	assert(def ~= nil, `unknown hero class {class}`)
-	local scale = Scaling.Hero(level) * (1 + Classes.Totals(advancement).StatBonus)
+	local totals = Classes.Totals(advancement, path)
+	local scale = Scaling.Hero(level) * (1 + totals.StatBonus)
 	local s: Types.HeroStats = {
-		MaxHp = def.MaxHp * scale,
-		Atk = def.Atk * scale,
-		Def = def.Def * scale,
+		MaxHp = def.MaxHp * scale * (1 + totals.HpPct),
+		Atk = def.Atk * scale * (1 + totals.AtkPct),
+		Def = def.Def * scale * (1 + totals.DefPct),
 		AtkInterval = def.AtkInterval,
 		Range = def.Range,
 		Speed = def.Speed,
@@ -116,7 +123,7 @@ function Stats.Hero(class: string, level: number, gear: { Types.GearItem }, adva
 		-- Healers heal with their own attack growth too.
 		s.Heal = math.max(s.Heal, s.Atk * 1.5)
 	end
-	Skills.ApplyPassive(s, class, level, advancement)
+	Skills.ApplyPassive(s, class, level, advancement, path)
 	s.Power = Stats.Power(s)
 	return s
 end

@@ -36,6 +36,7 @@ export type BagSort = "Level" | "Score" | "Tier"
 export type BagFilter = {
 	Kind: BagKind?, -- nil = everything
 	Tier: string?, -- nil = every tier
+	Slot: string?, -- SlotKind: only gear worn in that slot (nil = every slot)
 	Sort: BagSort,
 }
 
@@ -44,10 +45,12 @@ export type Ui = {
 	PageTabs: { [string]: string }, -- window id -> tab it shows (windows with tabs: Quests, Shop); none = its first tab
 	ForgeUid: string?, -- gear picked in the Inventory window (the piece the Sockets / Enhance / Power tabs work on)
 	TeamHero: string?, -- class shown in the Team window (nil = first owned); Inventory equips onto it
-	TeamSlot: string?, -- active gear slot in the Team window (its picker is open)
+	TeamSlot: string?, -- active gear slot in the Team window (highlighted; gear from the bag goes there)
 	LastEnhance: ForgeResult?,
 	LastEnchant: ForgeResult?,
+	LastUpgrade: string?, -- insert id the last insert upgrade gave
 	Confirm: ConfirmPrompt?,
+	JobChange: string?, -- hero id whose job change modal is open
 	BagFilter: BagFilter,
 	BagFilterOpen: boolean, -- Filter modal over the Inventory window
 	Toasts: { Toast },
@@ -81,7 +84,9 @@ local State = {
 		TeamSlot = nil,
 		LastEnhance = nil,
 		LastEnchant = nil,
+		LastUpgrade = nil,
 		Confirm = nil,
+		JobChange = nil,
 		BagFilter = { Sort = "Level" },
 		BagFilterOpen = false,
 		Toasts = {},
@@ -250,14 +255,30 @@ function State.CloseConfirm()
 	notify()
 end
 
--- A modal (Confirm or the bag Filter) is up: windows below ignore Esc and clicks.
+function State.OpenJobChange(heroId: string)
+	State.Ui.JobChange = heroId
+	notify()
+end
+
+function State.CloseJobChange()
+	State.Ui.JobChange = nil
+	notify()
+end
+
+-- A modal (Confirm, job change or the bag Filter) is up: windows below ignore Esc and clicks.
 function State.ModalOpen(): boolean
-	return State.Ui.Confirm ~= nil or State.Ui.BagFilterOpen
+	return State.Ui.Confirm ~= nil or State.Ui.JobChange ~= nil or State.Ui.BagFilterOpen
 end
 
 function State.SetBagFilter(filter: BagFilter)
 	State.Ui.BagFilter = filter
 	notify()
+end
+
+-- Team window: a gear slot was clicked. Opens the Inventory window showing only the gear that fits that slot kind.
+function State.OpenBagForSlot(kind: string)
+	State.Ui.BagFilter = { Kind = "Gear", Slot = kind, Sort = State.Ui.BagFilter.Sort }
+	State.OpenWindow("Inventory")
 end
 
 function State.ShowBagFilter(open: boolean)
@@ -355,6 +376,9 @@ State.Send = {
 	Unequip = function(heroId: string, slot: string)
 		Net.Unequip:Client():Fire(heroId, slot)
 	end,
+	LockGear = function(uids: { string }, on: boolean)
+		Net.LockGear:Client():Fire(uids, on)
+	end,
 	Salvage = function(uids: { string })
 		Net.Salvage:Client():Fire(uids)
 	end,
@@ -367,8 +391,8 @@ State.Send = {
 	SetTeam = function(entries: { { HeroId: string, Row: string } })
 		Net.SetTeam:Client():Fire(entries)
 	end,
-	Advance = function(heroId: string)
-		Net.Advance:Client():Fire(heroId)
+	Advance = function(heroId: string, path: number)
+		Net.Advance:Client():Fire(heroId, path)
 	end,
 	BuyNode = function(id: string)
 		Net.BuyNode:Client():Fire(id)
@@ -396,6 +420,9 @@ State.Send = {
 	end,
 	InsertSocket = function(uid: string, index: number, id: string)
 		Net.InsertSocket:Client():Fire(uid, index, id)
+	end,
+	UpgradeInsert = function(ids: { string })
+		Net.UpgradeInsert:Client():Fire(ids)
 	end,
 	RemoveInsert = function(uid: string, index: number)
 		Net.RemoveInsert:Client():Fire(uid, index)
@@ -503,7 +530,9 @@ local function onNotice(kind: string, payload: any)
 	elseif kind == "NodeBought" then
 		State.PushToast(`Unlocked {Text.Node(payload)}`)
 	elseif kind == "Advanced" then
-		State.PushToast(`{Text.Class(payload.Hero)} advanced to {Text.Advancement(payload.Hero, payload.Stage)}`)
+		State.PushToast(
+			`{Text.Class(payload.Hero)} advanced to {Text.Advancement(payload.Hero, payload.Stage, payload.Path)}`
+		)
 	elseif kind == "TeamSet" then
 		State.PushToast("Team saved: applies from the next level")
 	elseif kind == "Enhanced" then
@@ -515,6 +544,9 @@ local function onNotice(kind: string, payload: any)
 		State.Ui.LastEnchant = { Uid = payload.Uid, Before = payload.Before, After = payload.After }
 		local after: { Types.Enchant } = payload.After or {}
 		State.PushToast(if after[1] ~= nil then `New power: {Text.TraitName(after[1].Id)}` else "New power rolled")
+	elseif kind == "InsertUpgraded" then
+		State.Ui.LastUpgrade = payload.Id
+		State.PushToast(`Upgrade: got {Text.InsertTitle(payload.Id)}`)
 	elseif kind == "SocketAdded" then
 		State.PushToast(`Socket opened ({payload.Count} total)`)
 	elseif kind == "Rebirthed" then

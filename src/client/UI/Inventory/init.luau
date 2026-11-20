@@ -17,6 +17,7 @@ local Grid = require(script.Grid)
 local SocketsTab = require(script.SocketsTab)
 local EnhanceTab = require(script.EnhanceTab)
 local PowerTab = require(script.PowerTab)
+local UpgradePick = require(script.UpgradePick)
 
 local e = React.createElement
 local UI = Text.UI
@@ -46,6 +47,13 @@ local function Inventory(props: Props): React.ReactNode
 	local data = props.data
 	local tab, setTab = React.useState("Enhance" :: Tab)
 	local useUid, setUseUid = Widgets.useOptional(nil :: string?)
+	local enhMode, setEnhMode = React.useState("Enhance" :: EnhanceTab.Mode)
+	local merging = tab == "Sockets"
+	local finding, setFinding = React.useState(false)
+	local upgrading = tab == "Enhance" and enhMode == "Upgrade"
+	local upPicked, setUpPicked = React.useState({} :: { string })
+	local upFinding, setUpFinding = React.useState(false)
+	local upSlots = UpgradePick.Slots(data, upPicked)
 
 	local worn = ItemInfo.WornMap(data)
 	local keepUid = State.Ui.ForgeUid
@@ -56,17 +64,42 @@ local function Inventory(props: Props): React.ReactNode
 		use = nil
 	end
 
+	local duplicates = 0
+	if merging and keep ~= nil then
+		for uid, item in data.Gear do
+			if worn[uid] == nil and Formula.Forge.CanMerge(keep, item) then
+				duplicates += 1
+			end
+		end
+	end
+	-- The duplicate list belongs to one kept piece at one socket count; a merge or a new pick ends it.
+	local keepSockets = if keep ~= nil then #keep.Sockets else 0
+	React.useEffect(function()
+		setFinding(false)
+	end, { keepUid, keepSockets, merging } :: { any })
+
 	local function onGear(uid: string)
 		local item = data.Gear[uid]
 		if item == nil then
 			return
 		end
-		-- Sockets tab with a kept piece: an unworn duplicate becomes the piece to use up; anything else is the new kept piece.
-		if tab == "Sockets" and keep ~= nil and worn[uid] == nil and Formula.Forge.CanMerge(keep, item) then
+		-- Create socket with a kept piece: an unworn duplicate becomes the piece to use up; anything else is the new kept piece.
+		if merging and keep ~= nil and worn[uid] == nil and Formula.Forge.CanMerge(keep, item) then
 			setUseUid(uid)
 		else
 			State.SelectForge(uid)
 			setUseUid(nil)
+		end
+	end
+
+	-- Upgrade mode: an insert clicked in the grid goes into the next free slot.
+	local function onMaterial(id: string)
+		if not upgrading then
+			return
+		end
+		local slots = UpgradePick.Add(data, upSlots, id)
+		if slots ~= nil then
+			setUpPicked(slots)
 		end
 	end
 
@@ -79,6 +112,7 @@ local function Inventory(props: Props): React.ReactNode
 			selected = tab == t.Id,
 			onClick = function()
 				setTab(t.Id)
+				setUpFinding(false)
 			end,
 		})
 	end
@@ -96,11 +130,32 @@ local function Inventory(props: Props): React.ReactNode
 			onClearUse = function()
 				setUseUid(nil)
 			end,
+			finding = finding,
+			duplicates = duplicates,
+			onFind = function()
+				setFinding(not finding)
+			end,
 		})
 	elseif tab == "Power" then
 		body = e(PowerTab, { data = data, item = keep })
 	else
-		body = e(EnhanceTab, { data = data, item = keep })
+		body = e(EnhanceTab, {
+			data = data,
+			item = keep,
+			mode = enhMode,
+			onMode = function(mode: EnhanceTab.Mode)
+				setEnhMode(mode)
+				setUpFinding(false)
+			end,
+			upgradeSlots = upSlots,
+			upgradeFinding = upFinding,
+			onUpgradeFind = function()
+				setUpFinding(not upFinding)
+			end,
+			onUpgradeSlots = function(slots: { string })
+				setUpPicked(slots)
+			end,
+		})
 	end
 
 	local stackPct = Formula.Mods.Build(data.SkillTree, data.SkillOff, data.AccountLevel).StackPct
@@ -118,7 +173,10 @@ local function Inventory(props: Props): React.ReactNode
 			Grid = e(Grid, {
 				data = data,
 				keepUid = if keep ~= nil then keep.Uid else nil,
-				useUid = if tab == "Sockets" and use ~= nil then use.Uid else nil,
+				useUid = if merging and use ~= nil then use.Uid else nil,
+				mergeFor = if merging and finding then keep else nil,
+				insertsFor = if upgrading and upFinding then UpgradePick.Filter(upSlots) else nil,
+				onMaterial = onMaterial,
 				onGear = onGear,
 			}),
 		}),

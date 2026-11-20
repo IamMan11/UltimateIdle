@@ -1,5 +1,5 @@
 --!strict
--- What the Inventory grid shows, one entry per bag slot: every gear piece, each material split into slots of its max stack, one slot per box stack. Filtered by search (name + @tag), kind and tier; gear sorted first.
+-- What the Inventory grid shows, one entry per bag slot: every gear piece, each material split into slots of its max stack, one slot per box stack. Filtered by search (name + @tag), kind, tier and gear slot; gear sorted first.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -9,6 +9,7 @@ local Tags = require(ReplicatedStorage.Shared.Tags)
 local Text = require(ReplicatedStorage.Shared.Text)
 local Boxes = require(ReplicatedStorage.Shared.Config.Boxes)
 local Materials = require(ReplicatedStorage.Shared.Config.Materials)
+local Items = require(ReplicatedStorage.Shared.Config.Items)
 local ItemInfo = require(script.Parent.Parent.Core.ItemInfo)
 local State = require(script.Parent.Parent.Parent.State)
 
@@ -30,6 +31,7 @@ export type Filter = {
 	Query: string,
 	Kind: Kind?, -- nil = everything
 	Tier: string?,
+	Slot: string?, -- SlotKind: gear of that slot only (hides materials and boxes)
 	Sort: SortKey,
 }
 
@@ -45,8 +47,10 @@ function Entries.Build(data: Types.ProfileData, filter: Filter): { Entry }
 		local worn = ItemInfo.WornMap(data)
 		local gear: { Types.GearItem } = {}
 		for _, item in data.Gear do
+			local def = Items.ById[item.BaseId]
 			if
 				(filter.Tier == nil or item.Tier == filter.Tier)
+				and (filter.Slot == nil or (def ~= nil and def.Slot == filter.Slot))
 				and Tags.Match(parsed, Tags.ForGear(item), ItemInfo.Name(item))
 			then
 				table.insert(gear, item)
@@ -83,7 +87,7 @@ function Entries.Build(data: Types.ProfileData, filter: Filter): { Entry }
 		end
 	end
 
-	if (filter.Kind == nil or filter.Kind == "Box") and filter.Tier == nil then
+	if (filter.Kind == nil or filter.Kind == "Box") and filter.Tier == nil and filter.Slot == nil then
 		local capPct = Formula.Mods.Build(data.SkillTree, data.SkillOff, data.AccountLevel).BoxCapPct
 		local keys: { string } = {}
 		for key, count in data.Boxes do
@@ -107,7 +111,7 @@ function Entries.Build(data: Types.ProfileData, filter: Filter): { Entry }
 		end
 	end
 
-	if filter.Kind == nil or filter.Kind == "Material" then
+	if (filter.Kind == nil or filter.Kind == "Material") and filter.Slot == nil then
 		local stackPct = Formula.Mods.Build(data.SkillTree, data.SkillOff, data.AccountLevel).StackPct
 		for _, def in Materials.List do
 			local total = data.Stacks[def.Id] or 0

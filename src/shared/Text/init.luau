@@ -29,12 +29,28 @@ local MATERIAL: { [string]: string } = {
 	EnchantDust = "Gem Power Stone",
 	SocketCore = "Socket Core",
 	AncientShard = "Ancient Shard",
+	GemAtk1 = "Ember Shard",
+	GemHp1 = "Moss Stone",
+	GemDef1 = "Pebble Ward",
 	GemAtk = "Fury Gem",
 	GemHp = "Life Gem",
 	GemDef = "Guard Gem",
+	GemAtk3 = "Blaze Ruby",
+	GemHp3 = "Heart Emerald",
+	GemDef3 = "Aegis Sapphire",
+	ArtLifesteal1 = "Leech Tooth",
+	ArtCrit1 = "Owl Feather",
+	ArtLifesteal2 = "Bat Wing",
+	ArtCrit2 = "Falcon Talon",
 	ArtLifesteal = "Vampire Fang",
 	ArtCrit = "Hawk Eye",
 	ArtSplash = "Twin Blade",
+	RelicGold1 = "Copper Coin",
+	RelicXp1 = "Old Notes",
+	RelicDrop1 = "Rabbit Foot",
+	RelicGold2 = "Silver Chalice",
+	RelicXp2 = "Scholar Tome",
+	RelicDrop2 = "Clover Pin",
 	RelicGold = "Golden Idol",
 	RelicXp = "Sage Scroll",
 	RelicDrop = "Lucky Charm",
@@ -113,12 +129,14 @@ local SKILL: { [string]: string } = {
 	MassHeal = "Mass Heal",
 	Resurrect = "Resurrect",
 }
-local ADVANCEMENT: { [string]: { string } } = {
-	Warrior = { "Knight", "Warlord" },
-	Mage = { "Sorcerer", "Archmage" },
-	Archer = { "Ranger", "Sharpshooter" },
-	Healer = { "Cleric", "Saint" },
+-- Class -> path (Config.Classes.Paths index) -> name at each stage.
+local ADVANCEMENT: { [string]: { { string } } } = {
+	Warrior = { { "Knight", "Warlord" }, { "Guardian", "Paladin" } },
+	Mage = { { "Sorcerer", "Archmage" }, { "Enchanter", "Sage" } },
+	Archer = { { "Ranger", "Sharpshooter" }, { "Scout", "Warden" } },
+	Healer = { { "Cleric", "Saint" }, { "Monk", "Templar" } },
 }
+local PATH: { string } = { "Power path", "Guard path" }
 local NODE: { [string]: string } = {
 	c_atk1 = "Sharpen",
 	c_squad1 = "Squad I",
@@ -284,6 +302,12 @@ function Text.Trait(enchant: Types.Enchant): string
 	return `{Text.TraitName(enchant.Id)}: {table.concat(Text.TraitEffects(enchant.Id), ", ")}`
 end
 
+-- Insert name with its tier: "Bat Wing [Uncommon]".
+function Text.InsertTitle(id: string): string
+	local def = Inserts.ById[id]
+	return if def ~= nil then `{Text.Material(id)} [{Text.Tier(def.Tier)}]` else id
+end
+
 -- What one insert does, e.g. "+3% lifesteal" or "+2 attack (x item level)".
 function Text.InsertEffect(id: string): string
 	local def = Inserts.ById[id]
@@ -311,13 +335,17 @@ function Text.Skill(id: string): string
 	return SKILL[id] or id
 end
 
--- "Warrior" before advancing, then the stage name ("Knight", "Warlord").
-function Text.Advancement(class: string, advancement: number): string
-	local names = ADVANCEMENT[class]
+-- "Warrior" before advancing, then the stage name on the hero's path ("Knight", "Warlord"; nil path = path 1).
+function Text.Advancement(class: string, advancement: number, path: number?): string
+	local byPath = ADVANCEMENT[class]
+	local names = if byPath ~= nil then byPath[path or 1] or byPath[1] else nil
 	if advancement <= 0 or names == nil then
 		return Text.Class(class)
 	end
 	return names[math.min(advancement, #names)]
+end
+function Text.Path(index: number): string
+	return PATH[index] or ""
 end
 
 function Text.Node(id: string): string
@@ -459,8 +487,6 @@ Text.UI = table.freeze({
 	Cancel = "Cancel",
 	Buy = "Buy",
 	Owned = "Owned",
-	Equip = "Equip",
-	Unequip = "Unequip",
 	Salvage = "Salvage",
 	SalvageSelected = "Salvage selected",
 	Select = "Select",
@@ -512,6 +538,8 @@ Text.UI = table.freeze({
 	Filter = "Filter",
 	FilterTitle = "Filter & sort",
 	FilterType = "Type",
+	FilterSlot = "Gear slot",
+	FilterSlotHint = "Gear only",
 	FilterTier = "Tier",
 	FilterSort = "Sort by",
 	FilterTierHint = "Gear and materials",
@@ -520,6 +548,15 @@ Text.UI = table.freeze({
 	SortScore = "Gear score",
 	SortTier = "Tier",
 	Done = "Done",
+	ModeInsert = "Insert / Remove",
+	ModeUpgrade = "Upgrade",
+	PickItemFirst = "Pick an item on the left.",
+	Upgrade = "Upgrade",
+	UpgradeIn = "In",
+	UpgradeOut = "Result",
+	UpgradePossible = "Can roll",
+	UpgradePick = "Press + and pick 3 gems, artifacts or relics of the same type and tier from the bag.",
+	UpgradeTop = "Rare is the highest tier.",
 	Next = "Next",
 	Roll = "Roll",
 	Index = "Index",
@@ -532,7 +569,17 @@ Text.UI = table.freeze({
 	All = "All",
 	Materials = "Materials",
 	PickKeep = "Pick the item to keep.",
-	PickUse = "Now pick a duplicate to use up (same item, tier and socket count).",
+	PickUse = "Now pick a duplicate to use up (same item, tier and socket count). Press + to list them.",
+	NoDuplicate = "No duplicate of this item in the bag (same item, tier and socket count, not worn, sockets empty).",
+	AddMark = "+",
+	LockItem = "Lock",
+	UnlockItem = "Unlock",
+	LockMark = "🔒",
+	SalvageMark = "🔨",
+	LockModeTitle = "LOCK MODE  ·  click or drag over items to lock / unlock",
+	SalvageModeTitle = "SALVAGE MODE  ·  click or drag over items to mark them",
+	LockModeHint = "Locked items cannot be salvaged or used up. Done leaves the mode.",
+	SalvageModeHint = "Nothing marked yet. Confirm salvages the marked items, Cancel leaves the mode.",
 	PowerIndex = "Powers a roll can give",
 	TreeStart = "Start",
 	Max = "MAX",
@@ -542,6 +589,13 @@ Text.UI = table.freeze({
 	ResetWindow = "Reset window",
 	Advance = "Advance",
 	AdvanceMax = "Fully advanced",
+	JobButton = "Rebirth",
+	JobTitle = "Change class",
+	JobNeeds = "Needs",
+	JobThen = "Then",
+	JobChoose = "Become",
+	JobNotePick = "Pick one path. The choice is permanent; level and gear are kept.",
+	JobNote = "Permanent. Level and gear are kept.",
 	Locked = "Locked",
 	On = "ON",
 	Off = "OFF",
@@ -611,6 +665,7 @@ Text.Error = table.freeze({
 	NodeOwned = "Already bought",
 	NodeLocked = "Buy the connected node first",
 	NotEnoughItems = "Not enough materials",
+	MaxInsertTier = "Already the highest tier",
 	NotEnoughPoints = "Not enough rebirth points",
 	AutoOpenBagFull = "Auto-open paused: bag is full",
 	RebirthMax = "Highest rebirth reached",

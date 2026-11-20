@@ -200,7 +200,7 @@ local function Formation(props: Props): React.ReactNode
 					table.insert(gear, item)
 				end
 			end
-			local stats = Formula.Stats.Hero(hero.Class, hero.Level, gear, hero.Advancement)
+			local stats = Formula.Stats.Hero(hero.Class, hero.Level, gear, hero.Advancement, hero.Path)
 			table.insert(speeds, { Row = entry.Row, Speed = stats.Speed })
 		end
 	end

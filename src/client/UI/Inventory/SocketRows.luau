@@ -1,5 +1,5 @@
 --!strict
--- Sockets of one gear piece as rows: kind buttons, the insert in it (remove for gold) or the inserts in the bag that fit, and opening a socket with a Socket Core.
+-- Sockets of one gear piece as rows: kind buttons, the insert in it (remove for gold) or the inserts in the bag that fit.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -38,19 +38,6 @@ return function(data: Types.ProfileData, item: Types.GearItem, into: { [string]:
 		textSize = 15,
 		layoutOrder = order,
 	})
-	if #item.Sockets < Inserts.MaxSockets then
-		local cores = data.Stacks[Inserts.CoreItem] or 0
-		into.Core = e(Widgets.Button, {
-			text = `Use {Text.Material(Inserts.CoreItem)} (have {cores})`,
-			size = UDim2.new(1, 0, 0, ROW_H),
-			textSize = 14,
-			disabled = cores <= 0,
-			layoutOrder = order + 1,
-			onClick = function()
-				State.Send.UseSocketCore(item.Uid)
-			end,
-		})
-	end
 	for i, socket in item.Sockets do
 		local base = order + i * 10
 		local head: { [string]: React.ReactNode } = {
@@ -107,7 +94,6 @@ return function(data: Types.ProfileData, item: Types.GearItem, into: { [string]:
 					any = true
 					choices[def.Id] = e(Widgets.Button, {
 						text = `{Text.Material(def.Id)} x{have}`,
-						size = UDim2.fromOffset(140, ROW_H),
 						textSize = 13,
 						layoutOrder = def.Order,
 						tip = Tip.Material(def.Id),
@@ -118,14 +104,28 @@ return function(data: Types.ProfileData, item: Types.GearItem, into: { [string]:
 				end
 			end
 			if not any then
-				choices.None = e(Widgets.Label, {
-					text = `{UI.NoInserts} ({Text.SocketKind(socket.Kind)})`,
-					size = UDim2.fromOffset(260, ROW_H),
-					color = Theme.Subtext,
-					textSize = 13,
+				into[`C{i}`] = row({
+					None = e(Widgets.Label, {
+						text = `{UI.NoInserts} ({Text.SocketKind(socket.Kind)})`,
+						size = UDim2.fromOffset(260, ROW_H),
+						color = Theme.Subtext,
+						textSize = 13,
+					}),
+				}, base + 1)
+			else
+				-- Wraps onto more lines when many inserts fit (three tiers per kind).
+				choices.Grid = e("UIGridLayout", {
+					CellSize = UDim2.fromOffset(150, ROW_H),
+					CellPadding = UDim2.fromOffset(6, 6),
+					SortOrder = Enum.SortOrder.LayoutOrder,
 				})
+				into[`C{i}`] = e("Frame", {
+					Size = UDim2.fromScale(1, 0),
+					AutomaticSize = Enum.AutomaticSize.Y,
+					BackgroundTransparency = 1,
+					LayoutOrder = base + 1,
+				}, choices)
 			end
-			into[`C{i}`] = row(choices, base + 1)
 		end
 	end
 end

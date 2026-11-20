@@ -1,5 +1,5 @@
 --!strict
--- Forge costs (pure, shared so the UI shows what the server charges): enhance, socket merge/remove, enchant.
+-- Forge costs (pure, shared so the UI shows what the server charges): enhance, socket merge/remove, insert upgrade, enchant.
 
 local Types = require(script.Parent.Parent.Types)
 local Items = require(script.Parent.Parent.Config.Items)
@@ -7,6 +7,7 @@ local Enhance = require(script.Parent.Parent.Config.Enhance)
 local Enchant = require(script.Parent.Parent.Config.Enchant)
 local Inserts = require(script.Parent.Parent.Config.Inserts)
 local Scaling = require(script.Parent.Scaling)
+local Economy = require(script.Parent.Economy)
 
 local Forge = {}
 
@@ -37,13 +38,22 @@ function Forge.RemoveGold(item: Types.GearItem): number
 	return math.floor(Inserts.RemoveGold * Scaling.Item(item.Level))
 end
 
+-- Gold to upgrade inserts of `tier` (0 when that tier cannot be upgraded).
+function Forge.UpgradeGold(tier: string, bestLevel: number): number
+	local units = Inserts.UpgradeGold[tier]
+	return if units ~= nil then Economy.Gold(units, bestLevel) else 0
+end
+
 -- Enchant reroll cost (gold, dust count).
 function Forge.EnchantCost(item: Types.GearItem): (number, number)
 	return math.floor(Enchant.GoldBase * Scaling.Item(item.Level)), Enchant.Dust[item.Tier] or 1
 end
 
--- A duplicate that can be merged into `main`: same base + tier + socket count, not full, not itself.
+-- A duplicate that can be merged into `main`: same base + tier + socket count, not full, not itself, not player-locked.
 function Forge.CanMerge(main: Types.GearItem, other: Types.GearItem): boolean
+	if other.Locked == true then
+		return false
+	end
 	if main.Uid == other.Uid or main.BaseId ~= other.BaseId or main.Tier ~= other.Tier then
 		return false
 	end

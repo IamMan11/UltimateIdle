@@ -1,5 +1,5 @@
 --!strict
--- Filter modal over the Inventory window: a FloatWindow (same frame and zoom as Inventory) over an invisible click-blocking backdrop. Type / Tier / Sort by as rows of chips (applied at once), Reset + Done. Opened by the Filter button (State.ShowBagFilter); Esc, Done, Close or a click outside closes it.
+-- Filter modal over the Inventory window: a FloatWindow (same frame and zoom as Inventory) over an invisible click-blocking backdrop. Type / Slot (gear worn in one slot kind) / Tier / Sort by as rows of chips (applied at once), Reset + Done. Opened by the Filter button (State.ShowBagFilter); Esc, Done, Close or a click outside closes it.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -7,6 +7,7 @@ local React = require(ReplicatedStorage.Packages.React)
 local Text = require(ReplicatedStorage.Shared.Text)
 local Tiers = require(ReplicatedStorage.Shared.Config.Tiers)
 local Game = require(ReplicatedStorage.Shared.Config.Game)
+local Items = require(ReplicatedStorage.Shared.Config.Items)
 local FloatWindow = require(script.Parent.Core.FloatWindow)
 local Theme = require(script.Parent.Core.Theme)
 local Widgets = require(script.Parent.Core.Widgets)
@@ -16,8 +17,8 @@ local e = React.createElement
 local UI = Text.UI
 
 -- Design units before the Inventory zoom (Config.Game.WindowZoom), like the window it sits on.
-local DEFAULT_SIZE = Vector2.new(640, 380)
-local MIN_SIZE = Vector2.new(480, 340)
+local DEFAULT_SIZE = Vector2.new(760, 470)
+local MIN_SIZE = Vector2.new(560, 420)
 local HEAD_H = 22
 local CHIP_H = 34
 local CHIP_GAP = 8
@@ -37,6 +38,19 @@ local SORTS: { { Id: State.BagSort, Label: string } } = {
 	{ Id = "Tier", Label = UI.SortTier },
 }
 
+-- Slot kinds in the order of the gear slots (Bracelet1/2 and Ring1/2 count once).
+local SLOT_KINDS: { string } = {}
+for _, slot in Items.GearSlots do
+	local kind = Items.SlotOf[slot]
+	if kind ~= nil and table.find(SLOT_KINDS, kind) == nil then
+		table.insert(SLOT_KINDS, kind)
+	end
+end
+-- GearSlot to read a slot kind's name from (Text.Slot is keyed by gear slot).
+local function slotLabel(kind: string): string
+	return Text.Slot(Items.Slots[kind][1])
+end
+
 local function close()
 	State.ShowBagFilter(false)
 end
@@ -48,7 +62,7 @@ local function section(title: string, hint: string?, chips: { Chip }, order: num
 		row[chip.Key] = e(Widgets.Button, {
 			text = chip.Label,
 			size = UDim2.new(1 / n, -CHIP_GAP * (n - 1) / n, 1, 0),
-			textSize = 15,
+			textSize = if n > 6 then 12 else 15,
 			selected = chip.On,
 			layoutOrder = i,
 			onClick = chip.Pick,
@@ -90,8 +104,31 @@ end
 
 local function BagFilter(): React.ReactNode
 	local filter = State.Ui.BagFilter
+	-- A gear slot only goes with gear: another type clears it.
 	local function set(kind: State.BagKind?, tier: string?, sort: State.BagSort)
-		State.SetBagFilter({ Kind = kind, Tier = tier, Sort = sort })
+		local slot = if kind == nil or kind == "Gear" then filter.Slot else nil
+		State.SetBagFilter({ Kind = kind, Tier = tier, Slot = slot, Sort = sort })
+	end
+
+	local slots: { Chip } = {
+		{
+			Key = "All",
+			Label = UI.All,
+			On = filter.Slot == nil,
+			Pick = function()
+				State.SetBagFilter({ Kind = filter.Kind, Tier = filter.Tier, Sort = filter.Sort })
+			end,
+		},
+	}
+	for _, slotKind in SLOT_KINDS do
+		table.insert(slots, {
+			Key = slotKind,
+			Label = slotLabel(slotKind),
+			On = filter.Slot == slotKind,
+			Pick = function()
+				State.SetBagFilter({ Kind = "Gear", Tier = filter.Tier, Slot = slotKind, Sort = filter.Sort })
+			end,
+		})
 	end
 
 	local kinds: { Chip } = {
@@ -150,7 +187,7 @@ local function BagFilter(): React.ReactNode
 		})
 	end
 
-	local isDefault = filter.Kind == nil and filter.Tier == nil and filter.Sort == "Level"
+	local isDefault = filter.Kind == nil and filter.Tier == nil and filter.Slot == nil and filter.Sort == "Level"
 	return e(FloatWindow, {
 		id = "BagFilter",
 		title = UI.FilterTitle,
@@ -167,9 +204,11 @@ local function BagFilter(): React.ReactNode
 			Layout = Widgets.List(Enum.FillDirection.Vertical, SECTION_GAP),
 			Type = section(UI.FilterType, nil, kinds, 1),
 			Line1 = divider(2),
-			Tier = section(UI.FilterTier, UI.FilterTierHint, tiers, 3),
+			Slot = section(UI.FilterSlot, UI.FilterSlotHint, slots, 3),
 			Line2 = divider(4),
-			Sort = section(UI.FilterSort, UI.FilterSortHint, sorts, 5),
+			Tier = section(UI.FilterTier, UI.FilterTierHint, tiers, 5),
+			Line3 = divider(6),
+			Sort = section(UI.FilterSort, UI.FilterSortHint, sorts, 7),
 		}),
 		Reset = e(Widgets.Button, {
 			text = UI.Reset,
@@ -179,7 +218,7 @@ local function BagFilter(): React.ReactNode
 			textSize = 15,
 			disabled = isDefault,
 			onClick = function()
-				set(nil, nil, "Level")
+				State.SetBagFilter({ Sort = "Level" })
 			end,
 		}),
 		Done = e(Widgets.Button, {

@@ -149,6 +149,10 @@ local Net = {
 	Unequip = Red.Event("Unequip", function(heroId: unknown, slot: unknown)
 		return str(heroId, 16), str(slot, 16)
 	end),
+	LockGear = Red.Event("LockGear", function(uids: unknown, on: unknown)
+		assert(type(on) == "boolean", "bad argument")
+		return strList(uids, 100, 16), on
+	end),
 	Salvage = Red.Event("Salvage", function(uids: unknown)
 		return strList(uids, 100, 16)
 	end),
@@ -161,8 +165,8 @@ local Net = {
 	SetTeam = Red.Event("SetTeam", function(entries: unknown)
 		return teamList(entries)
 	end),
-	Advance = Red.Event("Advance", function(heroId: unknown)
-		return str(heroId, 16)
+	Advance = Red.Event("Advance", function(heroId: unknown, path: unknown)
+		return str(heroId, 16), int(path, 1, 8)
 	end),
 	BuyNode = Red.Event("BuyNode", function(id: unknown)
 		return str(id, 32)
@@ -189,6 +193,9 @@ local Net = {
 	end),
 	InsertSocket = Red.Event("InsertSocket", function(uid: unknown, index: unknown, id: unknown)
 		return str(uid, 16), int(index, 1, 10), str(id, 32)
+	end),
+	UpgradeInsert = Red.Event("UpgradeInsert", function(ids: unknown)
+		return strList(ids, 3, 32)
 	end),
 	RemoveInsert = Red.Event("RemoveInsert", function(uid: unknown, index: unknown)
 		return str(uid, 16), int(index, 1, 10)

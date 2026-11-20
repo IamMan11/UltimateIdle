@@ -12,8 +12,8 @@ function Skills.IsUnlocked(def: SkillsConfig.SkillDef, heroLevel: number): boole
 end
 
 -- Scaled numbers for one skill at an advancement stage (used by the sim and the skills UI).
-function Skills.Resolve(def: SkillsConfig.SkillDef, advancement: number): Types.SimSkill
-	local totals = Classes.Totals(advancement)
+function Skills.Resolve(def: SkillsConfig.SkillDef, advancement: number, path: number?): Types.SimSkill
+	local totals = Classes.Totals(advancement, path)
 	local power = totals.SkillPower
 	return {
 		Index = def.Index,
@@ -29,7 +29,7 @@ function Skills.Resolve(def: SkillsConfig.SkillDef, advancement: number): Types.
 end
 
 -- Unlocked active skills in cast-priority order (Active2 first: it is the bigger one).
-function Skills.Active(class: string, level: number, advancement: number): { Types.SimSkill }
+function Skills.Active(class: string, level: number, advancement: number, path: number?): { Types.SimSkill }
 	local out: { Types.SimSkill } = {}
 	local forClass = SkillsConfig.ByClass[class]
 	if forClass == nil then
@@ -38,7 +38,7 @@ function Skills.Active(class: string, level: number, advancement: number): { Typ
 	for _, slot in { "Active2", "Active1" } do
 		for _, def in forClass do
 			if def.Slot == slot and Skills.IsUnlocked(def, level) then
-				table.insert(out, Skills.Resolve(def, advancement))
+				table.insert(out, Skills.Resolve(def, advancement, path))
 			end
 		end
 	end
@@ -46,12 +46,12 @@ function Skills.Active(class: string, level: number, advancement: number): { Typ
 end
 
 -- Applies the class passive (if unlocked), scaled by advancement skill power.
-function Skills.ApplyPassive(s: Types.HeroStats, class: string, level: number, advancement: number)
+function Skills.ApplyPassive(s: Types.HeroStats, class: string, level: number, advancement: number, path: number?)
 	local forClass = SkillsConfig.ByClass[class]
 	if forClass == nil then
 		return
 	end
-	local power = Classes.Totals(advancement).SkillPower
+	local power = Classes.Totals(advancement, path).SkillPower
 	for _, def in forClass do
 		local bonus = def.Passive
 		if bonus ~= nil and Skills.IsUnlocked(def, level) then

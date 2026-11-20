@@ -16,6 +16,7 @@ local Confirm = require(script.Parent.Confirm)
 local Tooltip = require(script.Parent.Tooltip)
 local HeroSelect = require(script.Parent.Parent.HeroSelect)
 local TeamPage = require(script.Parent.Parent.Team)
+local JobChange = require(script.Parent.Parent.Team.JobChange)
 local TreePage = require(script.Parent.Parent.Tree)
 local Inventory = require(script.Parent.Parent.Inventory)
 local Salvage = require(script.Parent.Parent.Salvage)
@@ -134,6 +135,7 @@ local function App(): React.ReactNode
 				Modal = e(BagFilter),
 			})
 			else nil,
+		JobChange = if ui.JobChange ~= nil then e(JobChange, { data = data, heroId = ui.JobChange }) else nil,
 		Confirm = if ui.Confirm ~= nil then e(Confirm, { prompt = ui.Confirm }) else nil,
 		Tooltip = e(Tooltip, { data = data, scale = scale, hidden = State.ModalOpen() }),
 		Toasts = e(Toasts),

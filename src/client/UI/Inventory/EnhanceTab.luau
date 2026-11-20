@@ -1,5 +1,5 @@
 --!strict
--- Inventory window, Enhance tab: the picked piece (+now -> +next), one slot per material the next +1 needs with have/need, gold cost, Enhance, last result.
+-- Inventory window, Enhance tab: mode bar (Enhance · Insert / Remove · Upgrade). Enhance = the picked piece (+now -> +next), one slot per material the next +1 needs with have/need, gold cost, Enhance, last result · Insert / Remove = the picked piece's sockets (SocketRows) · Upgrade = UpgradePanel.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -12,21 +12,41 @@ local Theme = require(script.Parent.Parent.Core.Theme)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
 local State = require(script.Parent.Parent.Parent.State)
 local Parts = require(script.Parent.Parts)
+local socketRows = require(script.Parent.SocketRows)
+local UpgradePanel = require(script.Parent.UpgradePanel)
 
 local e = React.createElement
 local UI = Text.UI
 
 local SQUARE = 64
 local MATERIAL = 52
+local MODE_H = 32
+local GAP = 10
 
-export type Props = { data: Types.ProfileData, item: Types.GearItem? }
+export type Mode = "Enhance" | "Insert" | "Upgrade"
+
+local MODES: { { Id: Mode, Label: string } } = {
+	{ Id = "Enhance", Label = UI.Enhance },
+	{ Id = "Insert", Label = UI.ModeInsert },
+	{ Id = "Upgrade", Label = UI.ModeUpgrade },
+}
+
+export type Props = {
+	data: Types.ProfileData,
+	item: Types.GearItem?,
+	mode: Mode,
+	onMode: (mode: Mode) -> (),
+	upgradeSlots: { string },
+	upgradeFinding: boolean,
+	onUpgradeFind: () -> (),
+	onUpgradeSlots: (slots: { string }) -> (),
+}
 
 local function centred(height: number, order: number, children: { [string]: React.ReactNode }): React.ReactNode
 	return e("Frame", { Size = UDim2.new(1, 0, 0, height), BackgroundTransparency = 1, LayoutOrder = order }, children)
 end
 
-local function EnhanceTab(props: Props): React.ReactNode
-	local data, item = props.data, props.item
+local function enhanceBody(data: Types.ProfileData, item: Types.GearItem?): React.ReactNode
 	local maxed = item ~= nil and item.Plus >= EnhanceConfig.MaxPlus
 	local rows: { [string]: React.ReactNode } = { Layout = Widgets.List(Enum.FillDirection.Vertical, 8) }
 	rows.Item = centred(SQUARE, 1, {
@@ -124,6 +144,54 @@ local function EnhanceTab(props: Props): React.ReactNode
 		layoutOrder = 6,
 	})
 	return e("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 }, rows)
+end
+
+local function EnhanceTab(props: Props): React.ReactNode
+	local modes: { [string]: React.ReactNode } = {}
+	for i, m in MODES do
+		modes[m.Id] = e(Widgets.Button, {
+			text = m.Label,
+			size = UDim2.new(1 / #MODES, -6, 1, 0),
+			position = UDim2.new((i - 1) / #MODES, 3, 0, 0),
+			textSize = 14,
+			selected = props.mode == m.Id,
+			onClick = function()
+				props.onMode(m.Id)
+			end,
+		})
+	end
+
+	local body: React.ReactNode
+	if props.mode == "Upgrade" then
+		body = e(UpgradePanel, {
+			data = props.data,
+			slots = props.upgradeSlots,
+			finding = props.upgradeFinding,
+			onFind = props.onUpgradeFind,
+			onSlots = props.onUpgradeSlots,
+		})
+	elseif props.mode == "Insert" then
+		local rows: { [string]: React.ReactNode } = { Layout = Widgets.List(Enum.FillDirection.Vertical, 6) }
+		local item = props.item
+		if item ~= nil then
+			socketRows(props.data, item, rows, 1)
+		else
+			rows.Hint = Parts.Hint(UI.PickItemFirst, 1)
+		end
+		body = Parts.Scroll(rows)
+	else
+		body = enhanceBody(props.data, props.item)
+	end
+
+	return e("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 }, {
+		Modes = e("Frame", { Size = UDim2.new(1, 0, 0, MODE_H), BackgroundTransparency = 1 }, modes),
+		-- Keyed by mode so each starts from the top.
+		[props.mode] = e("Frame", {
+			Size = UDim2.new(1, 0, 1, -(MODE_H + GAP)),
+			Position = UDim2.fromOffset(0, MODE_H + GAP),
+			BackgroundTransparency = 1,
+		}, { Body = body }),
+	})
 end
 
 return EnhanceTab

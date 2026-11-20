@@ -1,5 +1,5 @@
 --!strict
--- Owner of Gear (wearables, by uid) and Stacks (materials): create/remove/stack with capacity checks (bag slots = gear + material slots + box stacks), plus/socket/enchant setters, trade locks + transfer. Other systems never write these tables.
+-- Owner of Gear (wearables, by uid) and Stacks (materials): create/remove/stack with capacity checks (bag slots = gear + material slots + box stacks), plus/socket/enchant setters, player lock (LockGear remote), trade locks + transfer. Other systems never write these tables.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -14,6 +14,8 @@ local Materials = require(ReplicatedStorage.Shared.Config.Materials)
 local Formula = require(ReplicatedStorage.Shared.Formula)
 local PlayerData = require(ServerScriptService.Server.Data.PlayerData)
 local Guard = require(ServerScriptService.Server.Util.Guard)
+local RateLimit = require(ServerScriptService.Server.Util.RateLimit)
+local Net = require(ReplicatedStorage.Shared.Net)
 local Replication = require(script.Parent.Replication)
 local Modifiers = require(script.Parent.Modifiers)
 
@@ -230,6 +232,21 @@ local function gearChanged(player: Player, item: Types.GearItem)
 	end
 end
 
+-- Player lock: a locked piece is refused by salvage and as the used-up piece of a socket merge (it can still be worn, improved and traded).
+function Inventory.SetGearLock(player: Player, uid: string, on: boolean): boolean
+	local item = Inventory.Get(player, uid)
+	if item == nil then
+		return false
+	end
+	if on then
+		item.Locked = true
+	else
+		item.Locked = nil
+	end
+	gearChanged(player, item)
+	return true
+end
+
 function Inventory.SetPlus(player: Player, uid: string, plus: number): boolean
 	if Inventory.IsLocked(player, uid) then
 		return false
@@ -337,6 +354,13 @@ function Inventory.Start()
 	Players.PlayerRemoving:Connect(function(player)
 		totals[player] = nil
 		locks[player] = nil
+	end)
+	Net.LockGear:Server():On(function(player: Player, uids: { string }, on: boolean)
+		if RateLimit.Allow(player, "LockGear") then
+			for _, uid in uids do
+				Inventory.SetGearLock(player, uid, on)
+			end
+		end
 	end)
 end
 

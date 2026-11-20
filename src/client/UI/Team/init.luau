@@ -1,5 +1,5 @@
 --!strict
--- Team window (floating, resizable, place saved): left = class preview + class strip + gear slots · middle = level path / gear picker + Skill Tree button · right = formation preview + row places.
+-- Team window (floating, resizable, place saved): left = class preview + class strip + gear slots · middle = level path + Skill Tree button · right = formation preview + row places.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -65,7 +65,7 @@ local function TeamPage(props: Props): React.ReactNode
 			Position = UDim2.fromScale(LEFT, 0),
 			BackgroundTransparency = 1,
 		}, {
-			Panel = e(LevelPanel, { data = data, classId = classId, slot = slot, onSlot = setSlot }),
+			Panel = e(LevelPanel, { data = data, classId = classId }),
 		}),
 		Right = e("Frame", {
 			Size = UDim2.fromScale(1 - LEFT - MIDDLE, 1),
