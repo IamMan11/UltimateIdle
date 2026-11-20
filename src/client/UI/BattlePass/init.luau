@@ -99,7 +99,10 @@ local function cell(
 				TextScaled = true,
 				TextWrapped = true,
 				ZIndex = 2,
-			}, { Max = e("UITextSizeConstraint", { MaxTextSize = Theme.Body(12) }) }),
+			}, {
+				Max = e("UITextSizeConstraint", { MaxTextSize = Theme.Body(12) }),
+				Heavy = if state == "Open" then Widgets.Heavy(Theme.Gold, Theme.Body(12)) else nil,
+			}),
 		}),
 		Level = e(Widgets.Label, {
 			text = `{UI.PassLevel} {tier}`,

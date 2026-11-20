@@ -10,6 +10,7 @@ local Text = require(ReplicatedStorage.Shared.Text)
 local Theme = require(script.Parent.Theme)
 local Art = require(script.Parent.Art)
 local Widgets = require(script.Parent.Widgets)
+local Motion = require(script.Parent.Motion)
 local Device = require(script.Parent.Device)
 local WindowStack = require(script.Parent.WindowStack)
 local State = require(script.Parent.Parent.Parent.State)
@@ -180,6 +181,7 @@ local function FloatWindow(props: Props): React.ReactNode
 	-- The live drag: input handlers read and write this (state is only for drawing).
 	local dragRef = React.useRef(nil :: Drag?)
 	local rootRef = React.useRef(nil :: TextButton?)
+	local pop = Motion.usePop()
 
 	local zoom = props.zoom or 1
 	-- Sizes below are as drawn (after zoom).
@@ -340,7 +342,12 @@ local function FloatWindow(props: Props): React.ReactNode
 
 	local children: { [string]: React.ReactNode } = {
 		-- Laid out 1/k larger, drawn at k: the window keeps rect's size on screen.
-		Zoom = if k ~= 1 then e("UIScale", { Scale = k }) else nil,
+		-- Times the open / close pop (Core/Motion).
+		Zoom = e("UIScale", {
+			Scale = pop:map(function(p: number): number
+				return k * p
+			end),
+		}),
 		Art = Art.Back({ piece = "MainWindow" }),
 		TitleBar = e("TextButton", {
 			Size = UDim2.new(1, 0, 0, HEAD),

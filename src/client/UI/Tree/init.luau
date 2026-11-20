@@ -10,6 +10,7 @@ local Format = require(ReplicatedStorage.Shared.Format)
 local SkillTree = require(ReplicatedStorage.Shared.Config.SkillTree)
 local Theme = require(script.Parent.Core.Theme)
 local Art = require(script.Parent.Core.Art)
+local Widgets = require(script.Parent.Core.Widgets)
 local FloatWindow = require(script.Parent.Core.FloatWindow)
 local State = require(script.Parent.Parent.State)
 
@@ -178,6 +179,7 @@ local function node(
 	onClick: (() -> ())?
 ): React.ReactNode
 	local where = at(cell)
+	local labelColor = if owned then Theme.Gold elseif locked then Theme.Subtext else Theme.Text
 	return e("TextButton", {
 		Size = UDim2.fromOffset(NODE, NODE),
 		Position = UDim2.fromOffset(where.X, where.Y),
@@ -198,13 +200,16 @@ local function node(
 			Position = UDim2.fromOffset(2, 2),
 			BackgroundTransparency = 1,
 			Text = label,
-			TextColor3 = if owned then Theme.Gold elseif locked then Theme.Subtext else Theme.Text,
+			TextColor3 = labelColor,
 			FontFace = Theme.FontBold,
 			TextSize = Theme.Body(10),
 			TextScaled = true,
 			TextWrapped = true,
 			ZIndex = 2,
-		}, { Max = e("UITextSizeConstraint", { MaxTextSize = Theme.Body(10) }) }),
+		}, {
+			Max = e("UITextSizeConstraint", { MaxTextSize = Theme.Body(10) }),
+			Heavy = Widgets.Heavy(labelColor, Theme.Body(10)),
+		}),
 	})
 end
 

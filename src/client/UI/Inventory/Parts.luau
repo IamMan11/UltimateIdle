@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local React = require(ReplicatedStorage.Packages.React)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Format = require(ReplicatedStorage.Shared.Format)
+local Materials = require(ReplicatedStorage.Shared.Config.Materials)
 local Theme = require(script.Parent.Parent.Core.Theme)
 local Art = require(script.Parent.Parent.Core.Art)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
@@ -30,11 +31,13 @@ export type SquareProps = {
 	onClick: (() -> ())?,
 	layoutOrder: number?,
 	textSize: number?,
+	tier: string?, -- tier of what it holds: rim + text in the tier colour
 }
 
 -- Square slot (item, material or result). The frame is `size` wide and CAPTION_H taller when it has a caption.
 function Parts.Square(props: SquareProps): React.ReactNode
 	local top = if props.caption ~= nil then CAPTION_H else 0
+	local accent = Theme.TierAccent(props.tier)
 	return e("Frame", {
 		Size = UDim2.fromOffset(props.size, props.size + top),
 		Position = props.position,
@@ -66,17 +69,31 @@ function Parts.Square(props: SquareProps): React.ReactNode
 				padding = 6,
 			}),
 			Padding = Widgets.Padding(6),
+			Rim = Widgets.TierRim(props.tier),
 			Label = e("TextLabel", {
 				Size = UDim2.fromScale(1, 1),
 				BackgroundTransparency = 1,
 				Text = props.text,
-				TextColor3 = if props.selected then Theme.OnDark elseif props.dim then Theme.Subtext else Theme.Text,
-				FontFace = Theme.Font,
+				TextColor3 = if accent ~= nil and props.selected
+					then accent.Light
+					elseif props.selected then Theme.OnDark
+					elseif props.dim then Theme.Subtext
+					elseif accent ~= nil then accent.Color
+					else Theme.Text,
+				FontFace = if accent ~= nil then Theme.FontBold else Theme.Font,
 				TextSize = Theme.Body(props.textSize or 11),
 				TextScaled = true,
 				TextWrapped = true,
 				ZIndex = 2,
-			}, { Max = e("UITextSizeConstraint", { MaxTextSize = Theme.Body(props.textSize or 11) }) }),
+			}, {
+				Max = e("UITextSizeConstraint", { MaxTextSize = Theme.Body(props.textSize or 11) }),
+				Heavy = if accent ~= nil
+					then Widgets.Heavy(
+						if props.selected then accent.Light else accent.Color,
+						Theme.Body(props.textSize or 11)
+					)
+					else nil,
+			}),
 		}),
 	})
 end
@@ -84,6 +101,12 @@ end
 -- "12/40"
 function Parts.Amount(have: number, need: number): string
 	return `{Format.Number(have)}/{Format.Number(need)}`
+end
+
+-- Tier of a material or socket insert id (nil when unknown).
+function Parts.MaterialTier(id: string): string?
+	local def = Materials.ById[id]
+	return if def ~= nil then def.Tier else nil
 end
 
 function Parts.GearText(item: Types.GearItem): string

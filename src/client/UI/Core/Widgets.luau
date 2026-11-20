@@ -9,6 +9,8 @@ local Workspace = game:GetService("Workspace")
 local React = require(ReplicatedStorage.Packages.React)
 local Theme = require(script.Parent.Theme)
 local Art = require(script.Parent.Art)
+local Rich = require(script.Parent.Rich)
+local Motion = require(script.Parent.Motion)
 local State = require(script.Parent.Parent.Parent.State)
 local Device = require(script.Parent.Device)
 local Tip = require(script.Parent.Tip)
@@ -119,6 +121,40 @@ function Widgets.Stroke(color: Color3?, thickness: number?, transparency: number
 	})
 end
 
+-- Bold weight for Michroma (one face only): a stroke in the text's own colour thickens the glyphs.
+function Widgets.Heavy(color: Color3, size: number, transparency: number?): React.ReactNode
+	return e("UIStroke", {
+		Color = color,
+		Thickness = Theme.Heavy(size),
+		Transparency = transparency or 0,
+		LineJoinMode = Enum.LineJoinMode.Round,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual,
+	})
+end
+
+-- Tier rim for an item slot: a solid line in the tier colour, over the slot art (ZIndex 1) and under its text
+-- (ZIndex 2); nil for anything without a tier.
+function Widgets.TierRim(tier: string?, inset: number?): React.ReactNode
+	local accent = Theme.TierAccent(tier)
+	if accent == nil then
+		return nil
+	end
+	local pad = inset or 0
+	return e("Frame", {
+		Size = UDim2.new(1, -pad * 2, 1, -pad * 2),
+		Position = UDim2.fromOffset(pad, pad),
+		BackgroundTransparency = 1,
+		ZIndex = 1,
+	}, {
+		Corner = Widgets.Corner(6),
+		Stroke = e("UIStroke", {
+			Color = accent.Color,
+			Thickness = 3,
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		}),
+	})
+end
+
 function Widgets.Padding(px: number): React.ReactNode
 	local u = UDim.new(0, px)
 	return e("UIPadding", { PaddingTop = u, PaddingBottom = u, PaddingLeft = u, PaddingRight = u })
@@ -149,6 +185,8 @@ export type LabelProps = {
 	alignY: Enum.TextYAlignment?,
 	layoutOrder: number?,
 	wrap: boolean?,
+	stat: boolean?, -- colour stat phrases and tier names (Core/Rich)
+	accent: Theme.Accent?, -- whole label in an accent colour (tier names, headline stats)
 }
 
 -- Single-line text that is too long shrinks (down to 70 %) instead of being cut: TextScaled under a size cap.
@@ -166,13 +204,19 @@ function Widgets.Label(props: LabelProps): React.ReactNode
 	local heading = props.bold == true and size >= 20
 	local drawn = if heading then Theme.Title(size) else Theme.Body(size)
 	local wrap = props.wrap == true
+	local color = props.color or Theme.Text
+	local accent = props.accent
+	local fill = if accent ~= nil then (if Theme.IsLight(color) then accent.Light else accent.Color) else color
+	-- Bold body text and accent labels are drawn heavy; stat labels bolden their own phrases (Core/Rich).
+	local heavy = not heading and props.stat ~= true and (props.bold == true or accent ~= nil)
 	return e("TextLabel", {
 		Size = props.size or UDim2.new(1, 0, 0, 22),
 		Position = props.position,
 		AnchorPoint = props.anchor,
 		BackgroundTransparency = 1,
-		Text = props.text,
-		TextColor3 = props.color or Theme.Text,
+		Text = if props.stat then Rich.Stats(props.text, Theme.IsLight(color), drawn) else props.text,
+		RichText = props.stat == true,
+		TextColor3 = fill,
 		FontFace = if heading then Theme.FontTitle elseif props.bold then Theme.FontBold else Theme.Font,
 		TextSize = drawn,
 		TextScaled = not wrap,
@@ -182,6 +226,7 @@ function Widgets.Label(props: LabelProps): React.ReactNode
 		LayoutOrder = props.layoutOrder,
 	}, {
 		Fit = if wrap then nil else Widgets.Shrink(drawn),
+		Heavy = if heavy then Widgets.Heavy(fill, drawn) else nil,
 	})
 end
 
@@ -226,27 +271,40 @@ export type ButtonProps = {
 	tip: Tip.Content?, -- hover tooltip (Core/Tooltip)
 }
 
--- Button art: paper face (gilt leather when selected or a confirm/accent colour), hover / pressed variants.
-local function buttonPiece(gilt: boolean, state: string): string
-	return (if gilt then "BtnGilt" else "BtnPaper") .. state
-end
-
+-- Every button is the gilt leather plate (gold text). `selected = false` = an idle tab / toggle: dimmer plate and
+-- text, full gold on hover. Danger / confirm colours tint the plate; disabled is a greyed plate.
 function Widgets.Button(props: ButtonProps): React.ReactNode
 	local hovered, setHovered = React.useState(false)
 	local pressed, setPressed = React.useState(false)
 	local disabled = props.disabled == true
-	local selected = props.selected == true
+	local idle = props.selected == false and not hovered
 	local color = props.color
-	local gilt = not disabled and (selected or color == Theme.Confirm or color == Theme.Accent)
-	local danger = not disabled and color == Theme.Danger
+	local danger = color == Theme.Danger
+	local confirm = color == Theme.Confirm
 	local down = pressed and not disabled
+	local labelColor = if disabled or idle
+		then Theme.OnDarkIdle
+		elseif props.textColor == Theme.Subtext then Theme.OnDarkSub
+		elseif danger then Theme.DangerTint
+		else Theme.Gold
 	local state = if down then "Pressed" elseif hovered and not disabled then "Hover" else "Normal"
-	local piece = buttonPiece(gilt, state)
 	local size = props.size or UDim2.fromOffset(120, 36)
+	-- Narrow buttons (arrows, toggles) use the square plate: the wide plate's end studs would crowd the label.
+	local narrow = size.X.Scale == 0 and size.Y.Scale == 0 and size.X.Offset <= size.Y.Offset * 1.2
+	local piece = if narrow then "BtnSquareGilt" else "BtnGilt" .. state
+	local tint = if disabled
+		then Theme.DisabledTint
+		elseif idle then Theme.IdleTint
+		elseif danger then Theme.DangerTint
+		elseif confirm then Theme.ConfirmTint
+		else nil
+	local scale = Motion.useButton(hovered and not disabled, down)
 	local height = if size.Y.Scale == 0 then size.Y.Offset else 40
 	local icon = props.icon
 	local iconSize = math.min(props.iconSize or 32, math.max(height - 12, 12))
 	local left = if icon ~= nil then iconSize + 14 else 8
+	local textSize = Theme.Body(props.textSize or 17)
+	local fade = if disabled then 0.35 else 0
 
 	return e("TextButton", {
 		Size = size,
@@ -280,18 +338,19 @@ function Widgets.Button(props: ButtonProps): React.ReactNode
 			end
 		end,
 	}, {
-		Art = Art.Back({
-			piece = piece,
-			edge = Art.FitEdge(piece, height),
-			transparency = if disabled then 0.35 else 0,
-			color = if danger then Theme.DangerTint else nil,
-		}),
-		Face = e("Frame", {
+		-- Centred so hover / press scale from the middle of the button.
+		Body = e("Frame", {
 			Size = UDim2.fromScale(1, 1),
-			Position = UDim2.fromOffset(0, if down then 1 else 0),
+			Position = UDim2.fromScale(0.5, 0.5),
+			AnchorPoint = Vector2.new(0.5, 0.5),
 			BackgroundTransparency = 1,
-			ZIndex = 2,
 		}, {
+			Scale = e("UIScale", { Scale = scale }),
+			Art = Art.Back({
+				piece = piece,
+				edge = Art.FitEdge(piece, height),
+				color = tint,
+			}),
 			Icon = if icon ~= nil
 				then e(Widgets.Icon, {
 					image = icon,
@@ -306,16 +365,17 @@ function Widgets.Button(props: ButtonProps): React.ReactNode
 				Position = UDim2.fromOffset(left, 0),
 				BackgroundTransparency = 1,
 				Text = props.text,
-				TextColor3 = if disabled
-					then Theme.Subtext
-					elseif gilt then (if props.textColor == Theme.Subtext then Theme.OnDarkSub else Theme.Gold)
-					else props.textColor or Theme.Text,
-				TextTransparency = if disabled then 0.3 else 0,
+				TextColor3 = labelColor,
+				TextTransparency = fade,
 				FontFace = Theme.FontBold,
-				TextSize = Theme.Body(props.textSize or 17),
+				TextSize = textSize,
 				TextScaled = true,
 				TextXAlignment = if icon ~= nil then Enum.TextXAlignment.Left else Enum.TextXAlignment.Center,
-			}, { Fit = Widgets.Shrink(Theme.Body(props.textSize or 17)) }),
+				ZIndex = 2,
+			}, {
+				Fit = Widgets.Shrink(textSize),
+				Heavy = Widgets.Heavy(labelColor, textSize, fade),
+			}),
 		}),
 	})
 end
@@ -330,6 +390,7 @@ export type CloseButtonProps = {
 -- Small gilt square with an X: closes windows and modals.
 function Widgets.CloseButton(props: CloseButtonProps): React.ReactNode
 	local hovered, setHovered = React.useState(false)
+	local pressed, setPressed = React.useState(false)
 	local s = props.size or 32
 	local cross: { [string]: React.ReactNode } = {}
 	for i, angle in { 45, -45 } do
@@ -344,6 +405,7 @@ function Widgets.CloseButton(props: CloseButtonProps): React.ReactNode
 		})
 	end
 	cross.Art = Art.Back({ piece = "BtnSquareGilt", edge = Art.FitEdge("BtnSquareGilt", s) })
+	cross.Scale = e("UIScale", { Scale = Motion.useButton(hovered, pressed) })
 	return e("TextButton", {
 		Size = UDim2.fromOffset(s, s),
 		Position = props.position,
@@ -356,9 +418,24 @@ function Widgets.CloseButton(props: CloseButtonProps): React.ReactNode
 		end,
 		[React.Event.MouseLeave] = function()
 			setHovered(false)
+			setPressed(false)
+		end,
+		[React.Event.MouseButton1Down] = function()
+			setPressed(true)
+		end,
+		[React.Event.MouseButton1Up] = function()
+			setPressed(false)
 		end,
 		[React.Event.Activated] = props.onClick,
-	}, cross)
+	}, {
+		-- Centred so hover / press scale from the middle.
+		Body = e("Frame", {
+			Size = UDim2.fromScale(1, 1),
+			Position = UDim2.fromScale(0.5, 0.5),
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			BackgroundTransparency = 1,
+		}, cross),
+	})
 end
 
 export type BarProps = {
@@ -569,10 +646,15 @@ function Widgets.Window(props: WindowProps): React.ReactNode
 	Widgets.useEscape(props.onClose)
 	local onClose = props.onClose
 	local side, top, bottom = Widgets.WINDOW_SIDE, Widgets.WINDOW_TOP, Widgets.WINDOW_BOTTOM
+	local shown = Motion.useShow()
+	local pop = Motion.usePop(shown)
 	return e("TextButton", {
 		Size = UDim2.fromScale(1, 1),
 		BackgroundColor3 = Theme.Backdrop,
-		BackgroundTransparency = 0.45,
+		-- Dims to 0.45 as the modal opens, back to clear as it closes.
+		BackgroundTransparency = shown:map(function(p: number): number
+			return 1 - 0.55 * p
+		end),
 		BorderSizePixel = 0,
 		AutoButtonColor = false,
 		Text = "",
@@ -594,6 +676,7 @@ function Widgets.Window(props: WindowProps): React.ReactNode
 			Text = "",
 		}, {
 			Max = e("UISizeConstraint", { MaxSize = props.maxSize or Vector2.new(1100, 720) }),
+			Pop = e("UIScale", { Scale = pop }),
 			Art = Art.Back({ piece = "MainWindow" }),
 			Title = e("TextLabel", {
 				Text = props.title,

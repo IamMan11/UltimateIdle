@@ -25,6 +25,7 @@ export type Entry = {
 	Count: number, -- units in this slot (1 for gear)
 	Worn: boolean,
 	WornBy: string?, -- hero id (= class id)
+	Tier: string?, -- gear / material tier (drawn as the cell rim)
 }
 
 export type Filter = {
@@ -83,6 +84,7 @@ function Entries.Build(data: Types.ProfileData, filter: Filter): { Entry }
 				Count = 1,
 				Worn = wornBy ~= nil,
 				WornBy = wornBy,
+				Tier = item.Tier :: string,
 			})
 		end
 	end
@@ -132,6 +134,7 @@ function Entries.Build(data: Types.ProfileData, filter: Filter): { Entry }
 						Line = `{name}  ·  {total} in the bag  ·  {max} per slot`,
 						Count = count,
 						Worn = false,
+						Tier = def.Tier,
 					})
 				end
 			end

@@ -281,6 +281,7 @@ local function Grid(props: Props): React.ReactNode
 			})
 		end
 		local enter = Tip.Enter(tip)
+		local accent = Theme.TierAccent(entry.Tier)
 
 		cells[entry.Key] = e("TextButton", {
 			BackgroundTransparency = 1,
@@ -349,17 +350,21 @@ local function Grid(props: Props): React.ReactNode
 				color = if isMarked then Theme.DangerTint else nil,
 				padding = 4,
 			}),
+			Rim = Widgets.TierRim(entry.Tier),
 			Label = e("TextLabel", {
 				Size = UDim2.fromScale(1, 1),
 				BackgroundTransparency = 1,
 				Text = entry.Label,
-				TextColor3 = Theme.Text,
-				FontFace = Theme.Font,
+				TextColor3 = if accent ~= nil then accent.Color else Theme.Text,
+				FontFace = if accent ~= nil then Theme.FontBold else Theme.Font,
 				TextSize = Theme.Body(11),
 				TextScaled = true,
 				TextWrapped = true,
 				ZIndex = 2,
-			}, { Max = e("UITextSizeConstraint", { MaxTextSize = Theme.Body(11) }) }),
+			}, {
+				Max = e("UITextSizeConstraint", { MaxTextSize = Theme.Body(11) }),
+				Heavy = if accent ~= nil then Widgets.Heavy(accent.Color, Theme.Body(11)) else nil,
+			}),
 			Padding = Widgets.Padding(4),
 			Stroke = if isMarked
 				then Widgets.Stroke(Theme.Danger, 2, 0)
@@ -543,6 +548,7 @@ local function Grid(props: Props): React.ReactNode
 		}, cells),
 		Info = e(Widgets.Label, {
 			text = info,
+			stat = true,
 			color = Theme.Subtext,
 			textSize = 13,
 			position = UDim2.new(0, 0, 1, -(FOOT_H + GAP + INFO_H)),

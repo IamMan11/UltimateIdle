@@ -52,6 +52,7 @@ local function enhanceBody(data: Types.ProfileData, item: Types.GearItem?): Reac
 	rows.Item = centred(SQUARE, 1, {
 		Square = e(Parts.Square, {
 			text = if item ~= nil then Parts.GearText(item) else "",
+			tier = if item ~= nil then item.Tier :: string else nil,
 			size = SQUARE,
 			position = UDim2.fromScale(0.5, 0),
 			anchor = Vector2.new(0.5, 0),
@@ -92,6 +93,7 @@ local function enhanceBody(data: Types.ProfileData, item: Types.GearItem?): Reac
 		materials[id] = e("Frame", { BackgroundTransparency = 1, LayoutOrder = i }, {
 			Square = e(Parts.Square, {
 				text = Text.Material(id),
+				tier = Parts.MaterialTier(id),
 				size = MATERIAL,
 				position = UDim2.fromScale(0.5, 0),
 				anchor = Vector2.new(0.5, 0),

@@ -147,6 +147,7 @@ local function LevelPanel(props: Props): React.ReactNode
 					size = UDim2.new(1, textWidth, 0, 20),
 				}),
 				Detail = e(Widgets.Label, {
+					stat = true,
 					text = detail,
 					color = Theme.Subtext,
 					textSize = 13,

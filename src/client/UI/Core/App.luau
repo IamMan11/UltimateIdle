@@ -8,6 +8,7 @@ local React = require(ReplicatedStorage.Packages.React)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Theme = require(script.Parent.Theme)
 local Widgets = require(script.Parent.Widgets)
+local Motion = require(script.Parent.Motion)
 local WindowStack = require(script.Parent.WindowStack)
 local Device = require(script.Parent.Device)
 local HUD = require(script.Parent.HUD)
@@ -94,7 +95,25 @@ local function App(): React.ReactNode
 		end
 	end, {})
 
+	-- Open windows (value = stack position) and modals; closed ones stay a moment to animate out (Core/Motion).
+	local ui = State.Ui
 	local data = State.Data
+	local needsHero = data ~= nil and next(data.Heroes) == nil
+	local open: { [string]: number } = {}
+	if data ~= nil and not needsHero then
+		for i, id in ui.Windows do
+			open[id] = i
+		end
+	end
+	local windowsShown = Motion.usePresence(open)
+	local modals: { [string]: any } = {
+		HeroSelect = if needsHero then true else nil,
+		BagFilter = if ui.BagFilterOpen and State.IsOpen("Inventory") then true else nil,
+		JobChange = ui.JobChange,
+		Confirm = ui.Confirm,
+	}
+	local modalsShown = Motion.usePresence(modals)
+
 	if data == nil then
 		return e(Widgets.Label, {
 			text = "Loading...",
@@ -104,23 +123,24 @@ local function App(): React.ReactNode
 			align = Enum.TextXAlignment.Center,
 		})
 	end
-	local ui = State.Ui
-	local needsHero = next(data.Heroes) == nil
-	-- Keyed by id so reordering only changes ZIndex (no remount); each layer is a full-screen see-through frame.
-	local windows: { [string]: React.ReactNode } = {}
-	if not needsHero then
-		for i, id in ui.Windows do
-			local node = window(id, data)
-			if node ~= nil then
-				windows[id] = e("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = i }, {
-					Window = node,
-				})
-			end
-		end
-	end
 	-- One UIScale for everything: the root is 1/scale of the screen so it covers the screen once scaled.
 	local scale = Device.Scale(viewport, data.Settings.UiScale or 1)
 	local compact = Device.Compact(viewport, scale)
+	-- Keyed by id so reordering only changes ZIndex (no remount); each layer is a full-screen see-through frame.
+	local windows: { [string]: React.ReactNode } = {}
+	for id, entry in windowsShown do
+		local node = window(id, data)
+		if node ~= nil then
+			windows[id] = e(Motion.Layer, { open = entry.Open, zIndex = entry.Value }, { Window = node })
+		end
+	end
+	local function modal(key: string, zIndex: number, render: (any) -> React.ReactNode): React.ReactNode
+		local entry = modalsShown[key]
+		if entry == nil then
+			return nil
+		end
+		return e(Motion.Layer, { open = entry.Open, zIndex = zIndex }, { Modal = render(entry.Value) })
+	end
 	return e("Frame", { Size = UDim2.fromScale(1 / scale, 1 / scale), BackgroundTransparency = 1 }, {
 		Scale = e("UIScale", { Scale = scale }),
 		HUD = if needsHero then nil else e(HUD, { data = data, compact = compact }),
@@ -129,14 +149,18 @@ local function App(): React.ReactNode
 			{ Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = Theme.ZPage },
 			windows
 		),
-		HeroSelect = if needsHero then e(HeroSelect) else nil,
-		BagFilter = if ui.BagFilterOpen and State.IsOpen("Inventory")
-			then e("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = Theme.ZModal }, {
-				Modal = e(BagFilter),
-			})
-			else nil,
-		JobChange = if ui.JobChange ~= nil then e(JobChange, { data = data, heroId = ui.JobChange }) else nil,
-		Confirm = if ui.Confirm ~= nil then e(Confirm, { prompt = ui.Confirm }) else nil,
+		HeroSelect = modal("HeroSelect", Theme.ZModal, function()
+			return e(HeroSelect)
+		end),
+		BagFilter = modal("BagFilter", Theme.ZModal, function()
+			return e(BagFilter)
+		end),
+		JobChange = modal("JobChange", Theme.ZModal, function(heroId: any)
+			return e(JobChange, { data = data, heroId = heroId })
+		end),
+		Confirm = modal("Confirm", Theme.ZModal + 1, function(prompt: any)
+			return e(Confirm, { prompt = prompt })
+		end),
 		Tooltip = e(Tooltip, { data = data, scale = scale, hidden = State.ModalOpen() }),
 		Toasts = e(Toasts),
 	})

@@ -133,6 +133,7 @@ local function HeroPanel(props: Props): React.ReactNode
 							color = Theme.Subtext,
 							textSize = 12,
 							wrap = true,
+							stat = true,
 							position = UDim2.fromOffset(8, 22),
 							size = UDim2.new(1, -16, 1, -26),
 						}),
@@ -146,6 +147,7 @@ local function HeroPanel(props: Props): React.ReactNode
 	for name, at in DOLL do
 		local item = if hero ~= nil then data.Gear[hero.Equipped[name] or ""] else nil
 		local open = slot == name
+		local accent = Theme.TierAccent(if item ~= nil then item.Tier else nil)
 		cells[name] = e("TextButton", {
 			Size = UDim2.fromScale(0.2, 0.22),
 			Position = UDim2.fromScale(at.X, at.Y),
@@ -181,18 +183,28 @@ local function HeroPanel(props: Props): React.ReactNode
 				piece = if open then "SlotSelected" else "SlotPaper",
 				transparency = if hero ~= nil then 0 else 0.5,
 			}),
+			Rim = Widgets.TierRim(if item ~= nil then item.Tier else nil, 3),
 			Label = e("TextLabel", {
 				Size = UDim2.new(1, -8, 1, -8),
 				Position = UDim2.fromOffset(4, 4),
 				BackgroundTransparency = 1,
 				Text = if item ~= nil then `{ItemInfo.Name(item)}\nLv {item.Level}` else Text.Slot(name),
-				TextColor3 = if open then Theme.OnDark elseif item ~= nil then Theme.Text else Theme.Subtext,
-				FontFace = Theme.Font,
+				TextColor3 = if accent ~= nil and open
+					then accent.Light
+					elseif open then Theme.OnDark
+					elseif accent ~= nil then accent.Color
+					else Theme.Subtext,
+				FontFace = if accent ~= nil then Theme.FontBold else Theme.Font,
 				TextSize = Theme.Body(12),
 				TextWrapped = true,
 				TextScaled = true,
 				ZIndex = 2,
-			}, { Max = e("UITextSizeConstraint", { MaxTextSize = Theme.Body(12) }) }),
+			}, {
+				Max = e("UITextSizeConstraint", { MaxTextSize = Theme.Body(12) }),
+				Heavy = if accent ~= nil
+					then Widgets.Heavy(if open then accent.Light else accent.Color, Theme.Body(12))
+					else nil,
+			}),
 		})
 	end
 

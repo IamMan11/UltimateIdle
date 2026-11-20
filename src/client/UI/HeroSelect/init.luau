@@ -30,6 +30,7 @@ local function HeroSelect(): React.ReactNode
 			Padding = Widgets.Padding(16),
 			Name = e(Widgets.Label, { text = Text.Class(class), bold = true, textSize = 22 }),
 			Stats = e(Widgets.Label, {
+				stat = true,
 				text = `HP {def.MaxHp}\nAttack {def.Atk}\nDefense {def.Def}\nRange {def.Range}\nBest row: {Text.Row(
 					def.PreferredRow
 				)}`,

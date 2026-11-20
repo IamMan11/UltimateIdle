@@ -71,6 +71,7 @@ local function card(head: string, lines: { string }?, placeholder: string?, x: n
 			Padding = Widgets.Padding(16),
 			Lines = if lines ~= nil
 				then e(Widgets.Label, {
+					stat = true,
 					text = table.concat(lines, "\n"),
 					textSize = 17,
 					wrap = true,

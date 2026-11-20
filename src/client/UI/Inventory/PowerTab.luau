@@ -11,6 +11,7 @@ local EnchantConfig = require(ReplicatedStorage.Shared.Config.Enchant)
 local Theme = require(script.Parent.Parent.Core.Theme)
 local Art = require(script.Parent.Parent.Core.Art)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
+local Rich = require(script.Parent.Parent.Core.Rich)
 local ItemInfo = require(script.Parent.Parent.Core.ItemInfo)
 local State = require(script.Parent.Parent.Parent.State)
 local Parts = require(script.Parent.Parts)
@@ -80,6 +81,7 @@ local function PowerTab(props: Props): React.ReactNode
 	return e("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 }, {
 		Item = e(Parts.Square, {
 			text = if item ~= nil then Parts.GearText(item) else "",
+			tier = if item ~= nil then item.Tier :: string else nil,
 			size = SQUARE,
 			position = UDim2.fromScale(0.5, 0),
 			anchor = Vector2.new(0.5, 0),
@@ -97,7 +99,8 @@ local function PowerTab(props: Props): React.ReactNode
 			Text = e("TextLabel", {
 				Size = UDim2.fromScale(1, 1),
 				BackgroundTransparency = 1,
-				Text = body,
+				Text = Rich.Stats(body),
+				RichText = true,
 				TextColor3 = if item ~= nil or index then Theme.Text else Theme.Subtext,
 				FontFace = Theme.Font,
 				TextSize = Theme.Body(15),

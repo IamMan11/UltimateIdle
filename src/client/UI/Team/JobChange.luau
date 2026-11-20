@@ -62,6 +62,7 @@ local function JobChange(props: Props): React.ReactNode
 			ok = ok and have >= n
 		end
 		body.Needs = e(Widgets.Label, {
+			stat = true,
 			text = `{UI.JobNeeds}: {table.concat(needs, "  ·  ")}`,
 			color = if ok then Theme.Text else Theme.Subtext,
 			textSize = 15,
@@ -117,6 +118,7 @@ local function JobChange(props: Props): React.ReactNode
 					size = UDim2.new(1, 0, 0, 18),
 				}),
 				Bonus = e(Widgets.Label, {
+					stat = true,
 					text = table.concat(lines, "\n"),
 					color = Theme.Subtext,
 					textSize = 14,

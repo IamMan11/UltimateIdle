@@ -63,6 +63,7 @@ local function createRows(props: Props): { [string]: React.ReactNode }
 		Use = e(Parts.Square, {
 			caption = UI.Use,
 			text = if use ~= nil then Parts.GearText(use) else UI.AddMark,
+			tier = if use ~= nil then use.Tier :: string else nil,
 			textSize = if use ~= nil then nil else 30,
 			size = SQUARE,
 			position = UDim2.fromScale(USE_X, 0),
@@ -74,6 +75,7 @@ local function createRows(props: Props): { [string]: React.ReactNode }
 		Keep = e(Parts.Square, {
 			caption = UI.Keep,
 			text = if keep ~= nil then Parts.GearText(keep) else "",
+			tier = if keep ~= nil then keep.Tier :: string else nil,
 			size = SQUARE,
 			position = UDim2.fromScale(KEEP_X, 0),
 			anchor = Vector2.new(0.5, 0),
@@ -83,6 +85,7 @@ local function createRows(props: Props): { [string]: React.ReactNode }
 		}),
 		Result = e(Parts.Square, {
 			caption = UI.Result,
+			tier = if keep ~= nil and not full then keep.Tier :: string else nil,
 			text = if keep ~= nil and not full
 				then `{ItemInfo.Name(keep)}\n{UI.Sockets} {#keep.Sockets + 1}`
 				elseif full then UI.SocketsMax

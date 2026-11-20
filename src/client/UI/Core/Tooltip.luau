@@ -17,6 +17,7 @@ local Icons = require(ReplicatedStorage.Shared.Config.Icons)
 local Theme = require(script.Parent.Theme)
 local Art = require(script.Parent.Art)
 local Widgets = require(script.Parent.Widgets)
+local Rich = require(script.Parent.Rich)
 local ItemInfo = require(script.Parent.ItemInfo)
 local Tip = require(script.Parent.Tip)
 local Equip = require(script.Parent.Equip)
@@ -54,6 +55,7 @@ type Card = {
 	Item: Types.GearItem?, -- draws its socket squares bottom-right
 	Highlight: number?, -- socket square to mark
 	Tag: string?, -- small heading above the card ("Equipped")
+	Tier: string?, -- rim on the image box + name colour
 }
 
 local function blank(): Card
@@ -90,6 +92,7 @@ local function gearCard(data: Types.ProfileData, item: Types.GearItem, wearer: s
 	card.Effect = ItemInfo.Effects(item, reader)
 	card.Foot = if wornBy ~= nil then `{UI.TipWornBy} {Text.Class(wornBy)}` else ""
 	card.Item = item
+	card.Tier = item.Tier
 	return card
 end
 
@@ -101,6 +104,7 @@ local function materialCard(data: Types.ProfileData, id: string, count: number?)
 	card.ImageText = if insert ~= nil then Text.SocketKind(insert.Kind) else ""
 	card.Side = if count ~= nil and count > 1 then `x{Format.Number(count)}` else ""
 	card.Name = Text.Material(id)
+	card.Tier = if def ~= nil then def.Tier else nil
 	card.Line = `{if def ~= nil then Text.Tier(def.Tier) else ""}  ·  {if insert ~= nil
 		then Text.SocketKind(insert.Kind)
 		else UI.TipMaterial}`
@@ -173,12 +177,16 @@ local function escape(value: string): string
 	return (string.gsub(string.gsub(string.gsub(value, "&", "&amp;"), "<", "&lt;"), ">", "&gt;"))
 end
 
+-- Stat phrases and tier names in the line take their colour with a glow (Core/Rich).
 local function text(value: string, order: number, size: number, color: Color3?, bold: boolean?): React.ReactNode
 	return e("TextLabel", {
 		Size = UDim2.fromScale(1, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
-		Text = value,
+		Text = if bold
+			then Rich.Bold(escape(value), color or Theme.Text, Theme.Body(size))
+			else Rich.Stats(value, false, Theme.Body(size)),
+		RichText = true,
 		TextColor3 = color or Theme.Text,
 		FontFace = if bold then Theme.FontBold else Theme.Font,
 		TextSize = Theme.Body(size),
@@ -240,7 +248,7 @@ local function sockets(item: Types.GearItem, highlight: number?): React.ReactNod
 				TextColor3 = if filled then Theme.OnDark else Theme.Subtext,
 				FontFace = Theme.FontBold,
 				TextSize = Theme.Body(13),
-			}),
+			}, { Heavy = Widgets.Heavy(if filled then Theme.OnDark else Theme.Subtext, Theme.Body(13)) }),
 		})
 	end
 	return e("Frame", {
@@ -256,15 +264,19 @@ local function render(card: Card): { [string]: React.ReactNode }
 	local nameW = if #side > 0 then -(IMG + 8 + 60) else -(IMG + 8)
 	local powers: string = card.Powers
 	-- Trait names follow the name in the accent colour; escape so a name can never break the rich text.
-	local title = if #powers > 0
-		then `{escape(card.Name)}  <font color="#{Theme.Accent:ToHex()}">{escape(powers)}</font>`
-		else escape(card.Name)
+	local accent = Theme.TierAccent(card.Tier)
+	local nameSize = Theme.Body(17)
+	local name = if accent ~= nil
+		then Rich.Wrap(escape(card.Name), accent, false, nameSize)
+		else Rich.Bold(escape(card.Name), Theme.Text, nameSize)
+	local title = if #powers > 0 then `{name}  {Rich.Bold(escape(powers), Theme.Accent, nameSize)}` else name
 	local children: { [string]: React.ReactNode } = {
 		Layout = Widgets.List(Enum.FillDirection.Vertical, 8),
 		Tag = if card.Tag ~= nil then text(card.Tag, 0, 13, Theme.Accent, true) else nil,
 		Head = e("Frame", { Size = UDim2.new(1, 0, 0, IMG), BackgroundTransparency = 1, LayoutOrder = 1 }, {
 			Image = e("Frame", { Size = UDim2.fromOffset(IMG, IMG), BackgroundTransparency = 1 }, {
 				Art = Art.Back({ piece = "SlotPaper" }),
+				Rim = Widgets.TierRim(card.Tier, 2),
 				Icon = if card.Image ~= nil
 					then e(Widgets.Icon, {
 						image = card.Image,
@@ -310,6 +322,7 @@ local function render(card: Card): { [string]: React.ReactNode }
 			}),
 			Line = e(Widgets.Label, {
 				text = card.Line,
+				stat = true,
 				textSize = 13,
 				color = Theme.Subtext,
 				size = UDim2.new(1, -(IMG + 8), 0, 16),

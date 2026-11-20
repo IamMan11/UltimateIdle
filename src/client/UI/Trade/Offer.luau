@@ -72,6 +72,7 @@ type Entry = {
 	Key: string, -- gear uid, material id or box key
 	Text: string,
 	Tip: Tip.Content?,
+	Tier: string?,
 }
 
 -- Slots in display order: gear as offered, then materials, then boxes.
@@ -85,6 +86,7 @@ local function entries(offer: Types.TradeOffer, gear: (string) -> Types.GearItem
 			Key = uid,
 			Text = if item ~= nil then `{ItemInfo.Name(item)}\nLv {item.Level}` else "?",
 			Tip = if own then Tip.Gear(item) else Tip.Snapshot(item),
+			Tier = if item ~= nil then item.Tier :: string else nil,
 		})
 	end
 	local ids: { string } = {}
@@ -98,6 +100,7 @@ local function entries(offer: Types.TradeOffer, gear: (string) -> Types.GearItem
 			Key = id,
 			Text = `{Text.Material(id)}\nx{Format.Number(offer.Stacks[id])}`,
 			Tip = Tip.Material(id, offer.Stacks[id]),
+			Tier = if Materials.ById[id] ~= nil then Materials.ById[id].Tier else nil,
 		})
 	end
 	local keys: { string } = {}
@@ -146,6 +149,7 @@ local function panel(
 	for i = 1, TradeConfig.MaxSlots do
 		local entry = list[i]
 		local filled = entry ~= nil
+		local accent = Theme.TierAccent(if filled then entry.Tier else nil)
 		cells[`S{i}`] = e("TextButton", {
 			Size = UDim2.fromOffset(CELL, CELL),
 			Position = UDim2.fromOffset(((i - 1) % 3) * (CELL + CELL_GAP), ((i - 1) // 3) * (CELL + CELL_GAP)),
@@ -167,17 +171,21 @@ local function panel(
 				padding = 4,
 			}),
 			Padding = Widgets.Padding(4),
+			Rim = Widgets.TierRim(if filled then entry.Tier else nil),
 			Label = e("TextLabel", {
 				Size = UDim2.fromScale(1, 1),
 				BackgroundTransparency = 1,
 				Text = if filled then entry.Text else "",
-				TextColor3 = Theme.Text,
-				FontFace = Theme.Font,
+				TextColor3 = if accent ~= nil then accent.Color else Theme.Text,
+				FontFace = if accent ~= nil then Theme.FontBold else Theme.Font,
 				TextSize = Theme.Body(11),
 				TextScaled = true,
 				TextWrapped = true,
 				ZIndex = 2,
-			}, { Max = e("UITextSizeConstraint", { MaxTextSize = Theme.Body(11) }) }),
+			}, {
+				Max = e("UITextSizeConstraint", { MaxTextSize = Theme.Body(11) }),
+				Heavy = if accent ~= nil then Widgets.Heavy(accent.Color, Theme.Body(11)) else nil,
+			}),
 		})
 	end
 	return e("Frame", {

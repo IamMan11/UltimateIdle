@@ -376,6 +376,7 @@ local function Formation(props: Props): React.ReactNode
 			Model = e(ModelView, { entries = models, view = VIEW, scene = buildGround, focus = FOCUS }),
 		}),
 		Info = e(Widgets.Label, {
+			stat = true,
 			text = `Slots {#draft}/{slots}   ·   Team speed {math.floor(speed * 10 + 0.5) / 10}\n{UI.TeamHint}`,
 			color = Theme.Subtext,
 			textSize = 13,

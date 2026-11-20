@@ -61,6 +61,7 @@ local function UpgradePanel(props: Props): React.ReactNode
 		diagram[`In{i}`] = e(Parts.Square, {
 			caption = `{UI.UpgradeIn} {i}`,
 			text = if id ~= nil then Text.Material(id) else UI.AddMark,
+			tier = if id ~= nil then Parts.MaterialTier(id) else nil,
 			textSize = if id ~= nil then nil else 30,
 			size = SQUARE,
 			position = UDim2.new(0.5, left + (i - 1) * (SQUARE + SQUARE_GAP), 0, 0),
@@ -89,6 +90,7 @@ local function UpgradePanel(props: Props): React.ReactNode
 	local showLast = #slots == 0 and last ~= nil
 	diagram.Result = e(Parts.Square, {
 		caption = UI.UpgradeOut,
+		tier = if showLast and last ~= nil then Parts.MaterialTier(last) else nil,
 		text = if showLast and last ~= nil
 			then Text.Material(last)
 			elseif first ~= nil then `?\n{Text.Tier(Inserts.NextTier[first.Tier] or first.Tier)}\n{Text.SocketKind(
