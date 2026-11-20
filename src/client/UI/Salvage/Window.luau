@@ -10,6 +10,7 @@ local Game = require(ReplicatedStorage.Shared.Config.Game)
 local Tiers = require(ReplicatedStorage.Shared.Config.Tiers)
 local FloatWindow = require(script.Parent.Parent.Core.FloatWindow)
 local Theme = require(script.Parent.Parent.Core.Theme)
+local Art = require(script.Parent.Parent.Core.Art)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
 local Tip = require(script.Parent.Parent.Core.Tip)
 local State = require(script.Parent.Parent.Parent.State)
@@ -100,10 +101,10 @@ local function AutoSalvage(props: Props): React.ReactNode
 	}, {
 		Tiers = e("Frame", {
 			Size = UDim2.new(0, LEFT_W, 1, 0),
-			BackgroundColor3 = Theme.Bg,
+			BackgroundTransparency = 1,
 		}, {
-			Corner = Widgets.Corner(8),
-			Padding = Widgets.Padding(12),
+			Art = Art.Back({ piece = "PaperNotchInfo", padding = 14 }),
+			Padding = Widgets.Padding(14),
 			Rows = e("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 }, tierRows),
 		}),
 		Add = e(Widgets.Button, {
@@ -120,10 +121,10 @@ local function AutoSalvage(props: Props): React.ReactNode
 		List = e("Frame", {
 			Size = UDim2.new(1, -rightX, 1, 0),
 			Position = UDim2.fromOffset(rightX, 0),
-			BackgroundColor3 = Theme.Bg,
+			BackgroundTransparency = 1,
 		}, {
-			Corner = Widgets.Corner(8),
-			Padding = Widgets.Padding(12),
+			Art = Art.Back({ piece = "PaperNotchInfo", padding = 14 }),
+			Padding = Widgets.Padding(14),
 			Title = e(Widgets.Label, {
 				text = `{UI.SalvageList}  ({#listed})`,
 				bold = true,

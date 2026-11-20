@@ -12,6 +12,7 @@ local FormationConfig = require(ReplicatedStorage.Shared.Config.Formation)
 local Stages = require(ReplicatedStorage.Shared.Config.Stages)
 local World = require(ReplicatedStorage.Shared.Config.World)
 local Theme = require(script.Parent.Parent.Core.Theme)
+local Art = require(script.Parent.Parent.Core.Art)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
 local ModelView = require(script.Parent.Parent.Core.ModelView)
 local State = require(script.Parent.Parent.Parent.State)
@@ -218,14 +219,9 @@ local function Formation(props: Props): React.ReactNode
 		local bonus = Formula.Team.FormationBonus(members, memberIndex)
 		local lifted = drag ~= nil and drag.Moved and drag.HeroId == heroId
 		return e("TextButton", {
-			BackgroundColor3 = if selected == heroId then Theme.Hover else Theme.PanelAlt,
-			BackgroundTransparency = if lifted then 0.6 else 0,
-			AutoButtonColor = true,
-			Text = `{Text.Class(hero.Class)}\nLv {hero.Level}\n+{math.floor(bonus * 100 + 0.5)}%`,
-			TextColor3 = Theme.Text,
-			FontFace = Theme.Font,
-			TextSize = 12,
-			TextWrapped = true,
+			BackgroundTransparency = 1,
+			AutoButtonColor = false,
+			Text = "",
 			LayoutOrder = order,
 			[React.Event.InputBegan] = function(_rbx: TextButton, input: InputObject)
 				if isPointer(input) then
@@ -234,8 +230,22 @@ local function Formation(props: Props): React.ReactNode
 				end
 			end,
 		}, {
-			Corner = Widgets.Corner(6),
-			Stroke = if selected == heroId then Widgets.Stroke(Theme.Accent, 1.5, 0) else nil,
+			Art = Art.Back({
+				piece = if selected == heroId then "SlotSelected" else "SlotGilt",
+				transparency = if lifted then 0.6 else 0,
+			}),
+			Label = e("TextLabel", {
+				Size = UDim2.new(1, -8, 1, -6),
+				Position = UDim2.fromOffset(4, 3),
+				BackgroundTransparency = 1,
+				Text = `{Text.Class(hero.Class)}\nLv {hero.Level}\n+{math.floor(bonus * 100 + 0.5)}%`,
+				TextColor3 = if selected == heroId then Theme.Gold else Theme.OnDark,
+				FontFace = Theme.Font,
+				TextSize = Theme.Body(12),
+				TextScaled = true,
+				TextWrapped = true,
+				ZIndex = 2,
+			}, { Max = e("UITextSizeConstraint", { MaxTextSize = Theme.Body(12) }) }),
 		})
 	end
 
@@ -290,15 +300,14 @@ local function Formation(props: Props): React.ReactNode
 		-- Free places: plain frames, so a click on one reaches the column button under it.
 		for k = #inRow + 1, FormationConfig.MaxPerRow do
 			cells[`Free{k}`] = e("Frame", {
-				BackgroundColor3 = Theme.PanelAlt,
-				BackgroundTransparency = 0.7,
+				BackgroundTransparency = 1,
 				LayoutOrder = k,
-			}, { Corner = Widgets.Corner(6) })
+			}, { Art = Art.Back({ piece = "SlotPaper", transparency = 0.25 }) })
 		end
 		columns[row] = e("TextButton", {
 			Size = UDim2.new(1 / 3, -4, 1, 0),
 			Position = UDim2.new((col - 1) / 3, 2, 0, 0),
-			BackgroundColor3 = Theme.Bg,
+			BackgroundTransparency = 1,
 			AutoButtonColor = false,
 			Text = "",
 			ref = zoneRef(row),
@@ -308,18 +317,26 @@ local function Formation(props: Props): React.ReactNode
 				end
 			end,
 		}, {
-			Corner = Widgets.Corner(8),
-			Stroke = Widgets.Stroke(),
-			Head = e(Widgets.Label, {
-				text = `{Text.Row(row)} {#inRow}/{FormationConfig.MaxPerRow}`,
-				bold = true,
-				textSize = 14,
-				align = Enum.TextXAlignment.Center,
-				position = UDim2.fromOffset(0, 4),
+			Art = Art.Back({ piece = "PaperCompactSharp" }),
+			Head = e("Frame", {
+				Size = UDim2.new(1, -12, 0, 24),
+				Position = UDim2.fromOffset(6, 6),
+				BackgroundTransparency = 1,
+				ZIndex = 2,
+			}, {
+				Art = Art.Back({ piece = "PlateChamfer", edge = 0.7 }),
+				Label = e(Widgets.Label, {
+					text = `{Text.Row(row)} {#inRow}/{FormationConfig.MaxPerRow}`,
+					bold = true,
+					textSize = 14,
+					color = Theme.Gold,
+					align = Enum.TextXAlignment.Center,
+					size = UDim2.fromScale(1, 1),
+				}),
 			}),
 			Cells = e("Frame", {
-				Size = UDim2.new(1, -8, 1, -32),
-				Position = UDim2.fromOffset(4, 28),
+				Size = UDim2.new(1, -16, 1, -42),
+				Position = UDim2.fromOffset(8, 36),
 				BackgroundTransparency = 1,
 			}, cells),
 		})
@@ -339,14 +356,14 @@ local function Formation(props: Props): React.ReactNode
 			Size = UDim2.fromOffset(120, 32),
 			Position = UDim2.fromScale(rel.X / math.max(size.X, 1), rel.Y / math.max(size.Y, 1)),
 			AnchorPoint = Vector2.new(0.5, 0.5),
-			BackgroundColor3 = Theme.Hover,
+			BackgroundTransparency = 1,
 			ZIndex = 5,
 		}, {
-			Corner = Widgets.Corner(6),
-			Stroke = Widgets.Stroke(Theme.Accent, 1.5, 0),
+			Art = Art.Back({ piece = "SlotSelected" }),
 			Name = e(Widgets.Label, {
 				text = Text.Class(data.Heroes[drag.HeroId].Class),
 				bold = true,
+				color = Theme.Gold,
 				align = Enum.TextXAlignment.Center,
 				size = UDim2.fromScale(1, 1),
 			}),

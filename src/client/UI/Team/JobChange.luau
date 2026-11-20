@@ -9,6 +9,7 @@ local Format = require(ReplicatedStorage.Shared.Format)
 local Text = require(ReplicatedStorage.Shared.Text)
 local Classes = require(ReplicatedStorage.Shared.Config.Classes)
 local Theme = require(script.Parent.Parent.Core.Theme)
+local Art = require(script.Parent.Parent.Core.Art)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
 local State = require(script.Parent.Parent.Parent.State)
 
@@ -102,11 +103,10 @@ local function JobChange(props: Props): React.ReactNode
 			cards[`Path{path.Index}`] = e("Frame", {
 				Size = UDim2.new(1 / #choices, -GAP * (#choices - 1) / #choices, 1, 0),
 				Position = UDim2.new((i - 1) / #choices, if i > 1 then GAP / #choices * (i - 1) else 0, 0, 0),
-				BackgroundColor3 = Theme.PanelAlt,
+				BackgroundTransparency = 1,
 			}, {
-				Corner = Widgets.Corner(8),
-				Stroke = Widgets.Stroke(),
-				Padding = Widgets.Padding(12),
+				Art = Art.Back({ piece = "PaperCompactSharp", padding = 16 }),
+				Padding = Widgets.Padding(16),
 				Name = e(Widgets.Label, { text = name, bold = true, textSize = 20, size = UDim2.new(1, 0, 0, 24) }),
 				Path = e(Widgets.Label, {
 					text = Text.Path(path.Index),

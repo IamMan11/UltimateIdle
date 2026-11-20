@@ -7,6 +7,7 @@ local React = require(ReplicatedStorage.Packages.React)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Format = require(ReplicatedStorage.Shared.Format)
 local Theme = require(script.Parent.Parent.Core.Theme)
+local Art = require(script.Parent.Parent.Core.Art)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
 local ItemInfo = require(script.Parent.Parent.Core.ItemInfo)
 
@@ -53,19 +54,29 @@ function Parts.Square(props: SquareProps): React.ReactNode
 		Box = e("TextButton", {
 			Size = UDim2.fromOffset(props.size, props.size),
 			Position = UDim2.fromOffset(0, top),
-			BackgroundColor3 = if props.selected then Theme.Hover else Theme.PanelAlt,
-			BackgroundTransparency = if props.dim then 0.5 else 0,
-			AutoButtonColor = props.onClick ~= nil,
-			Text = props.text,
-			TextColor3 = if props.dim then Theme.Subtext else Theme.Text,
-			FontFace = Theme.Font,
-			TextSize = props.textSize or 11,
-			TextWrapped = true,
+			BackgroundTransparency = 1,
+			AutoButtonColor = false,
+			Text = "",
 			[React.Event.Activated] = props.onClick,
 		}, {
-			Corner = Widgets.Corner(6),
-			Padding = Widgets.Padding(3),
-			Stroke = if props.selected then Widgets.Stroke(Theme.Accent, 1.5, 0) else Widgets.Stroke(),
+			Art = Art.Back({
+				piece = if props.selected then "SlotOrnate" else "SlotPaper",
+				transparency = if props.dim then 0.4 else 0,
+				edge = Art.FitEdge(if props.selected then "SlotOrnate" else "SlotPaper", props.size),
+				padding = 6,
+			}),
+			Padding = Widgets.Padding(6),
+			Label = e("TextLabel", {
+				Size = UDim2.fromScale(1, 1),
+				BackgroundTransparency = 1,
+				Text = props.text,
+				TextColor3 = if props.selected then Theme.OnDark elseif props.dim then Theme.Subtext else Theme.Text,
+				FontFace = Theme.Font,
+				TextSize = Theme.Body(props.textSize or 11),
+				TextScaled = true,
+				TextWrapped = true,
+				ZIndex = 2,
+			}, { Max = e("UITextSizeConstraint", { MaxTextSize = Theme.Body(props.textSize or 11) }) }),
 		}),
 	})
 end

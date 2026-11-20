@@ -13,6 +13,7 @@ local Materials = require(ReplicatedStorage.Shared.Config.Materials)
 local TradeConfig = require(ReplicatedStorage.Shared.Config.Trade)
 local Icons = require(ReplicatedStorage.Shared.Config.Icons)
 local Theme = require(script.Parent.Parent.Core.Theme)
+local Art = require(script.Parent.Parent.Core.Art)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
 local ItemInfo = require(script.Parent.Parent.Core.ItemInfo)
 local VirtualList = require(script.Parent.Parent.Core.VirtualList)
@@ -148,15 +149,10 @@ local function panel(
 		cells[`S{i}`] = e("TextButton", {
 			Size = UDim2.fromOffset(CELL, CELL),
 			Position = UDim2.fromOffset(((i - 1) % 3) * (CELL + CELL_GAP), ((i - 1) // 3) * (CELL + CELL_GAP)),
-			BackgroundColor3 = if filled then Theme.Hover else Theme.PanelAlt,
-			BackgroundTransparency = if filled then 0 else 0.4,
-			AutoButtonColor = filled and onRemove ~= nil,
+			BackgroundTransparency = 1,
+			AutoButtonColor = false,
 			Active = filled and onRemove ~= nil,
-			Text = if filled then entry.Text else "",
-			TextColor3 = Theme.Text,
-			FontFace = Theme.Font,
-			TextSize = 11,
-			TextWrapped = true,
+			Text = "",
 			[React.Event.MouseEnter] = Tip.Enter(if filled then entry.Tip else nil),
 			[React.Event.MouseLeave] = Tip.Leave,
 			[React.Event.Activated] = function()
@@ -165,19 +161,31 @@ local function panel(
 				end
 			end,
 		}, {
-			Corner = Widgets.Corner(6),
-			Padding = Widgets.Padding(3),
-			Stroke = Widgets.Stroke(),
+			Art = Art.Back({
+				piece = if filled then "BtnPaperHover" else "SlotPaper",
+				transparency = if filled then 0 else 0.35,
+				padding = 4,
+			}),
+			Padding = Widgets.Padding(4),
+			Label = e("TextLabel", {
+				Size = UDim2.fromScale(1, 1),
+				BackgroundTransparency = 1,
+				Text = if filled then entry.Text else "",
+				TextColor3 = Theme.Text,
+				FontFace = Theme.Font,
+				TextSize = Theme.Body(11),
+				TextScaled = true,
+				TextWrapped = true,
+				ZIndex = 2,
+			}, { Max = e("UITextSizeConstraint", { MaxTextSize = Theme.Body(11) }) }),
 		})
 	end
 	return e("Frame", {
 		Size = UDim2.fromOffset(PANEL_W, PANEL_H),
 		Position = UDim2.fromOffset(x, 0),
-		BackgroundColor3 = Theme.Bg,
-		BorderSizePixel = 0,
+		BackgroundTransparency = 1,
 	}, {
-		Corner = Widgets.Corner(8),
-		Stroke = Widgets.Stroke(),
+		Art = Art.Back({ piece = "PaperNotchInfo", padding = PANEL_PAD }),
 		Padding = Widgets.Padding(PANEL_PAD),
 		Who = who,
 		Grid = e("Frame", {
@@ -480,12 +488,10 @@ local function Offer(props: Props): React.ReactNode
 		Bag = e("Frame", {
 			Size = UDim2.new(1, 0, 1, -BAG_Y),
 			Position = UDim2.fromOffset(0, BAG_Y),
-			BackgroundColor3 = Theme.Bg,
-			BorderSizePixel = 0,
+			BackgroundTransparency = 1,
 		}, {
-			Corner = Widgets.Corner(8),
-			Stroke = Widgets.Stroke(),
-			Padding = Widgets.Padding(8),
+			Art = Art.Back({ piece = "PaperNotchInfo", padding = 12 }),
+			Padding = Widgets.Padding(12),
 			Tabs = e(Widgets.Tabs, { tabs = PICK_TABS, current = pick, onSelect = setPick, width = 110 }),
 			Slots = e(Widgets.Label, {
 				text = `{#myList}/{TradeConfig.MaxSlots} {UI.Slots}`,

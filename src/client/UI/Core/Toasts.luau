@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
 local Theme = require(script.Parent.Theme)
+local Art = require(script.Parent.Art)
 local Widgets = require(script.Parent.Widgets)
 local State = require(script.Parent.Parent.Parent.State)
 
@@ -21,24 +22,23 @@ local function Toasts(): React.ReactNode
 	}
 	for i, toast in State.Ui.Toasts do
 		items[`T{toast.Id}`] = e("Frame", {
-			Size = UDim2.fromOffset(520, 34),
-			BackgroundColor3 = Theme.Panel,
-			BackgroundTransparency = 0.1,
+			Size = UDim2.fromOffset(520, 36),
+			BackgroundTransparency = 1,
 			LayoutOrder = i,
 		}, {
-			Corner = Widgets.Corner(8),
-			Stroke = Widgets.Stroke(),
+			Art = Art.Back({ piece = "NoticeDark" }),
 			Label = e(Widgets.Label, {
 				text = toast.Text,
-				size = UDim2.new(1, -20, 1, 0),
-				position = UDim2.fromOffset(10, 0),
+				size = UDim2.new(1, -36, 1, 0),
+				position = UDim2.fromOffset(18, 0),
 				align = Enum.TextXAlignment.Center,
+				color = Theme.OnDark,
 				textSize = 16,
 			}),
 		})
 	end
 	return e("Frame", {
-		Size = UDim2.fromOffset(520, 120),
+		Size = UDim2.fromOffset(520, 126),
 		Position = UDim2.new(0.5, 0, 1, -110),
 		AnchorPoint = Vector2.new(0.5, 1),
 		BackgroundTransparency = 1,

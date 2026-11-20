@@ -9,6 +9,7 @@ local Text = require(ReplicatedStorage.Shared.Text)
 local Game = require(ReplicatedStorage.Shared.Config.Game)
 local Formula = require(ReplicatedStorage.Shared.Formula)
 local Theme = require(script.Parent.Core.Theme)
+local Art = require(script.Parent.Core.Art)
 local FloatWindow = require(script.Parent.Core.FloatWindow)
 local Widgets = require(script.Parent.Core.Widgets)
 local State = require(script.Parent.Parent.State)
@@ -129,11 +130,10 @@ local function settingRow(row: Row, y: number): React.ReactNode
 	return e("Frame", {
 		Size = UDim2.new(1, -12, 0, ROW_H),
 		Position = UDim2.fromOffset(2, y),
-		BackgroundColor3 = Theme.PanelAlt,
-		BorderSizePixel = 0,
+		BackgroundTransparency = 1,
 	}, {
-		Corner = Widgets.Corner(6),
-		Padding = e("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 6) }),
+		Art = Art.Back({ piece = "PaperCompactSharp", edge = 0.8, padLeft = 12, padRight = 8, padding = 0 }),
+		Padding = e("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 8) }),
 		Label = e(Widgets.Label, {
 			text = row.Label,
 			size = UDim2.new(1, -(CONTROL_W + 10), 0, 22),
@@ -238,12 +238,10 @@ local function Settings(props: Props): React.ReactNode
 		Nav = e("Frame", {
 			Size = UDim2.new(0, NAV_W, 1, -TOP_H),
 			Position = UDim2.fromOffset(0, TOP_H),
-			BackgroundColor3 = Theme.Bg,
-			BorderSizePixel = 0,
+			BackgroundTransparency = 1,
 		}, {
-			Corner = Widgets.Corner(8),
-			Stroke = Widgets.Stroke(),
-			Padding = Widgets.Padding(8),
+			Art = Art.Back({ piece = "PaperNotchInfo", padding = 10 }),
+			Padding = Widgets.Padding(10),
 			Buttons = e("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 }, nav),
 		}),
 		List = e("ScrollingFrame", {

@@ -16,6 +16,7 @@ local TutorialConfig = require(ReplicatedStorage.Shared.Config.Tutorial)
 local Period = require(ReplicatedStorage.Shared.Period)
 local Icons = require(ReplicatedStorage.Shared.Config.Icons)
 local Theme = require(script.Parent.Theme)
+local Art = require(script.Parent.Art)
 local Widgets = require(script.Parent.Widgets)
 local Device = require(script.Parent.Device)
 local LevelPanel = require(script.Parent.LevelPanel)
@@ -29,26 +30,53 @@ local BUTTON_H = 40
 local GAP = 6
 local TOP_Y = 8
 local LEAVE_W, INFO_W, MODE_W = 130, 370, 170
-local PROFILE = Vector2.new(300, 100)
+local PROFILE = Vector2.new(320, 112)
 local AVATAR = 52
 local SIDE_W = 140
 local BOTTOM_W = 116
 -- Roblox's touch thumbstick/jump button sit at the bottom corners while walking.
 local TOUCH_CONTROLS_HEIGHT = 150
 
-local function pill(children: { [string]: React.ReactNode }, props: { [string]: any }): React.ReactNode
-	local frameProps: { [string]: any } = {
-		BackgroundColor3 = Theme.Panel,
-		BackgroundTransparency = 0.15,
-		BorderSizePixel = 0,
-	}
+-- HUD plate: a frame-art background (paper notice by default) with padding; `props` are Frame props.
+local function pill(
+	children: { [string]: React.ReactNode },
+	props: { [string]: any },
+	piece: string?,
+	pad: number?
+): React.ReactNode
+	local frameProps: { [string]: any } = { BackgroundTransparency = 1 }
 	for k, v in props do
 		frameProps[k] = v
 	end
-	children.Corner = Widgets.Corner(10)
-	children.Stroke = Widgets.Stroke()
-	children.Padding = Widgets.Padding(8)
+	children.Art = Art.Back({ piece = piece or "NoticePaper", padding = pad or 10 })
+	children.Padding = Widgets.Padding(pad or 10)
 	return e("Frame", frameProps, children)
+end
+
+-- Wave progress: one lozenge per wave, filled up to the current one.
+local function pips(current: number, total: number): React.ReactNode
+	local items: { [string]: React.ReactNode } = {
+		Layout = e("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			Padding = UDim.new(0, 7),
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}),
+	}
+	for i = 1, total do
+		local filled = i <= current
+		items["P" .. i] = e("Frame", {
+			Size = UDim2.fromOffset(8, 8),
+			Rotation = 45,
+			BackgroundColor3 = Theme.Gold,
+			BackgroundTransparency = if filled then 0 else 1,
+			BorderSizePixel = 0,
+			LayoutOrder = i,
+		}, {
+			Ring = if filled then nil else e("UIStroke", { Color = Theme.Gold, Thickness = 1.2, Transparency = 0.35 }),
+		})
+	end
+	return e("Frame", { Size = UDim2.fromOffset(total * 15, 12), BackgroundTransparency = 1 }, items)
 end
 
 local function bestLevel(data: Types.ProfileData): number
@@ -77,13 +105,14 @@ export type Props = {
 type PageButton = { Id: string, Label: string, Tab: string?, Key: string }
 
 -- Currency: icon + amount.
-local function money(icon: string, text: string, position: UDim2): React.ReactNode
-	return e("Frame", { Size = UDim2.new(0.5, -4, 0, 22), Position = position, BackgroundTransparency = 1 }, {
+local function money(icon: string, text: string, position: UDim2, size: UDim2): React.ReactNode
+	return e("Frame", { Size = size, Position = position, BackgroundTransparency = 1 }, {
 		Icon = e(Widgets.Icon, { image = icon, size = 22 }),
 		Label = e(Widgets.Label, {
 			text = text,
 			bold = true,
-			textSize = 16,
+			textSize = 17,
+			color = Theme.OnDark,
 			size = UDim2.new(1, -28, 1, 0),
 			position = UDim2.fromOffset(28, 0),
 		}),
@@ -94,57 +123,74 @@ local function profile(data: Types.ProfileData): React.ReactNode
 	local player = Players.LocalPlayer
 	local need = Formula.Progression.AccountXpToNext(data.AccountLevel)
 	local ratio = math.clamp(data.AccountXp / math.max(need, 1), 0, 1)
-	local right = AVATAR + 10
+	local right = AVATAR + 14
 	return pill({
 		Avatar = e("ImageLabel", {
 			Size = UDim2.fromOffset(AVATAR, AVATAR),
-			BackgroundColor3 = Theme.Bg,
+			Position = UDim2.fromOffset(2, 2),
+			BackgroundColor3 = Theme.Wood,
 			BorderSizePixel = 0,
 			Image = `rbxthumb://type=AvatarHeadShot&id={player.UserId}&w=150&h=150`,
 		}, { Corner = e("UICorner", { CornerRadius = UDim.new(0.5, 0) }) }),
+		Ring = e(Art.Image, {
+			piece = "GiltRingPortrait",
+			width = AVATAR + 8,
+			position = UDim2.fromOffset(-2, -2),
+			zIndex = 2,
+		}),
 		Name = e(Widgets.Label, {
 			text = player.DisplayName,
 			bold = true,
+			color = Theme.OnDark,
 			position = UDim2.fromOffset(right, 0),
-			size = UDim2.new(1, -right, 0, 22),
+			size = UDim2.new(1, -(right + 84), 0, 22),
 		}),
-		Xp = e("Frame", {
-			Size = UDim2.fromOffset(84, 18),
-			Position = UDim2.fromOffset(right, 28),
-			BackgroundColor3 = Theme.BarBack,
-			BorderSizePixel = 0,
-		}, {
-			Corner = Widgets.Corner(9),
-			Fill = e("Frame", {
-				Size = UDim2.fromScale(ratio, 1),
-				BackgroundColor3 = Theme.Bar,
-				BorderSizePixel = 0,
-			}, { Corner = Widgets.Corner(9) }),
-			-- Over both the light fill and the dark back: outlined so it reads on either.
-			Percent = e("TextLabel", {
-				Size = UDim2.fromScale(1, 1),
-				BackgroundTransparency = 1,
-				Text = `{math.floor(ratio * 100)}%`,
-				TextColor3 = Theme.OnDark,
-				FontFace = Theme.FontBold,
-				TextSize = 13,
-				ZIndex = 2,
-			}, { Outline = e("UIStroke", { Color = Theme.OnLight, Thickness = 1.5 }) }),
+		Rebirth = e(Widgets.Label, {
+			text = `{UI.Rebirth} {data.Rebirth.Count}`,
+			textSize = 14,
+			color = Theme.OnDarkSub,
+			align = Enum.TextXAlignment.Right,
+			position = UDim2.new(1, -84, 0, 2),
+			size = UDim2.fromOffset(84, 20),
 		}),
 		Level = e(Widgets.Label, {
-			text = `{UI.Level} {data.AccountLevel}   {UI.Rebirth} {data.Rebirth.Count}`,
-			textSize = 15,
-			color = Theme.Subtext,
-			position = UDim2.fromOffset(right + 92, 26),
-			size = UDim2.new(1, -(right + 92), 0, 22),
+			text = `{UI.Level} {data.AccountLevel}`,
+			bold = true,
+			textSize = 14,
+			color = Theme.Gold,
+			position = UDim2.fromOffset(right, 26),
+			size = UDim2.fromOffset(70, 18),
 		}),
-		Gold = money(Icons.Gold, Format.Number(data.Gold), UDim2.new(0, 0, 1, -22)),
-		Ruby = money(Icons.Ruby, Format.Number(data.Ruby), UDim2.new(0.5, 4, 1, -22)),
+		Xp = e(Widgets.Bar, {
+			ratio = ratio,
+			size = UDim2.new(1, -(right + 70 + 42), 0, 16),
+			position = UDim2.fromOffset(right + 70, 27),
+		}),
+		Percent = e(Widgets.Label, {
+			text = `{math.floor(ratio * 100)}%`,
+			textSize = 13,
+			color = Theme.OnDarkSub,
+			align = Enum.TextXAlignment.Right,
+			position = UDim2.new(1, -38, 0, 26),
+			size = UDim2.fromOffset(38, 18),
+		}),
+		Gold = money(
+			Icons.Gold,
+			Format.Number(data.Gold),
+			UDim2.new(0, right, 1, -22),
+			UDim2.new(0.5, -right / 2 - 4, 0, 22)
+		),
+		Ruby = money(
+			Icons.Ruby,
+			Format.Number(data.Ruby),
+			UDim2.new(0.5, right / 2 + 4, 1, -22),
+			UDim2.new(0.5, -right / 2 - 4, 0, 22)
+		),
 	}, {
 		Size = UDim2.fromOffset(PROFILE.X, PROFILE.Y),
 		Position = UDim2.new(1, -MARGIN, 0, TOP_Y),
 		AnchorPoint = Vector2.new(1, 0),
-	})
+	}, "Plaque", 18)
 end
 
 local function HUD(props: Props): React.ReactNode
@@ -225,16 +271,54 @@ local function HUD(props: Props): React.ReactNode
 					State.SetCamera(if walking then "Lane" else "Walk", ui.View)
 				end,
 			}),
-			Info = pill({
-				Label = e(Widgets.Label, {
-					text = `{UI.Level} {battle.Level}   ·   {UI.Wave} {battle.Wave}/{Stages.WavesPerLevel}   ·   {UI.Stage} {data.Stage.Rebirth + 1}`,
-					size = UDim2.fromScale(1, 1),
-					bold = true,
-					align = Enum.TextXAlignment.Center,
-				}),
-			}, {
+			Info = e("Frame", {
 				Size = UDim2.fromOffset(INFO_W, BUTTON_H),
 				Position = UDim2.fromOffset(LEAVE_W + GAP, 0),
+				BackgroundTransparency = 1,
+			}, {
+				Art = Art.Back({ piece = "TitleBarSlim" }),
+				Stage = e(Widgets.Label, {
+					text = `{UI.Stage} {data.Stage.Rebirth + 1}`,
+					textSize = 14,
+					color = Theme.OnDarkSub,
+					position = UDim2.fromOffset(32, 0),
+					size = UDim2.new(0, 90, 1, 0),
+				}),
+				Level = e(Widgets.Label, {
+					text = `{UI.Level} {battle.Level}`,
+					bold = true,
+					textSize = 24,
+					color = Theme.Gold,
+					align = Enum.TextXAlignment.Center,
+					position = UDim2.fromScale(0.5, 0),
+					anchor = Vector2.new(0.5, 0),
+					size = UDim2.new(0, 150, 1, 0),
+				}),
+				Wave = e("Frame", {
+					Size = UDim2.new(0, 130, 1, 0),
+					Position = UDim2.new(1, -32, 0, 0),
+					AnchorPoint = Vector2.new(1, 0),
+					BackgroundTransparency = 1,
+				}, {
+					Layout = e("UIListLayout", {
+						FillDirection = Enum.FillDirection.Horizontal,
+						HorizontalAlignment = Enum.HorizontalAlignment.Right,
+						VerticalAlignment = Enum.VerticalAlignment.Center,
+						Padding = UDim.new(0, 8),
+						SortOrder = Enum.SortOrder.LayoutOrder,
+					}),
+					Pips = pips(battle.Wave, Stages.WavesPerLevel),
+					Count = e("TextLabel", {
+						Text = `{battle.Wave}/{Stages.WavesPerLevel}`,
+						Size = UDim2.fromOffset(34, 20),
+						BackgroundTransparency = 1,
+						TextColor3 = Theme.OnDark,
+						FontFace = Theme.Font,
+						TextSize = Theme.Body(14),
+						TextXAlignment = Enum.TextXAlignment.Right,
+						LayoutOrder = 2,
+					}),
+				}),
 			}),
 			Mode = e(Widgets.Button, {
 				icon = Icons.Farm,
@@ -270,8 +354,8 @@ local function HUD(props: Props): React.ReactNode
 					onClick = State.Send.TutorialSkip,
 				}),
 			}, {
-				Size = UDim2.fromOffset(460, 52),
-				Position = UDim2.new(0.5, 0, 0, TOP_Y + BUTTON_H + 8),
+				Size = UDim2.fromOffset(470, 54),
+				Position = UDim2.new(0.5, 0, 0, TOP_Y + BUTTON_H + 10),
 				AnchorPoint = Vector2.new(0.5, 0),
 			})
 			else nil,

@@ -9,6 +9,7 @@ local Text = require(ReplicatedStorage.Shared.Text)
 local Formula = require(ReplicatedStorage.Shared.Formula)
 local EnchantConfig = require(ReplicatedStorage.Shared.Config.Enchant)
 local Theme = require(script.Parent.Parent.Core.Theme)
+local Art = require(script.Parent.Parent.Core.Art)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
 local ItemInfo = require(script.Parent.Parent.Core.ItemInfo)
 local State = require(script.Parent.Parent.Parent.State)
@@ -89,17 +90,17 @@ local function PowerTab(props: Props): React.ReactNode
 			Size = UDim2.new(0.8, 0, 1, -(top + below)),
 			Position = UDim2.new(0.5, 0, 0, top),
 			AnchorPoint = Vector2.new(0.5, 0),
-			BackgroundColor3 = Theme.PanelAlt,
+			BackgroundTransparency = 1,
 		}, {
-			Corner = Widgets.Corner(8),
-			Padding = Widgets.Padding(10),
+			Art = Art.Back({ piece = "PaperCompactSharp", padding = 14 }),
+			Padding = Widgets.Padding(14),
 			Text = e("TextLabel", {
 				Size = UDim2.fromScale(1, 1),
 				BackgroundTransparency = 1,
 				Text = body,
 				TextColor3 = if item ~= nil or index then Theme.Text else Theme.Subtext,
 				FontFace = Theme.Font,
-				TextSize = 15,
+				TextSize = Theme.Body(15),
 				TextWrapped = true,
 				TextXAlignment = Enum.TextXAlignment.Center,
 				TextYAlignment = Enum.TextYAlignment.Center,

@@ -11,6 +11,7 @@ local Formula = require(ReplicatedStorage.Shared.Formula)
 local Text = require(ReplicatedStorage.Shared.Text)
 local Game = require(ReplicatedStorage.Shared.Config.Game)
 local Theme = require(script.Parent.Parent.Core.Theme)
+local Art = require(script.Parent.Parent.Core.Art)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
 local ItemInfo = require(script.Parent.Parent.Core.ItemInfo)
 local State = require(script.Parent.Parent.Parent.State)
@@ -237,10 +238,9 @@ local function Grid(props: Props): React.ReactNode
 		if entry == nil then
 			-- Empty slots keep the grid's shape on a short page.
 			cells[`Empty{i}`] = e("Frame", {
-				BackgroundColor3 = Theme.Bg,
-				BackgroundTransparency = 0.4,
+				BackgroundTransparency = 1,
 				LayoutOrder = i,
-			}, { Corner = Widgets.Corner(6) })
+			}, { Art = Art.Back({ piece = "SlotPaper", transparency = 0.35 }) })
 			continue
 		end
 		local isKeep = entry.Kind == "Gear" and entry.Id == props.keepUid
@@ -283,17 +283,9 @@ local function Grid(props: Props): React.ReactNode
 		local enter = Tip.Enter(tip)
 
 		cells[entry.Key] = e("TextButton", {
-			BackgroundColor3 = if isMarked
-				then Theme.Danger
-				elseif isKeep or isUse or isPicked then Theme.Hover
-				else Theme.PanelAlt,
-			BackgroundTransparency = if isMarked then 0.45 else 0,
-			AutoButtonColor = mode == nil,
-			Text = entry.Label,
-			TextColor3 = Theme.Text,
-			FontFace = Theme.Font,
-			TextSize = 11,
-			TextWrapped = true,
+			BackgroundTransparency = 1,
+			AutoButtonColor = false,
+			Text = "",
 			LayoutOrder = i,
 			-- The cell holding the open menu draws over its neighbours.
 			ZIndex = if menu ~= nil then 5 else 1,
@@ -352,7 +344,23 @@ local function Grid(props: Props): React.ReactNode
 			end,
 		}, {
 			Corner = Widgets.Corner(6),
-			Padding = Widgets.Padding(3),
+			Art = Art.Back({
+				piece = if isKeep or isUse or isPicked then "BtnPaperHover" else "SlotPaper",
+				color = if isMarked then Theme.DangerTint else nil,
+				padding = 4,
+			}),
+			Label = e("TextLabel", {
+				Size = UDim2.fromScale(1, 1),
+				BackgroundTransparency = 1,
+				Text = entry.Label,
+				TextColor3 = Theme.Text,
+				FontFace = Theme.Font,
+				TextSize = Theme.Body(11),
+				TextScaled = true,
+				TextWrapped = true,
+				ZIndex = 2,
+			}, { Max = e("UITextSizeConstraint", { MaxTextSize = Theme.Body(11) }) }),
+			Padding = Widgets.Padding(4),
 			Stroke = if isMarked
 				then Widgets.Stroke(Theme.Danger, 2, 0)
 				elseif isKeep or isUse then Widgets.Stroke(Theme.Accent, 2, 0)
@@ -365,10 +373,10 @@ local function Grid(props: Props): React.ReactNode
 				then e(Widgets.Label, {
 					text = if isUse then UI.Use elseif isKeep then UI.Keep else UI.EquippedMark,
 					bold = true,
-					textSize = 10,
+					textSize = 11,
 					color = Theme.Accent,
-					size = UDim2.new(1, 0, 0, 10),
-					position = UDim2.fromOffset(0, -2),
+					size = UDim2.new(1, 0, 0, 12),
+					position = UDim2.fromOffset(0, -4),
 				})
 				else nil,
 			-- Top right: marked for salvage, or locked.
@@ -474,16 +482,20 @@ local function Grid(props: Props): React.ReactNode
 		ModeBar = if mode ~= nil
 			then e("Frame", {
 				Size = UDim2.new(1, 0, 0, HEAD_H + 4),
-				BackgroundColor3 = if mode == "Salvage" then Theme.Danger else Theme.Wood,
+				BackgroundTransparency = 1,
 				ZIndex = 3,
 				Active = true,
 			}, {
-				Corner = Widgets.Corner(8),
+				Art = Art.Back({
+					piece = if mode == "Salvage" then "NoticePaper" else "TitleBarSlim",
+					color = if mode == "Salvage" then Theme.DangerTint else nil,
+					edge = 0.7,
+				}),
 				Label = e(Widgets.Label, {
 					text = if mode == "Salvage" then UI.SalvageModeTitle else UI.LockModeTitle,
 					bold = true,
 					textSize = 14,
-					color = Theme.OnDark,
+					color = if mode == "Salvage" then Theme.Danger else Theme.OnDark,
 					align = Enum.TextXAlignment.Center,
 				}),
 			})

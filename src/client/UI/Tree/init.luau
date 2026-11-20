@@ -9,7 +9,7 @@ local Text = require(ReplicatedStorage.Shared.Text)
 local Format = require(ReplicatedStorage.Shared.Format)
 local SkillTree = require(ReplicatedStorage.Shared.Config.SkillTree)
 local Theme = require(script.Parent.Core.Theme)
-local Widgets = require(script.Parent.Core.Widgets)
+local Art = require(script.Parent.Core.Art)
 local FloatWindow = require(script.Parent.Core.FloatWindow)
 local State = require(script.Parent.Parent.State)
 
@@ -182,23 +182,29 @@ local function node(
 		Size = UDim2.fromOffset(NODE, NODE),
 		Position = UDim2.fromOffset(where.X, where.Y),
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		-- Owned = light, can be bought = mid grey with a bright edge, locked = dark. All opaque so lines never show through.
-		BackgroundColor3 = if owned then Theme.Confirm elseif locked then Theme.Bg else Theme.PanelAlt,
-		AutoButtonColor = onClick ~= nil,
-		Text = label,
-		TextColor3 = if owned then Theme.OnLight elseif locked then Theme.Subtext else Theme.Text,
-		FontFace = Theme.FontBold,
-		TextSize = 10,
-		TextWrapped = true,
+		-- Owned = gilt with a glow, can be bought = paper with a gold rim, locked = faded paper. All opaque so lines never show through.
+		BackgroundTransparency = 1,
+		AutoButtonColor = false,
+		Text = "",
 		ZIndex = 3,
 		[React.Event.Activated] = onClick,
 	}, {
-		Corner = Widgets.Corner(4),
-		Stroke = Widgets.Stroke(
-			if locked then Theme.Stroke else Theme.Accent,
-			if locked then 1 else 1.5,
-			if locked then 0.4 else 0
-		),
+		Art = Art.Back({
+			piece = if owned then "SlotSelected" elseif locked then "SlotPaper" else "BtnPaperHover",
+			edge = 0.8,
+		}),
+		Label = e("TextLabel", {
+			Size = UDim2.new(1, -4, 1, -4),
+			Position = UDim2.fromOffset(2, 2),
+			BackgroundTransparency = 1,
+			Text = label,
+			TextColor3 = if owned then Theme.Gold elseif locked then Theme.Subtext else Theme.Text,
+			FontFace = Theme.FontBold,
+			TextSize = Theme.Body(10),
+			TextScaled = true,
+			TextWrapped = true,
+			ZIndex = 2,
+		}, { Max = e("UITextSizeConstraint", { MaxTextSize = Theme.Body(10) }) }),
 	})
 end
 

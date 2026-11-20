@@ -8,6 +8,7 @@ local Text = require(ReplicatedStorage.Shared.Text)
 local Game = require(ReplicatedStorage.Shared.Config.Game)
 local Heroes = require(ReplicatedStorage.Shared.Config.Heroes)
 local Theme = require(script.Parent.Core.Theme)
+local Art = require(script.Parent.Core.Art)
 local Widgets = require(script.Parent.Core.Widgets)
 local State = require(script.Parent.Parent.State)
 
@@ -22,11 +23,11 @@ local function HeroSelect(): React.ReactNode
 		local def = Heroes.ById[class]
 		cards[class] = e("Frame", {
 			Size = UDim2.fromOffset(220, 260),
-			BackgroundColor3 = Theme.PanelAlt,
+			BackgroundTransparency = 1,
 			LayoutOrder = i,
 		}, {
-			Corner = Widgets.Corner(10),
-			Padding = Widgets.Padding(12),
+			Art = Art.Back({ piece = "PaperCompactSharp", padding = 16 }),
+			Padding = Widgets.Padding(16),
 			Name = e(Widgets.Label, { text = Text.Class(class), bold = true, textSize = 22 }),
 			Stats = e(Widgets.Label, {
 				text = `HP {def.MaxHp}\nAttack {def.Atk}\nDefense {def.Def}\nRange {def.Range}\nBest row: {Text.Row(

@@ -8,6 +8,7 @@ local React = require(ReplicatedStorage.Packages.React)
 local Text = require(ReplicatedStorage.Shared.Text)
 local Items = require(ReplicatedStorage.Shared.Config.Items)
 local Theme = require(script.Parent.Parent.Core.Theme)
+local Art = require(script.Parent.Parent.Core.Art)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
 
 local e = React.createElement
@@ -101,22 +102,17 @@ local function BaseGrid(props: Props): React.ReactNode
 		local id = ids[(shown - 1) * perPage + i]
 		if id == nil then
 			cells[`Empty{i}`] = e("Frame", {
-				BackgroundColor3 = Theme.Bg,
-				BackgroundTransparency = 0.4,
+				BackgroundTransparency = 1,
 				LayoutOrder = i,
-			}, { Corner = Widgets.Corner(6) })
+			}, { Art = Art.Back({ piece = "SlotPaper", transparency = 0.35 }) })
 			continue
 		end
 		local def = Items.ById[id]
 		local marked = props.marked[id] == true
 		cells[id] = e("TextButton", {
-			BackgroundColor3 = if marked then Theme.Hover else Theme.PanelAlt,
-			AutoButtonColor = true,
-			Text = if def ~= nil then `{Text.Item(id)}\n{Text.Class(def.Class)}` else Text.Item(id),
-			TextColor3 = Theme.Text,
-			FontFace = Theme.Font,
-			TextSize = 11,
-			TextWrapped = true,
+			BackgroundTransparency = 1,
+			AutoButtonColor = false,
+			Text = "",
 			LayoutOrder = i,
 			[React.Event.InputBegan] = function(_rbx: TextButton, input: InputObject)
 				local onPress = latest.current.onPress
@@ -133,9 +129,20 @@ local function BaseGrid(props: Props): React.ReactNode
 				end
 			end,
 		}, {
-			Corner = Widgets.Corner(6),
-			Padding = Widgets.Padding(3),
+			Art = Art.Back({ piece = if marked then "BtnPaperHover" else "SlotPaper", padding = 4 }),
+			Padding = Widgets.Padding(4),
 			Stroke = if marked then Widgets.Stroke(Theme.Accent, 2, 0) else nil,
+			Label = e("TextLabel", {
+				Size = UDim2.fromScale(1, 1),
+				BackgroundTransparency = 1,
+				Text = if def ~= nil then `{Text.Item(id)}\n{Text.Class(def.Class)}` else Text.Item(id),
+				TextColor3 = Theme.Text,
+				FontFace = Theme.Font,
+				TextSize = Theme.Body(11),
+				TextScaled = true,
+				TextWrapped = true,
+				ZIndex = 2,
+			}, { Max = e("UITextSizeConstraint", { MaxTextSize = Theme.Body(11) }) }),
 		})
 	end
 

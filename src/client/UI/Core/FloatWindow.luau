@@ -8,6 +8,7 @@ local UserInputService = game:GetService("UserInputService")
 local React = require(ReplicatedStorage.Packages.React)
 local Text = require(ReplicatedStorage.Shared.Text)
 local Theme = require(script.Parent.Theme)
+local Art = require(script.Parent.Art)
 local Widgets = require(script.Parent.Widgets)
 local Device = require(script.Parent.Device)
 local WindowStack = require(script.Parent.WindowStack)
@@ -15,11 +16,14 @@ local State = require(script.Parent.Parent.Parent.State)
 
 local e = React.createElement
 
-local PAD = 14
-local HEADER = 40
--- Parchment sheet behind the content: gap to the wood edge, and how far it reaches past the content.
-local SHEET_RIM = 6
-local SHEET_INSET = 8
+-- Frame art insets (Widgets.WINDOW_*): leather title band, then the paper body inside its ink rule.
+local HEAD = Widgets.WINDOW_HEADER
+local SIDE = Widgets.WINDOW_SIDE
+local TOP = Widgets.WINDOW_TOP
+local BOTTOM = Widgets.WINDOW_BOTTOM
+local ORNAMENT = Widgets.WINDOW_ORNAMENT
+-- Pages were laid out for the old wood frame (14 rim, 40 header): the frame grows by the difference so content keeps its room.
+local GROW = Vector2.new(SIDE * 2 - 28, TOP + BOTTOM - 68)
 -- Grab zones: edges resize one side, corners two.
 local EDGE = 8
 local CORNER = 14
@@ -179,8 +183,9 @@ local function FloatWindow(props: Props): React.ReactNode
 
 	local zoom = props.zoom or 1
 	-- Sizes below are as drawn (after zoom).
-	local minSize = (props.minSize or DEFAULT_MIN) * zoom
-	local defaultSize = props.defaultSize * zoom
+	local minSize = ((props.minSize or DEFAULT_MIN) + GROW) * zoom
+	local baseSize = props.defaultSize + GROW
+	local defaultSize = baseSize * zoom
 	local minPx = minSize * scale
 	local id = saveId
 
@@ -206,11 +211,17 @@ local function FloatWindow(props: Props): React.ReactNode
 				math.min(defaultSize.X / area.X, MAX_DEFAULT),
 				math.min(defaultSize.Y / area.Y, MAX_DEFAULT)
 			)
+		local fitted = Vector2.new(clamp(size.X, minFraction.X, 1), clamp(size.Y, minFraction.Y, 1))
+		local center = if saved ~= nil
+			then Vector2.new(saved[1] or 0.5, saved[2] or 0.5)
+			else props.defaultCenter or Vector2.new(0.5, 0.5)
+		-- Opened (not being dragged): the whole window stays on screen, whatever the screen or UI size became.
 		rect = {
-			Center = if saved ~= nil
-				then Vector2.new(clamp(saved[1] or 0.5, 0, 1), clamp(saved[2] or 0.5, 0, 1))
-				else props.defaultCenter or Vector2.new(0.5, 0.5),
-			Size = Vector2.new(clamp(size.X, minFraction.X, 1), clamp(size.Y, minFraction.Y, 1)),
+			Center = Vector2.new(
+				clamp(center.X, fitted.X / 2, 1 - fitted.X / 2),
+				clamp(center.Y, fitted.Y / 2, 1 - fitted.Y / 2)
+			),
+			Size = fitted,
 		}
 	end
 
@@ -309,10 +320,10 @@ local function FloatWindow(props: Props): React.ReactNode
 	end, { dragging })
 
 	local content: any = props.children
-	local k = scaleFor(rect.Size * area, props.defaultSize)
+	local k = scaleFor(rect.Size * area, baseSize)
 	local fit = props.fit
 	if fit ~= nil then
-		local avail = rect.Size * area / k - Vector2.new(PAD * 2, PAD * 2 + HEADER)
+		local avail = rect.Size * area / k - Vector2.new(SIDE * 2, TOP + BOTTOM)
 		local fitScale = math.clamp(math.min(avail.X / fit.X, avail.Y / fit.Y), 0.05, FIT_MAX)
 		content = {
 			Fit = e("Frame", {
@@ -330,58 +341,56 @@ local function FloatWindow(props: Props): React.ReactNode
 	local children: { [string]: React.ReactNode } = {
 		-- Laid out 1/k larger, drawn at k: the window keeps rect's size on screen.
 		Zoom = if k ~= 1 then e("UIScale", { Scale = k }) else nil,
-		Corner = Widgets.Corner(14),
-		Stroke = Widgets.Stroke(Theme.Outline, 3),
-		Sheet = Widgets.Sheet(
-			UDim2.new(1, -SHEET_RIM * 2, 1, -(PAD + HEADER - SHEET_INSET + SHEET_RIM)),
-			UDim2.fromOffset(SHEET_RIM, PAD + HEADER - SHEET_INSET)
-		),
+		Art = Art.Back({ piece = "MainWindow" }),
 		TitleBar = e("TextButton", {
-			Size = UDim2.new(1, 0, 0, PAD + HEADER),
+			Size = UDim2.new(1, 0, 0, HEAD),
 			BackgroundTransparency = 1,
 			AutoButtonColor = false,
 			Text = "",
+			ZIndex = 2,
 			[React.Event.InputBegan] = function(_rbx: TextButton, input: InputObject)
 				begin(input, nil)
 			end,
 		}, {
-			Title = e(Widgets.Label, {
-				text = props.title,
-				bold = true,
-				textSize = 22,
-				color = Theme.OnDark,
-				position = UDim2.fromOffset(PAD, PAD),
-				size = UDim2.new(1, -(PAD * 2 + 250), 0, 30),
+			Title = e("TextLabel", {
+				Text = props.title,
+				Size = UDim2.new(1, -(ORNAMENT * 2 + 190), 0, HEAD - 14),
+				Position = UDim2.fromOffset(ORNAMENT, 6),
+				BackgroundTransparency = 1,
+				TextColor3 = Theme.Gold,
+				FontFace = Theme.FontTitle,
+				TextSize = Theme.Title(28),
+				TextXAlignment = Enum.TextXAlignment.Left,
+				TextTruncate = Enum.TextTruncate.AtEnd,
 			}),
 		}),
 		Buttons = e("Frame", {
-			Size = UDim2.fromOffset(236, 30),
-			Position = UDim2.new(1, -PAD, 0, PAD),
+			Size = UDim2.fromOffset(176, 34),
+			Position = UDim2.new(1, -ORNAMENT, 0, 15),
 			AnchorPoint = Vector2.new(1, 0),
 			BackgroundTransparency = 1,
-			ZIndex = 2,
+			ZIndex = 3,
 		}, {
 			Reset = e(Widgets.Button, {
 				text = Text.UI.ResetWindow,
-				size = UDim2.fromOffset(132, 30),
-				textSize = 14,
+				size = UDim2.fromOffset(134, 30),
+				position = UDim2.fromOffset(0, 2),
+				textSize = 13,
 				disabled = saved == nil,
 				onClick = function()
 					local home = props.defaultCenter or Vector2.new(0.5, 0.5)
 					State.SetWindow(id, home.X, home.Y, 0, 0)
 				end,
 			}),
-			Close = e(Widgets.Button, {
-				text = Text.UI.Close,
-				size = UDim2.fromOffset(96, 30),
+			Close = e(Widgets.CloseButton, {
+				onClick = props.onClose,
 				position = UDim2.fromScale(1, 0),
 				anchor = Vector2.new(1, 0),
-				onClick = props.onClose,
 			}),
 		}),
 		Content = e("Frame", {
-			Size = UDim2.new(1, -PAD * 2, 1, -(PAD * 2 + HEADER)),
-			Position = UDim2.fromOffset(PAD, PAD + HEADER),
+			Size = UDim2.new(1, -SIDE * 2, 1, -(TOP + BOTTOM)),
+			Position = UDim2.fromOffset(SIDE, TOP),
 			BackgroundTransparency = 1,
 			ClipsDescendants = true,
 			ZIndex = 2,
@@ -392,7 +401,7 @@ local function FloatWindow(props: Props): React.ReactNode
 			textSize = 11,
 			align = Enum.TextXAlignment.Right,
 			size = UDim2.fromOffset(20, 12),
-			position = UDim2.new(1, -3, 1, -1),
+			position = UDim2.new(1, -SIDE, 1, -8),
 			anchor = Vector2.new(1, 1),
 		}),
 	}
@@ -417,8 +426,7 @@ local function FloatWindow(props: Props): React.ReactNode
 		Size = UDim2.fromScale(rect.Size.X / k, rect.Size.Y / k),
 		Position = UDim2.fromScale(rect.Center.X, rect.Center.Y),
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		BackgroundColor3 = Theme.Wood,
-		BorderSizePixel = 0,
+		BackgroundTransparency = 1,
 		AutoButtonColor = false,
 		Text = "",
 	}, children)

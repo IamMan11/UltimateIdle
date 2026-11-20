@@ -12,6 +12,7 @@ local Skills = require(ReplicatedStorage.Shared.Config.Skills)
 local Classes = require(ReplicatedStorage.Shared.Config.Classes)
 local Rebirth = require(ReplicatedStorage.Shared.Config.Rebirth)
 local Theme = require(script.Parent.Parent.Core.Theme)
+local Art = require(script.Parent.Parent.Core.Art)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
 local VirtualList = require(script.Parent.Parent.Core.VirtualList)
 local State = require(script.Parent.Parent.Parent.State)
@@ -131,11 +132,12 @@ local function LevelPanel(props: Props): React.ReactNode
 			Card = e("Frame", {
 				Size = UDim2.new(1, -(LINE_W + 12), 1, 0),
 				Position = UDim2.fromOffset(LINE_W + 12, 0),
-				BackgroundColor3 = if index == level then Theme.Hover else Theme.PanelAlt,
-				BackgroundTransparency = if reached then 0 else 0.5,
+				BackgroundTransparency = 1,
 			}, {
-				Corner = Widgets.Corner(6),
-				Stroke = if index == level then Widgets.Stroke(Theme.Accent, 1.5, 0) else nil,
+				Art = Art.Back({
+					piece = if index == level then "BtnPaperHover" else "PaperCompactSharp",
+					transparency = if reached then 0 else 0.45,
+				}),
 				Title = e(Widgets.Label, {
 					text = title,
 					bold = true,
@@ -193,23 +195,20 @@ local function LevelPanel(props: Props): React.ReactNode
 		children.Xp = e("Frame", {
 			Size = UDim2.new(1, 0, 0, XP_H),
 			Position = UDim2.fromOffset(0, 34),
-			BackgroundColor3 = Theme.BarBack,
-			BorderSizePixel = 0,
+			BackgroundTransparency = 1,
 		}, {
-			Corner = Widgets.Corner(XP_H / 2),
-			Fill = e("Frame", {
-				Size = UDim2.fromScale(if maxed then 1 else math.clamp(hero.Xp / need, 0, 1), 1),
-				BackgroundColor3 = Theme.Bar,
-				BorderSizePixel = 0,
-			}, { Corner = Widgets.Corner(XP_H / 2) }),
-			-- Sits over both the light fill and the dark back: outlined so it reads on either.
+			Bar = e(Widgets.Bar, {
+				ratio = if maxed then 1 else math.clamp(hero.Xp / need, 0, 1),
+				size = UDim2.fromScale(1, 1),
+			}),
+			-- Sits over both the gold fill and the dark track: outlined so it reads on either.
 			Amount = e("TextLabel", {
 				Size = UDim2.fromScale(1, 1),
 				BackgroundTransparency = 1,
 				Text = if maxed then UI.Max else `{Format.Number(hero.Xp)}/{Format.Number(need)}`,
 				TextColor3 = Theme.OnDark,
 				FontFace = Theme.FontBold,
-				TextSize = 13,
+				TextSize = Theme.Body(13),
 				ZIndex = 2,
 			}, {
 				Outline = e("UIStroke", { Color = Theme.OnLight, Thickness = 1.5 }),

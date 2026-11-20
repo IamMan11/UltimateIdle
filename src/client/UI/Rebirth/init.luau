@@ -9,6 +9,7 @@ local Text = require(ReplicatedStorage.Shared.Text)
 local Format = require(ReplicatedStorage.Shared.Format)
 local RebirthConfig = require(ReplicatedStorage.Shared.Config.Rebirth)
 local Theme = require(script.Parent.Core.Theme)
+local Art = require(script.Parent.Core.Art)
 local FloatWindow = require(script.Parent.Core.FloatWindow)
 local Widgets = require(script.Parent.Core.Widgets)
 local State = require(script.Parent.Parent.State)
@@ -64,12 +65,10 @@ local function card(head: string, lines: { string }?, placeholder: string?, x: n
 		Card = e("Frame", {
 			Size = UDim2.fromOffset(CARD.X, CARD.Y),
 			Position = UDim2.fromOffset(0, CARD_Y),
-			BackgroundColor3 = Theme.Bg,
-			BorderSizePixel = 0,
+			BackgroundTransparency = 1,
 		}, {
-			Corner = Widgets.Corner(8),
-			Stroke = Widgets.Stroke(),
-			Padding = Widgets.Padding(14),
+			Art = Art.Back({ piece = "PaperNotchInfo", padding = 16 }),
+			Padding = Widgets.Padding(16),
 			Lines = if lines ~= nil
 				then e(Widgets.Label, {
 					text = table.concat(lines, "\n"),
@@ -150,7 +149,7 @@ local function RebirthPage(props: Props): React.ReactNode
 			Line = e("Frame", {
 				Size = UDim2.new(1, -8, 0, 3),
 				Position = UDim2.fromOffset(0, 29),
-				BackgroundColor3 = Theme.Outline,
+				BackgroundColor3 = Theme.Accent,
 				BorderSizePixel = 0,
 			}),
 			Head = e(Widgets.Label, {
@@ -179,12 +178,10 @@ local function RebirthPage(props: Props): React.ReactNode
 					Size = UDim2.fromOffset(CHIP.X, CHIP.Y),
 					Position = UDim2.new(0.5, 0, 0, 24),
 					AnchorPoint = Vector2.new(0.5, 0),
-					BackgroundColor3 = if ready then Theme.Hover else Theme.PanelAlt,
-					BorderSizePixel = 0,
+					BackgroundTransparency = 1,
 				}, {
-					Corner = Widgets.Corner(8),
-					Stroke = Widgets.Stroke(),
-					Padding = Widgets.Padding(8),
+					Art = Art.Back({ piece = if ready then "BtnPaperHover" else "PaperCompactSharp", padding = 10 }),
+					Padding = Widgets.Padding(10),
 					Label = e(Widgets.Label, {
 						text = `{UI.Stage} {count + 1} {UI.Level} {math.min(cleared, nextDef.RequiredLevel)}/{nextDef.RequiredLevel}`,
 						bold = true,

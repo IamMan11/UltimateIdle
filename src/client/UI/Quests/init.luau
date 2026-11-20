@@ -11,6 +11,7 @@ local Period = require(ReplicatedStorage.Shared.Period)
 local Quests = require(ReplicatedStorage.Shared.Config.Quests)
 local Icons = require(ReplicatedStorage.Shared.Config.Icons)
 local Theme = require(script.Parent.Core.Theme)
+local Art = require(script.Parent.Core.Art)
 local FloatWindow = require(script.Parent.Core.FloatWindow)
 local Widgets = require(script.Parent.Core.Widgets)
 local State = require(script.Parent.Parent.State)
@@ -48,13 +49,11 @@ local function questCard(def: Quests.QuestDef, have: number, claimed: boolean, o
 	local done = have >= def.Need
 	local left = -(CLAIM_W + REWARD_W + 20)
 	return e("Frame", {
-		BackgroundColor3 = Theme.PanelAlt,
-		BorderSizePixel = 0,
+		BackgroundTransparency = 1,
 		LayoutOrder = order,
 	}, {
-		Corner = Widgets.Corner(8),
-		Stroke = Widgets.Stroke(),
-		Padding = Widgets.Padding(10),
+		Art = Art.Back({ piece = "PaperCompactSharp", padding = 12 }),
+		Padding = Widgets.Padding(12),
 		Name = e(Widgets.Label, { text = Text.Eco.Quest(def), bold = true, size = UDim2.new(1, left, 0, 22) }),
 		Count = e(Widgets.Label, {
 			text = `{Format.Number(math.min(have, def.Need))} / {Format.Number(def.Need)}`,

@@ -1,15 +1,14 @@
 --!strict
--- Shared UI widgets: Label, Icon, Button (raised face on a dark base, optional icon), Window (wood frame + parchment sheet, backdrop/Esc close), TextInput, Stepper, Bar, Tabs; hooks: store, viewport, tick, other players.
+-- Shared UI widgets: Label (Michroma body, Grenze Gotisch headings), Icon, Button (paper / gilt frame art, optional icon), CloseButton, Window (leather header + paper sheet art, backdrop/Esc close), TextInput, Stepper, Bar, Tabs; hooks: store, viewport, tick, other players.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local React = require(ReplicatedStorage.Packages.React)
 local Theme = require(script.Parent.Theme)
-local Text = require(ReplicatedStorage.Shared.Text)
+local Art = require(script.Parent.Art)
 local State = require(script.Parent.Parent.Parent.State)
 local Device = require(script.Parent.Device)
 local Tip = require(script.Parent.Tip)
@@ -152,7 +151,21 @@ export type LabelProps = {
 	wrap: boolean?,
 }
 
+-- Single-line text that is too long shrinks (down to 70 %) instead of being cut: TextScaled under a size cap.
+function Widgets.Shrink(textSize: number): React.ReactNode
+	return e("UITextSizeConstraint", {
+		MaxTextSize = textSize,
+		MinTextSize = math.max(8, math.floor(textSize * 0.7)),
+	})
+end
+
+-- Bold labels at 20+ are headings: drawn in the title face (Grenze Gotisch); everything else is body text (Michroma).
+-- Single-line labels shrink to fit (Widgets.Shrink); wrapped ones keep their size.
 function Widgets.Label(props: LabelProps): React.ReactNode
+	local size = props.textSize or 18
+	local heading = props.bold == true and size >= 20
+	local drawn = if heading then Theme.Title(size) else Theme.Body(size)
+	local wrap = props.wrap == true
 	return e("TextLabel", {
 		Size = props.size or UDim2.new(1, 0, 0, 22),
 		Position = props.position,
@@ -160,13 +173,15 @@ function Widgets.Label(props: LabelProps): React.ReactNode
 		BackgroundTransparency = 1,
 		Text = props.text,
 		TextColor3 = props.color or Theme.Text,
-		FontFace = if props.bold then Theme.FontBold else Theme.Font,
-		TextSize = props.textSize or 18,
+		FontFace = if heading then Theme.FontTitle elseif props.bold then Theme.FontBold else Theme.Font,
+		TextSize = drawn,
+		TextScaled = not wrap,
 		TextXAlignment = props.align or Enum.TextXAlignment.Left,
 		TextYAlignment = props.alignY,
-		TextWrapped = props.wrap == true,
-		TextTruncate = if props.wrap then Enum.TextTruncate.None else Enum.TextTruncate.AtEnd,
+		TextWrapped = wrap,
 		LayoutOrder = props.layoutOrder,
+	}, {
+		Fit = if wrap then nil else Widgets.Shrink(drawn),
 	})
 end
 
@@ -211,45 +226,30 @@ export type ButtonProps = {
 	tip: Tip.Content?, -- hover tooltip (Core/Tooltip)
 }
 
--- Button geometry: the face sits BUTTON_LIFT above its dark base, rises on hover, drops onto the base when pressed.
-local BUTTON_LIFT = 4
-local BUTTON_HOVER = 2
-local BUTTON_EDGE = 2
-local BUTTON_RADIUS = 10
-local BUTTON_TWEEN = TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+-- Button art: paper face (gilt leather when selected or a confirm/accent colour), hover / pressed variants.
+local function buttonPiece(gilt: boolean, state: string): string
+	return (if gilt then "BtnGilt" else "BtnPaper") .. state
+end
 
 function Widgets.Button(props: ButtonProps): React.ReactNode
 	local hovered, setHovered = React.useState(false)
 	local pressed, setPressed = React.useState(false)
-	local faceRef = React.useRef(nil :: Frame?)
 	local disabled = props.disabled == true
 	local selected = props.selected == true
-	local bg = props.color or (if selected then Theme.Hover else Theme.Button)
+	local color = props.color
+	local gilt = not disabled and (selected or color == Theme.Confirm or color == Theme.Accent)
+	local danger = not disabled and color == Theme.Danger
+	local down = pressed and not disabled
+	local state = if down then "Pressed" elseif hovered and not disabled then "Hover" else "Normal"
+	local piece = buttonPiece(gilt, state)
+	local size = props.size or UDim2.fromOffset(120, 36)
+	local height = if size.Y.Scale == 0 then size.Y.Offset else 40
 	local icon = props.icon
-	local iconSize = props.iconSize or 32
-	local drop = if disabled or pressed
-		then BUTTON_LIFT
-		elseif selected then BUTTON_LIFT / 2
-		elseif hovered then -BUTTON_HOVER
-		else 0
-	-- Position is set once by React and moved by the tween afterwards.
-	local first = React.useRef(drop)
-	React.useEffect(function(): () -> ()
-		local face = faceRef.current
-		if face == nil or face.Position.Y.Offset == BUTTON_EDGE + drop then
-			return function() end
-		end
-		local tween =
-			TweenService:Create(face, BUTTON_TWEEN, { Position = UDim2.fromOffset(BUTTON_EDGE, BUTTON_EDGE + drop) })
-		tween:Play()
-		return function()
-			tween:Cancel()
-		end
-	end, { drop })
+	local iconSize = math.min(props.iconSize or 32, math.max(height - 12, 12))
+	local left = if icon ~= nil then iconSize + 14 else 8
 
-	local left = if icon ~= nil then iconSize + 12 else 6
 	return e("TextButton", {
-		Size = props.size or UDim2.fromOffset(120, 36),
+		Size = size,
 		Position = props.position,
 		AnchorPoint = props.anchor,
 		BackgroundTransparency = 1,
@@ -280,52 +280,85 @@ function Widgets.Button(props: ButtonProps): React.ReactNode
 			end
 		end,
 	}, {
-		Base = e("Frame", {
-			Size = UDim2.new(1, 0, 1, -BUTTON_LIFT),
-			Position = UDim2.fromOffset(0, BUTTON_LIFT),
-			BackgroundColor3 = Theme.Outline,
-			BorderSizePixel = 0,
-			Visible = not disabled,
-		}, { Corner = Widgets.Corner(BUTTON_RADIUS) }),
+		Art = Art.Back({
+			piece = piece,
+			edge = Art.FitEdge(piece, height),
+			transparency = if disabled then 0.35 else 0,
+			color = if danger then Theme.DangerTint else nil,
+		}),
 		Face = e("Frame", {
-			ref = faceRef,
-			Size = UDim2.new(1, -BUTTON_EDGE * 2, 1, -BUTTON_LIFT - BUTTON_EDGE * 2),
-			Position = UDim2.fromOffset(BUTTON_EDGE, BUTTON_EDGE + first.current),
-			BackgroundColor3 = if disabled then Theme.Disabled else bg,
-			BorderSizePixel = 0,
+			Size = UDim2.fromScale(1, 1),
+			Position = UDim2.fromOffset(0, if down then 1 else 0),
+			BackgroundTransparency = 1,
 			ZIndex = 2,
 		}, {
-			Corner = Widgets.Corner(BUTTON_RADIUS - BUTTON_EDGE),
-			Stroke = Widgets.Stroke(
-				if selected then Theme.Accent else Theme.Outline,
-				BUTTON_EDGE,
-				if disabled then 0.55 else 0
-			),
 			Icon = if icon ~= nil
 				then e(Widgets.Icon, {
 					image = icon,
 					size = iconSize,
-					position = UDim2.new(0, 6, 0.5, 0),
+					position = UDim2.new(0, 7, 0.5, 0),
 					anchor = Vector2.new(0, 0.5),
 					transparency = if disabled then 0.5 else 0,
 				})
 				else nil,
 			Label = e("TextLabel", {
-				Size = UDim2.new(1, -(left + 6), 1, 0),
+				Size = UDim2.new(1, -(left + 8), 1, 0),
 				Position = UDim2.fromOffset(left, 0),
 				BackgroundTransparency = 1,
 				Text = props.text,
 				TextColor3 = if disabled
 					then Theme.Subtext
-					else props.textColor or (if bg == Theme.Danger then Theme.OnDark else Theme.Text),
-				TextTransparency = if disabled then 0.35 else 0,
+					elseif gilt then (if props.textColor == Theme.Subtext then Theme.OnDarkSub else Theme.Gold)
+					else props.textColor or Theme.Text,
+				TextTransparency = if disabled then 0.3 else 0,
 				FontFace = Theme.FontBold,
-				TextSize = props.textSize or 17,
-				TextTruncate = Enum.TextTruncate.AtEnd,
+				TextSize = Theme.Body(props.textSize or 17),
+				TextScaled = true,
 				TextXAlignment = if icon ~= nil then Enum.TextXAlignment.Left else Enum.TextXAlignment.Center,
-			}),
+			}, { Fit = Widgets.Shrink(Theme.Body(props.textSize or 17)) }),
 		}),
 	})
+end
+
+export type CloseButtonProps = {
+	onClick: () -> (),
+	size: number?,
+	position: UDim2?,
+	anchor: Vector2?,
+}
+
+-- Small gilt square with an X: closes windows and modals.
+function Widgets.CloseButton(props: CloseButtonProps): React.ReactNode
+	local hovered, setHovered = React.useState(false)
+	local s = props.size or 32
+	local cross: { [string]: React.ReactNode } = {}
+	for i, angle in { 45, -45 } do
+		cross["Bar" .. i] = e("Frame", {
+			Size = UDim2.fromOffset(s * 0.5, 2.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Rotation = angle,
+			BackgroundColor3 = if hovered then Theme.OnDark else Theme.Gold,
+			BorderSizePixel = 0,
+			ZIndex = 2,
+		})
+	end
+	cross.Art = Art.Back({ piece = "BtnSquareGilt", edge = Art.FitEdge("BtnSquareGilt", s) })
+	return e("TextButton", {
+		Size = UDim2.fromOffset(s, s),
+		Position = props.position,
+		AnchorPoint = props.anchor,
+		BackgroundTransparency = 1,
+		AutoButtonColor = false,
+		Text = "",
+		[React.Event.MouseEnter] = function()
+			setHovered(true)
+		end,
+		[React.Event.MouseLeave] = function()
+			setHovered(false)
+		end,
+		[React.Event.Activated] = props.onClick,
+	}, cross)
 end
 
 export type BarProps = {
@@ -335,20 +368,33 @@ export type BarProps = {
 	layoutOrder: number?,
 }
 
+-- Gilt-rimmed leather track with a gold fill.
 function Widgets.Bar(props: BarProps): React.ReactNode
+	local size = props.size or UDim2.new(1, 0, 0, 6)
+	local height = if size.Y.Scale == 0 then size.Y.Offset else 10
+	local inset = math.clamp(math.floor(height * 0.22), 1, 4)
+	local ratio = math.clamp(props.ratio, 0, 1)
 	return e("Frame", {
-		Size = props.size or UDim2.new(1, 0, 0, 6),
+		Size = size,
 		Position = props.position,
-		BackgroundColor3 = Theme.BarBack,
-		BorderSizePixel = 0,
+		BackgroundTransparency = 1,
 		LayoutOrder = props.layoutOrder,
 	}, {
-		Corner = Widgets.Corner(3),
+		Art = Art.Back({ piece = "BarTrackGilt", edge = Art.FitEdge("BarTrackGilt", height) }),
 		Fill = e("Frame", {
-			Size = UDim2.fromScale(math.clamp(props.ratio, 0, 1), 1),
+			Size = UDim2.new(ratio, -inset * 2 * ratio, 1, -inset * 2),
+			Position = UDim2.fromOffset(inset, inset),
 			BackgroundColor3 = Theme.Bar,
 			BorderSizePixel = 0,
-		}, { Corner = Widgets.Corner(3) }),
+			Visible = ratio > 0,
+			ZIndex = 1,
+		}, {
+			Corner = e("UICorner", { CornerRadius = UDim.new(0.5, 0) }),
+			Shine = e("UIGradient", {
+				Color = ColorSequence.new(Theme.Gold, Theme.Bar),
+				Rotation = 90,
+			}),
+		}),
 	})
 end
 
@@ -361,31 +407,39 @@ export type TextInputProps = {
 	position: UDim2?,
 }
 
+-- Recessed paper field; the TextBox sits inside the art.
 function Widgets.TextInput(props: TextInputProps): React.ReactNode
-	return e("TextBox", {
-		Size = props.size or UDim2.new(1, 0, 0, 34),
+	local size = props.size or UDim2.new(1, 0, 0, 34)
+	local height = if size.Y.Scale == 0 then size.Y.Offset else 34
+	return e("Frame", {
+		Size = size,
 		Position = props.position,
-		BackgroundColor3 = Theme.Bg,
-		Text = props.text,
-		PlaceholderText = props.placeholder,
-		PlaceholderColor3 = Theme.Subtext,
-		TextColor3 = Theme.Text,
-		FontFace = Theme.Font,
-		TextSize = 17,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		ClearTextOnFocus = false,
-		[React.Change.Text] = function(rbx: TextBox)
-			props.onChanged(rbx.Text)
-		end,
-		[React.Event.FocusLost] = function(rbx: TextBox)
-			if props.onFocusLost ~= nil then
-				props.onFocusLost(rbx.Text)
-			end
-		end,
+		BackgroundTransparency = 1,
 	}, {
-		Corner = Widgets.Corner(6),
-		Padding = e("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10) }),
-		Stroke = Widgets.Stroke(),
+		Art = Art.Back({ piece = "InputPaper", edge = Art.FitEdge("InputPaper", height) }),
+		Box = e("TextBox", {
+			Size = UDim2.new(1, -20, 1, 0),
+			Position = UDim2.fromOffset(10, 0),
+			BackgroundTransparency = 1,
+			Text = props.text,
+			PlaceholderText = props.placeholder,
+			PlaceholderColor3 = Theme.Subtext,
+			TextColor3 = Theme.Text,
+			FontFace = Theme.Font,
+			TextSize = Theme.Body(17),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			ClearTextOnFocus = false,
+			ZIndex = 1,
+			[React.Change.Text] = function(rbx: TextBox)
+				props.onChanged(rbx.Text)
+			end,
+			[React.Event.FocusLost] = function(rbx: TextBox)
+				if props.onFocusLost ~= nil then
+					props.onFocusLost(rbx.Text)
+				end
+			end,
+		}),
 	})
 end
 
@@ -490,21 +544,23 @@ export type WindowProps = {
 	children: any,
 }
 
-local WINDOW_RIM = 10
-local WINDOW_INSET = 10
-local WINDOW_HEADER = 42
+-- Window art (Config.UiArt MainWindow): leather header band on top, paper body; content sits inside the ink rule.
+Widgets.WINDOW_HEADER = 66
+Widgets.WINDOW_SIDE = 28
+Widgets.WINDOW_TOP = 74
+Widgets.WINDOW_BOTTOM = 34
+-- Room the header ornaments take at each end of the title band.
+Widgets.WINDOW_ORNAMENT = 58
 
--- Parchment sheet inside a wood window frame; content sits on top of it as a sibling.
+-- Plain paper sheet (raised card art) at `size`/`position`, under any sibling with ZIndex >= 1.
 function Widgets.Sheet(size: UDim2, position: UDim2): React.ReactNode
 	return e("Frame", {
 		Size = size,
 		Position = position,
-		BackgroundColor3 = Theme.Panel,
-		BorderSizePixel = 0,
+		BackgroundTransparency = 1,
 		ZIndex = 0,
 	}, {
-		Corner = Widgets.Corner(8),
-		Stroke = Widgets.Stroke(Theme.Outline, 2),
+		Art = Art.Back({ piece = "PaperCompactSharp" }),
 	})
 end
 
@@ -512,6 +568,7 @@ end
 function Widgets.Window(props: WindowProps): React.ReactNode
 	Widgets.useEscape(props.onClose)
 	local onClose = props.onClose
+	local side, top, bottom = Widgets.WINDOW_SIDE, Widgets.WINDOW_TOP, Widgets.WINDOW_BOTTOM
 	return e("TextButton", {
 		Size = UDim2.fromScale(1, 1),
 		BackgroundColor3 = Theme.Backdrop,
@@ -532,36 +589,34 @@ function Widgets.Window(props: WindowProps): React.ReactNode
 			Size = props.size or UDim2.fromScale(0.8, 0.8),
 			Position = UDim2.fromScale(0.5, 0.5),
 			AnchorPoint = Vector2.new(0.5, 0.5),
-			BackgroundColor3 = Theme.Wood,
-			BorderSizePixel = 0,
+			BackgroundTransparency = 1,
 			AutoButtonColor = false,
 			Text = "",
 		}, {
 			Max = e("UISizeConstraint", { MaxSize = props.maxSize or Vector2.new(1100, 720) }),
-			Corner = Widgets.Corner(14),
-			Stroke = Widgets.Stroke(Theme.Outline, 3),
-			Padding = Widgets.Padding(WINDOW_RIM),
-			Title = e(Widgets.Label, {
-				text = props.title,
-				bold = true,
-				textSize = 24,
-				color = Theme.OnDark,
-				position = UDim2.fromOffset(6, 0),
-				size = UDim2.new(1, -116, 0, 32),
+			Art = Art.Back({ piece = "MainWindow" }),
+			Title = e("TextLabel", {
+				Text = props.title,
+				Size = UDim2.new(1, -(Widgets.WINDOW_ORNAMENT * 2 + 44), 0, Widgets.WINDOW_HEADER - 14),
+				Position = UDim2.fromOffset(Widgets.WINDOW_ORNAMENT, 6),
+				BackgroundTransparency = 1,
+				TextColor3 = Theme.Gold,
+				FontFace = Theme.FontTitle,
+				TextSize = Theme.Title(28),
+				TextXAlignment = Enum.TextXAlignment.Left,
+				TextTruncate = Enum.TextTruncate.AtEnd,
+				ZIndex = 2,
 			}),
 			Close = if onClose ~= nil
-				then e(Widgets.Button, {
-					text = Text.UI.Close,
-					size = UDim2.fromOffset(96, 32),
-					position = UDim2.fromScale(1, 0),
-					anchor = Vector2.new(1, 0),
+				then e(Widgets.CloseButton, {
 					onClick = onClose,
+					position = UDim2.new(1, -Widgets.WINDOW_ORNAMENT, 0, 13),
+					anchor = Vector2.new(1, 0),
 				})
 				else nil,
-			Sheet = Widgets.Sheet(UDim2.new(1, 0, 1, -WINDOW_HEADER), UDim2.fromOffset(0, WINDOW_HEADER)),
 			Content = e("Frame", {
-				Size = UDim2.new(1, -WINDOW_INSET * 2, 1, -(WINDOW_HEADER + WINDOW_INSET * 2)),
-				Position = UDim2.fromOffset(WINDOW_INSET, WINDOW_HEADER + WINDOW_INSET),
+				Size = UDim2.new(1, -side * 2, 1, -(top + bottom)),
+				Position = UDim2.fromOffset(side, top),
 				BackgroundTransparency = 1,
 				ZIndex = 2,
 			}, props.children),

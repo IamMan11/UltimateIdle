@@ -15,6 +15,7 @@ local Materials = require(ReplicatedStorage.Shared.Config.Materials)
 local Boxes = require(ReplicatedStorage.Shared.Config.Boxes)
 local Icons = require(ReplicatedStorage.Shared.Config.Icons)
 local Theme = require(script.Parent.Theme)
+local Art = require(script.Parent.Art)
 local Widgets = require(script.Parent.Widgets)
 local ItemInfo = require(script.Parent.ItemInfo)
 local Tip = require(script.Parent.Tip)
@@ -24,7 +25,7 @@ local e = React.createElement
 local UI = Text.UI
 
 local W = 330 -- card width (design units)
-local PAD = 10
+local PAD = 16
 local IMG = 52
 local SOCK = 22
 local SOCK_GAP = 5
@@ -180,7 +181,7 @@ local function text(value: string, order: number, size: number, color: Color3?, 
 		Text = value,
 		TextColor3 = color or Theme.Text,
 		FontFace = if bold then Theme.FontBold else Theme.Font,
-		TextSize = size,
+		TextSize = Theme.Body(size),
 		TextWrapped = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		LayoutOrder = order,
@@ -238,7 +239,7 @@ local function sockets(item: Types.GearItem, highlight: number?): React.ReactNod
 				Text = mark,
 				TextColor3 = if filled then Theme.OnDark else Theme.Subtext,
 				FontFace = Theme.FontBold,
-				TextSize = 13,
+				TextSize = Theme.Body(13),
 			}),
 		})
 	end
@@ -262,9 +263,8 @@ local function render(card: Card): { [string]: React.ReactNode }
 		Layout = Widgets.List(Enum.FillDirection.Vertical, 8),
 		Tag = if card.Tag ~= nil then text(card.Tag, 0, 13, Theme.Accent, true) else nil,
 		Head = e("Frame", { Size = UDim2.new(1, 0, 0, IMG), BackgroundTransparency = 1, LayoutOrder = 1 }, {
-			Image = e("Frame", { Size = UDim2.fromOffset(IMG, IMG), BackgroundColor3 = Theme.Bg }, {
-				Corner = Widgets.Corner(6),
-				Stroke = Widgets.Stroke(),
+			Image = e("Frame", { Size = UDim2.fromOffset(IMG, IMG), BackgroundTransparency = 1 }, {
+				Art = Art.Back({ piece = "SlotPaper" }),
 				Icon = if card.Image ~= nil
 					then e(Widgets.Icon, {
 						image = card.Image,
@@ -281,7 +281,7 @@ local function render(card: Card): { [string]: React.ReactNode }
 						Text = card.ImageText,
 						TextColor3 = Theme.Subtext,
 						FontFace = Theme.FontBold,
-						TextSize = 11,
+						TextSize = Theme.Body(11),
 						TextWrapped = true,
 					})
 					else nil,
@@ -294,7 +294,7 @@ local function render(card: Card): { [string]: React.ReactNode }
 				RichText = true,
 				TextColor3 = Theme.Text,
 				FontFace = Theme.FontBold,
-				TextSize = 17,
+				TextSize = Theme.Body(17),
 				TextXAlignment = Enum.TextXAlignment.Left,
 				TextTruncate = Enum.TextTruncate.AtEnd,
 			}),
@@ -346,28 +346,27 @@ type CardProps = {
 	scale: number,
 }
 
--- One card; measures its own height to stay on screen.
+-- One card; measures its body to size the frame art and stay on screen.
 local function CardView(props: CardProps): React.ReactNode
 	local height, setHeight = React.useState(0)
 	local scale = props.scale
-	local y = math.clamp(props.bottom - height, MARGIN, math.max(props.screenY - height - MARGIN, MARGIN))
+	local full = height + PAD * 2
+	local y = math.clamp(props.bottom - full, MARGIN, math.max(props.screenY - full - MARGIN, MARGIN))
 	return e("Frame", {
-		Size = UDim2.fromOffset(W, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
+		Size = UDim2.fromOffset(W, full),
 		Position = UDim2.fromOffset(props.x, y),
-		BackgroundColor3 = Theme.Panel,
+		BackgroundTransparency = 1,
 		Active = false,
-		[React.Change.AbsoluteSize] = function(rbx: Frame)
-			setHeight(rbx.AbsoluteSize.Y / scale)
-		end,
 	}, {
-		Corner = Widgets.Corner(8),
-		Stroke = Widgets.Stroke(Theme.Outline, 2, 0),
-		Padding = Widgets.Padding(PAD),
+		Art = Art.Back({ piece = "PaperNotchInfo" }),
 		Body = e("Frame", {
-			Size = UDim2.fromScale(1, 0),
+			Size = UDim2.new(1, -PAD * 2, 0, 0),
+			Position = UDim2.fromOffset(PAD, PAD),
 			AutomaticSize = Enum.AutomaticSize.Y,
 			BackgroundTransparency = 1,
+			[React.Change.AbsoluteSize] = function(rbx: Frame)
+				setHeight(rbx.AbsoluteSize.Y / scale)
+			end,
 		}, render(props.card)),
 	})
 end
@@ -498,7 +497,7 @@ local function Tooltip(props: Props): React.ReactNode
 			Text = dragging.Label,
 			TextColor3 = Theme.Text,
 			FontFace = Theme.Font,
-			TextSize = 12,
+			TextSize = Theme.Body(12),
 			TextWrapped = true,
 			Active = false,
 		}, {

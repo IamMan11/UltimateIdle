@@ -12,6 +12,7 @@ local Period = require(ReplicatedStorage.Shared.Period)
 local ShopConfig = require(ReplicatedStorage.Shared.Config.Shop)
 local Icons = require(ReplicatedStorage.Shared.Config.Icons)
 local Theme = require(script.Parent.Parent.Core.Theme)
+local Art = require(script.Parent.Parent.Core.Art)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
 local State = require(script.Parent.Parent.Parent.State)
 
@@ -100,14 +101,11 @@ local function Monthly(props: Props): React.ReactNode
 			else true
 		local open = left > 0 and forSale
 		cells[item.Id] = e("Frame", {
-			BackgroundColor3 = Theme.PanelAlt,
-			BackgroundTransparency = if left > 0 then 0 else 0.5,
-			BorderSizePixel = 0,
+			BackgroundTransparency = 1,
 			LayoutOrder = item.Order,
 		}, {
-			Corner = Widgets.Corner(8),
-			Stroke = Widgets.Stroke(),
-			Padding = Widgets.Padding(10),
+			Art = Art.Back({ piece = "PaperCompactSharp", transparency = if left > 0 then 0 else 0.5, padding = 12 }),
+			Padding = Widgets.Padding(12),
 			Name = e(Widgets.Label, {
 				text = Text.Eco.ShopItem(item.Id),
 				bold = true,

@@ -8,6 +8,7 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Text = require(ReplicatedStorage.Shared.Text)
 local AccountConfig = require(ReplicatedStorage.Shared.Config.Account)
 local Theme = require(script.Parent.Core.Theme)
+local Art = require(script.Parent.Core.Art)
 local FloatWindow = require(script.Parent.Core.FloatWindow)
 local Widgets = require(script.Parent.Core.Widgets)
 local State = require(script.Parent.Parent.State)
@@ -57,13 +58,12 @@ local function Lobby(props: Props): React.ReactNode
 			local buttons = if wants then 2 else 1
 			rows[`P{userId}`] = e("Frame", {
 				Size = UDim2.new(1, -10, 0, ROW_H),
-				BackgroundColor3 = if wants then Theme.Hover else Theme.PanelAlt,
-				BorderSizePixel = 0,
+				BackgroundTransparency = 1,
 				-- Players asking to trade come first.
 				LayoutOrder = if wants then i else #others + i,
 			}, {
-				Corner = Widgets.Corner(8),
-				Padding = Widgets.Padding(6),
+				Art = Art.Back({ piece = if wants then "BtnPaperHover" else "PaperCompactSharp", padding = 8 }),
+				Padding = Widgets.Padding(8),
 				Who = e(Badge, {
 					userId = userId,
 					display = if wants then `{other.DisplayName} {UI.WantsTrade}` else other.DisplayName,

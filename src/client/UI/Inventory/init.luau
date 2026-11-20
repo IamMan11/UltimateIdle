@@ -9,7 +9,7 @@ local Text = require(ReplicatedStorage.Shared.Text)
 local Formula = require(ReplicatedStorage.Shared.Formula)
 local Game = require(ReplicatedStorage.Shared.Config.Game)
 local FloatWindow = require(script.Parent.Core.FloatWindow)
-local Theme = require(script.Parent.Core.Theme)
+local Art = require(script.Parent.Core.Art)
 local Widgets = require(script.Parent.Core.Widgets)
 local ItemInfo = require(script.Parent.Core.ItemInfo)
 local State = require(script.Parent.Parent.State)
@@ -189,10 +189,10 @@ local function Inventory(props: Props): React.ReactNode
 			Panel = e("Frame", {
 				Size = UDim2.new(1, 0, 1, -(TAB_H + 8)),
 				Position = UDim2.fromOffset(0, TAB_H + 8),
-				BackgroundColor3 = Theme.Bg,
+				BackgroundTransparency = 1,
 			}, {
-				Corner = Widgets.Corner(8),
-				Padding = Widgets.Padding(12),
+				Art = Art.Back({ piece = "PaperNotchInfo", padding = 14 }),
+				Padding = Widgets.Padding(14),
 				-- Keyed by tab so each tab starts from its own state (scroll, index view).
 				[tab] = e("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 }, { Body = body }),
 			}),

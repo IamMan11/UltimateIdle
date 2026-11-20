@@ -7,6 +7,7 @@ local React = require(ReplicatedStorage.Packages.React)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Text = require(ReplicatedStorage.Shared.Text)
 local Theme = require(script.Parent.Theme)
+local Art = require(script.Parent.Art)
 local Widgets = require(script.Parent.Widgets)
 local VirtualList = require(script.Parent.VirtualList)
 local State = require(script.Parent.Parent.Parent.State)
@@ -14,7 +15,7 @@ local State = require(script.Parent.Parent.Parent.State)
 local e = React.createElement
 local UI = Text.UI
 
-local WIDTH = 236
+local WIDTH = 248
 local ARROW_W = 24
 local HEAD_H = 34
 local FOOT_H = 36
@@ -119,13 +120,10 @@ local function LevelPanel(props: Props): React.ReactNode
 			Size = UDim2.new(0, WIDTH, 1, 0),
 			Position = UDim2.fromScale(1, 0),
 			AnchorPoint = Vector2.new(1, 0),
-			BackgroundColor3 = Theme.Panel,
-			BackgroundTransparency = 0.15,
-			BorderSizePixel = 0,
+			BackgroundTransparency = 1,
 		}, {
-			Corner = Widgets.Corner(10),
-			Stroke = Widgets.Stroke(),
-			Padding = Widgets.Padding(8),
+			Art = Art.Back({ piece = "PaperNotchInfo", padding = 14 }),
+			Padding = Widgets.Padding(14),
 			Search = e("Frame", { Size = UDim2.new(1, -96, 0, HEAD_H), BackgroundTransparency = 1 }, {
 				Input = e(Widgets.TextInput, {
 					text = query,

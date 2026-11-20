@@ -129,7 +129,7 @@ local function ModelView(props: Props): React.ReactNode
 		LightDirection = LIGHT_DIRECTION,
 	}, {
 		Corner = Widgets.Corner(8),
-		Stroke = Widgets.Stroke(),
+		Stroke = Widgets.Stroke(Theme.Accent, 2),
 	})
 end
 

@@ -8,6 +8,7 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Text = require(ReplicatedStorage.Shared.Text)
 local ShopConfig = require(ReplicatedStorage.Shared.Config.Shop)
 local Theme = require(script.Parent.Parent.Core.Theme)
+local Art = require(script.Parent.Parent.Core.Art)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
 local State = require(script.Parent.Parent.Parent.State)
 
@@ -40,12 +41,9 @@ local function comingSoon(position: UDim2, size: UDim2): React.ReactNode
 	return e("Frame", {
 		Size = size,
 		Position = position,
-		BackgroundColor3 = Theme.Bg,
-		BackgroundTransparency = 0.4,
-		BorderSizePixel = 0,
+		BackgroundTransparency = 1,
 	}, {
-		Corner = Widgets.Corner(8),
-		Stroke = Widgets.Stroke(Theme.Stroke, 2, 0.5),
+		Art = Art.Back({ piece = "SlotPaper", transparency = 0.4 }),
 		Label = e(Widgets.Label, {
 			text = UI.ComingSoon,
 			color = Theme.Subtext,
@@ -74,12 +72,13 @@ local function passCard(def: ShopConfig.PassDef, position: UDim2, size: UDim2, b
 	return e("Frame", {
 		Size = size,
 		Position = position,
-		BackgroundColor3 = if owned then Theme.Hover else Theme.PanelAlt,
-		BorderSizePixel = 0,
+		BackgroundTransparency = 1,
 	}, {
-		Corner = Widgets.Corner(8),
-		Stroke = Widgets.Stroke(),
-		Padding = Widgets.Padding(if banner then 16 else 10),
+		Art = Art.Back({
+			piece = if owned then "BtnPaperHover" else "PaperCompactSharp",
+			padding = if banner then 18 else 12,
+		}),
+		Padding = Widgets.Padding(if banner then 18 else 12),
 		Name = e(Widgets.Label, {
 			text = Text.Eco.PassName(def.Key),
 			bold = true,
@@ -109,12 +108,9 @@ local function potion(index: number): React.ReactNode
 	}, {
 		Box = e("Frame", {
 			Size = UDim2.new(1, 0, 0, POTION_BOX_H),
-			BackgroundColor3 = Theme.Bg,
-			BackgroundTransparency = 0.4,
-			BorderSizePixel = 0,
+			BackgroundTransparency = 1,
 		}, {
-			Corner = Widgets.Corner(8),
-			Stroke = Widgets.Stroke(Theme.Stroke, 2, 0.5),
+			Art = Art.Back({ piece = "SlotPaper", transparency = 0.4 }),
 			Name = e(Widgets.Label, {
 				text = UI.Potion,
 				bold = true,

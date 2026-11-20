@@ -33,7 +33,7 @@ local function Badge(props: Props): React.ReactNode
 			Image = `rbxthumb://type=AvatarHeadShot&id={props.userId}&w=150&h=150`,
 		}, {
 			Corner = e("UICorner", { CornerRadius = UDim.new(0.5, 0) }),
-			Stroke = Widgets.Stroke(),
+			Stroke = Widgets.Stroke(Theme.Accent, 2),
 		}),
 		Display = e(Widgets.Label, {
 			text = props.display,

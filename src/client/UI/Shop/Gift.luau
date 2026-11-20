@@ -7,6 +7,7 @@ local React = require(ReplicatedStorage.Packages.React)
 local Text = require(ReplicatedStorage.Shared.Text)
 local ShopConfig = require(ReplicatedStorage.Shared.Config.Shop)
 local Theme = require(script.Parent.Parent.Core.Theme)
+local Art = require(script.Parent.Parent.Core.Art)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
 local Badge = require(script.Parent.Parent.Core.Badge)
 local State = require(script.Parent.Parent.Parent.State)
@@ -34,9 +35,8 @@ local function GiftTab(): React.ReactNode
 	end
 	for i, other in others do
 		local children: { [string]: React.ReactNode } = {
-			Corner = Widgets.Corner(8),
-			Stroke = Widgets.Stroke(),
-			Padding = Widgets.Padding(8),
+			Art = Art.Back({ piece = "PaperCompactSharp", padding = 10 }),
+			Padding = Widgets.Padding(10),
 			Who = e(Badge, {
 				userId = other.UserId,
 				display = other.DisplayName,
@@ -63,8 +63,7 @@ local function GiftTab(): React.ReactNode
 		end
 		rows[`P{other.UserId}`] = e("Frame", {
 			Size = UDim2.new(1, -12, 0, ROW_H),
-			BackgroundColor3 = Theme.PanelAlt,
-			BorderSizePixel = 0,
+			BackgroundTransparency = 1,
 			LayoutOrder = i,
 		}, children)
 	end

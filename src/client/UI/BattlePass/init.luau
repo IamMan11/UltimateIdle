@@ -12,6 +12,7 @@ local Period = require(ReplicatedStorage.Shared.Period)
 local PassConfig = require(ReplicatedStorage.Shared.Config.BattlePass)
 local ShopConfig = require(ReplicatedStorage.Shared.Config.Shop)
 local Theme = require(script.Parent.Core.Theme)
+local Art = require(script.Parent.Core.Art)
 local FloatWindow = require(script.Parent.Core.FloatWindow)
 local Widgets = require(script.Parent.Core.Widgets)
 local State = require(script.Parent.Parent.State)
@@ -72,27 +73,33 @@ local function cell(
 	}, {
 		Box = e("TextButton", {
 			Size = UDim2.fromOffset(CELL, CELL),
-			BackgroundColor3 = if state == "Open"
-				then Theme.Confirm
-				elseif state == "Claimed" then Theme.Disabled
-				else Theme.PanelAlt,
-			BackgroundTransparency = if reached then 0 else 0.5,
-			AutoButtonColor = state == "Open",
+			BackgroundTransparency = 1,
+			AutoButtonColor = false,
 			Active = state == "Open",
-			Text = if state == "Claimed" then `{text}\n({UI.Claimed})` else text,
-			TextColor3 = if state == "Open" then Theme.Text else Theme.Subtext,
-			FontFace = if state == "Open" then Theme.FontBold else Theme.Font,
-			TextSize = 12,
-			TextWrapped = true,
+			Text = "",
 			[React.Event.Activated] = function()
 				if state == "Open" then
 					onClaim()
 				end
 			end,
 		}, {
-			Corner = Widgets.Corner(8),
-			Padding = Widgets.Padding(4),
-			Stroke = if state == "Open" then Widgets.Stroke(Theme.Accent) else Widgets.Stroke(),
+			Art = Art.Back({
+				piece = if state == "Open" then "SlotSelected" else "SlotPaper",
+				transparency = if state == "Claimed" then 0.55 elseif reached then 0 else 0.4,
+				padding = 5,
+			}),
+			Padding = Widgets.Padding(5),
+			Label = e("TextLabel", {
+				Size = UDim2.fromScale(1, 1),
+				BackgroundTransparency = 1,
+				Text = if state == "Claimed" then `{text}\n({UI.Claimed})` else text,
+				TextColor3 = if state == "Open" then Theme.Gold else Theme.Subtext,
+				FontFace = if state == "Open" then Theme.FontBold else Theme.Font,
+				TextSize = Theme.Body(12),
+				TextScaled = true,
+				TextWrapped = true,
+				ZIndex = 2,
+			}, { Max = e("UITextSizeConstraint", { MaxTextSize = Theme.Body(12) }) }),
 		}),
 		Level = e(Widgets.Label, {
 			text = `{UI.PassLevel} {tier}`,
@@ -107,8 +114,7 @@ local function cell(
 end
 
 local function trackCard(row: number, title: string, children: { [string]: React.ReactNode }): React.ReactNode
-	children.Corner = Widgets.Corner(8)
-	children.Stroke = Widgets.Stroke()
+	children.Art = Art.Back({ piece = "PaperCompactSharp", padding = 8 })
 	children.Padding = Widgets.Padding(8)
 	children.Title = e(Widgets.Label, {
 		text = title,
@@ -121,8 +127,7 @@ local function trackCard(row: number, title: string, children: { [string]: React
 	return e("Frame", {
 		Size = UDim2.fromOffset(LABEL_W, CELL),
 		Position = UDim2.fromOffset(0, ROWS_Y + row * ROW_H + 2),
-		BackgroundColor3 = Theme.Bg,
-		BorderSizePixel = 0,
+		BackgroundTransparency = 1,
 	}, children)
 end
 
@@ -188,23 +193,20 @@ local function BattlePassPage(props: Props): React.ReactNode
 		Progress = e("Frame", {
 			Size = UDim2.new(1, -(LABEL_W + 10 + 280), 0, 26),
 			Position = UDim2.fromOffset(LABEL_W + 10, 5),
-			BackgroundColor3 = Theme.BarBack,
-			BorderSizePixel = 0,
+			BackgroundTransparency = 1,
 		}, {
-			Corner = Widgets.Corner(13),
-			Fill = e("Frame", {
-				Size = UDim2.fromScale(math.clamp(inTier / PassConfig.PointsPerTier, 0, 1), 1),
-				BackgroundColor3 = Theme.Bar,
-				BorderSizePixel = 0,
-			}, { Corner = Widgets.Corner(13) }),
-			-- Over both the light fill and the dark back: outlined so it reads on either.
+			Bar = e(Widgets.Bar, {
+				ratio = math.clamp(inTier / PassConfig.PointsPerTier, 0, 1),
+				size = UDim2.fromScale(1, 1),
+			}),
+			-- Over both the gold fill and the dark track: outlined so it reads on either.
 			Count = e("TextLabel", {
 				Size = UDim2.fromScale(1, 1),
 				BackgroundTransparency = 1,
 				Text = `{inTier}/{PassConfig.PointsPerTier}`,
 				TextColor3 = Theme.OnDark,
 				FontFace = Theme.FontBold,
-				TextSize = 15,
+				TextSize = Theme.Body(15),
 				ZIndex = 2,
 			}, { Outline = e("UIStroke", { Color = Theme.OnLight, Thickness = 1.5 }) }),
 		}),

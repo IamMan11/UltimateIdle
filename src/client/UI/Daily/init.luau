@@ -11,6 +11,7 @@ local Format = require(ReplicatedStorage.Shared.Format)
 local Formula = require(ReplicatedStorage.Shared.Formula)
 local DailyConfig = require(ReplicatedStorage.Shared.Config.Daily)
 local Theme = require(script.Parent.Core.Theme)
+local Art = require(script.Parent.Core.Art)
 local FloatWindow = require(script.Parent.Core.FloatWindow)
 local Widgets = require(script.Parent.Core.Widgets)
 local State = require(script.Parent.Parent.State)
@@ -84,12 +85,15 @@ local function Daily(props: Props): React.ReactNode
 		}, {
 			Card = e("Frame", {
 				Size = UDim2.fromOffset(rect[3], rect[4]),
-				BackgroundColor3 = if claimed then Theme.Disabled elseif isToday then Theme.Hover else Theme.PanelAlt,
-				BorderSizePixel = 0,
+				BackgroundTransparency = 1,
 			}, {
-				Corner = Widgets.Corner(8),
-				Stroke = if isToday and not claimed then Widgets.Stroke(Theme.Accent, 3) else Widgets.Stroke(),
-				Padding = Widgets.Padding(8),
+				Art = Art.Back({
+					piece = if isToday and not claimed then "BtnPaperHover" else "PaperCompactSharp",
+					transparency = if claimed then 0.45 else 0,
+					padding = 10,
+				}),
+				Glow = if isToday and not claimed then Widgets.Stroke(Theme.Accent, 2) else nil,
+				Padding = Widgets.Padding(10),
 				Reward = e(Widgets.Label, {
 					text = if claimed then `{text}\n({Text.Eco.UI.Claimed})` else text,
 					textSize = if i == #RECTS then 18 else 15,

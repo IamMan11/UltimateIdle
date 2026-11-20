@@ -13,6 +13,7 @@ local Skills = require(ReplicatedStorage.Shared.Config.Skills)
 local Items = require(ReplicatedStorage.Shared.Config.Items)
 local Classes = require(ReplicatedStorage.Shared.Config.Classes)
 local Theme = require(script.Parent.Parent.Core.Theme)
+local Art = require(script.Parent.Parent.Core.Art)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
 local ItemInfo = require(script.Parent.Parent.Core.ItemInfo)
 local Tip = require(script.Parent.Parent.Core.Tip)
@@ -114,10 +115,9 @@ local function HeroPanel(props: Props): React.ReactNode
 					skills[skill.Id] = e("Frame", {
 						Size = UDim2.new(1, 0, 1 / #Skills.SlotOrder, -4),
 						Position = UDim2.fromScale(0, at),
-						BackgroundColor3 = Theme.PanelAlt,
-						BackgroundTransparency = if unlocked then 0 else 0.5,
+						BackgroundTransparency = 1,
 					}, {
-						Corner = Widgets.Corner(6),
+						Art = Art.Back({ piece = "PaperCompactSharp", transparency = if unlocked then 0 else 0.5 }),
 						Name = e(Widgets.Label, {
 							text = `{Text.Skill(skill.Id)}{if unlocked
 								then ""
@@ -150,15 +150,10 @@ local function HeroPanel(props: Props): React.ReactNode
 			Size = UDim2.fromScale(0.2, 0.22),
 			Position = UDim2.fromScale(at.X, at.Y),
 			AnchorPoint = Vector2.new(0.5, 0.5),
-			BackgroundColor3 = if open then Theme.Hover else Theme.PanelAlt,
-			BackgroundTransparency = if hero ~= nil then 0 else 0.6,
-			AutoButtonColor = hero ~= nil,
+			BackgroundTransparency = 1,
+			AutoButtonColor = false,
 			Active = hero ~= nil,
-			Text = if item ~= nil then `{ItemInfo.Name(item)}\nLv {item.Level}` else Text.Slot(name),
-			TextColor3 = if item ~= nil then Theme.Text else Theme.Subtext,
-			FontFace = Theme.Font,
-			TextSize = 12,
-			TextWrapped = true,
+			Text = "",
 			-- Drop target for gear dragged from the Inventory window.
 			ref = function(rbx: TextButton?)
 				Tip.SetTarget(name, rbx)
@@ -182,8 +177,22 @@ local function HeroPanel(props: Props): React.ReactNode
 			end,
 		}, {
 			Aspect = e("UIAspectRatioConstraint", { AspectRatio = 1 }),
-			Corner = Widgets.Corner(6),
-			Stroke = if open then Widgets.Stroke(Theme.Accent, 1.5, 0) else Widgets.Stroke(),
+			Art = Art.Back({
+				piece = if open then "SlotSelected" else "SlotPaper",
+				transparency = if hero ~= nil then 0 else 0.5,
+			}),
+			Label = e("TextLabel", {
+				Size = UDim2.new(1, -8, 1, -8),
+				Position = UDim2.fromOffset(4, 4),
+				BackgroundTransparency = 1,
+				Text = if item ~= nil then `{ItemInfo.Name(item)}\nLv {item.Level}` else Text.Slot(name),
+				TextColor3 = if open then Theme.OnDark elseif item ~= nil then Theme.Text else Theme.Subtext,
+				FontFace = Theme.Font,
+				TextSize = Theme.Body(12),
+				TextWrapped = true,
+				TextScaled = true,
+				ZIndex = 2,
+			}, { Max = e("UITextSizeConstraint", { MaxTextSize = Theme.Body(12) }) }),
 		})
 	end
 
