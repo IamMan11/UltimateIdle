@@ -1,5 +1,5 @@
 --!strict
--- Team window, right column: the draft formation standing on the lane ground (follows a hero being dragged over a row), row columns (back · middle · front) with one cell per place, Remove / Reset / Apply. Click a row to place the picked hero, drag a hero between rows; Apply sends SetTeam.
+-- Team window, right column: the draft formation standing on the lane ground (follows a hero being dragged over a row), row columns (back · middle · front), each a 2 x 3 grid of places that fills the column, Remove / Reset / Apply. Click a row to place the picked hero, drag a hero between rows; Apply sends SetTeam.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
@@ -11,6 +11,7 @@ local Formula = require(ReplicatedStorage.Shared.Formula)
 local FormationConfig = require(ReplicatedStorage.Shared.Config.Formation)
 local Stages = require(ReplicatedStorage.Shared.Config.Stages)
 local World = require(ReplicatedStorage.Shared.Config.World)
+local Icons = require(ReplicatedStorage.Shared.Config.Icons)
 local Theme = require(script.Parent.Parent.Core.Theme)
 local Art = require(script.Parent.Parent.Core.Art)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
@@ -30,7 +31,10 @@ local DRAG_THRESHOLD = 6
 local PREVIEW = 0.36
 local INFO_H = 58
 local FOOT_H = 34
-local CELL_H = 54
+-- Places per row are drawn COLS wide, filling the column height.
+local COLS = 2
+local ROWS = math.ceil(FormationConfig.MaxPerRow / COLS)
+local CELL_PAD = 4
 local GAP = 8
 -- Heroes face +X (towards the monsters); seen from the camera side of the lane and above, so the back row is on the left like the columns below.
 local VIEW = Vector3.new(0.3, 0.75, 1)
@@ -288,8 +292,8 @@ local function Formation(props: Props): React.ReactNode
 		end
 		local cells: { [string]: React.ReactNode } = {
 			Layout = e("UIGridLayout", {
-				CellSize = UDim2.new(0.5, -2, 0, CELL_H),
-				CellPadding = UDim2.fromOffset(4, 4),
+				CellSize = UDim2.new(1 / COLS, -CELL_PAD * (COLS - 1) / COLS, 1 / ROWS, -CELL_PAD * (ROWS - 1) / ROWS),
+				CellPadding = UDim2.fromOffset(CELL_PAD, CELL_PAD),
 				SortOrder = Enum.SortOrder.LayoutOrder,
 			}),
 		}
@@ -397,6 +401,7 @@ local function Formation(props: Props): React.ReactNode
 		}, {
 			Remove = e(Widgets.Button, {
 				text = UI.Remove,
+				icon = Icons.Close,
 				size = third,
 				position = UDim2.fromOffset(2, 0),
 				textSize = 15,

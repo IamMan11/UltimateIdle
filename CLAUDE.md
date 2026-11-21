@@ -130,6 +130,7 @@ A script that writes a file under `src/` or `assets/` is a generator: docstring 
 | `Packages/` | `wally install` |
 | `src/server/Data/ProfileStore.luau` | vendored from MadStudioRoblox/ProfileStore — replace the whole file, then re-add `--!nocheck` and `--!nolint` as lines 1–2 (strict mode otherwise reports ~100 errors in it; selene excludes it in `selene.toml`) |
 | `sourcemap.json` | `rojo sourcemap` |
+| `src/shared/Config/Icons.luau` | `python3 gen_icons_luau.py atlas <out>` in `D:\BlenderForUltimateIdle\icons3d\` (after `build_icons3d.py` + `pack_icons.py` + uploading the atlas pages; ids in `atlas\atlas_ids.json`) |
 | `src/shared/Config/UiArt.luau` | `python3 gen_uiart.py <frames dir> <out>` in `D:\BlenderForUltimateIdle\ui\frames\` (after `pack_atlas.py` + uploading the atlas pages; ids in `atlas_ids.json`) |
 | `wally.lock` | `wally install` |
 | `roblox.yml` | `selene generate-roblox-std` (gitignored) |
@@ -156,6 +157,7 @@ Hover tooltip: give a slot `[React.Event.MouseEnter] = Tip.Enter(Tip.Gear(item, 
 Stats/tier names: `Widgets.Label` prop `stat = true` (or `Rich.Stats(text)` + `RichText`) colours them from `Theme.Stat`/`Theme.Tier` — solid colour only, no glow or outline (user choice), drawn bold; whole label in one accent = prop `accent`. Bold: Michroma has one weight, so bold body text gets a stroke in its own colour (`Widgets.Heavy(color, size)` / `Rich.Bold`, width `Theme.Heavy(size)`); `Widgets.Label` `bold`/`accent` and Button labels do it already — a raw TextLabel with `Theme.FontBold` must add `Widgets.Heavy`. Item slots: `Widgets.TierRim(tier)` = solid tier-colour rim (ZIndex 1, text at 2).
 Buttons: every `Widgets.Button` is the gilt leather plate with gold text (user choice). `selected = false` = idle tab (dim plate `IdleTint`, text `OnDarkIdle`), `selected = true` / nil = full gold; `color = Danger/Confirm` tints the plate; narrow buttons use `BtnSquareGilt`.
 Motion (`Core/Motion.luau`): buttons scale 1.04 on hover / 0.95 held (`Motion.useButton`); windows and modals pop 0.94→1 in 0.2s and back in 0.15s (`Motion.usePop` / `useShow`; `Widgets.Window` also fades its backdrop). App wraps every window / modal in `Motion.Layer` and keeps a closed one mounted through `Motion.usePresence` until it has animated out — a new window or modal must go through that too. Never fade with a CanvasGroup: it draws text without anti-aliasing.
+Icons: `Config/Icons` = atlas cells (`Icons.Icon` = { Image, Offset, Size }, generated) · look up game ids with `Config/IconOf` (`Item`, `Material`, `Box`, `Skill`, `Node`, `Class(id, adv, path)`, `Stage`, `Path`) · draw with `Widgets.Icon({ image, size | fill })`, corner text over a cell `Widgets.CellTag(text)` · a new icon = add a function to `icons3d/set_*.py`, render, re-pack, re-upload all pages, regenerate.
 Rule: every color comes from Theme; never hard-code a Color3 in a UI file. Pages read `State.Data`, send intent through `State.Send.*`.
 
 ### Player data — ProfileStore only

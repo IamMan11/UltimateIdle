@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
 local Text = require(ReplicatedStorage.Shared.Text)
+local Icons = require(ReplicatedStorage.Shared.Config.Icons)
 local Art = require(script.Parent.Parent.Core.Art)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
 
@@ -43,6 +44,7 @@ local function GearMenu(props: Props): React.ReactNode
 			Layout = Widgets.List(Enum.FillDirection.Vertical, 4),
 			Lock = e(Widgets.Button, {
 				text = if props.locked then UI.UnlockItem else UI.LockItem,
+				icon = if props.locked then Icons.Unlock else Icons.Lock,
 				size = UDim2.new(1, 0, 0, ROW),
 				textSize = 13,
 				layoutOrder = 1,
@@ -50,6 +52,7 @@ local function GearMenu(props: Props): React.ReactNode
 			}),
 			Salvage = e(Widgets.Button, {
 				text = UI.Salvage,
+				icon = Icons.Salvage,
 				size = UDim2.new(1, 0, 0, ROW),
 				textSize = 13,
 				layoutOrder = 2,

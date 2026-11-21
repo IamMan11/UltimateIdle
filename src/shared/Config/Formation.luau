@@ -6,7 +6,7 @@ local Freeze = require(script.Parent.Parent.Freeze)
 return Freeze({
 	Rows = { "Front", "Middle", "Back" },
 	RowX = { Front = 0, Middle = -5, Back = -10 },
-	MaxPerRow = 4,
+	MaxPerRow = 6, -- 2 x 3 places in the Team window
 	LaneSpacing = 2.5, -- z gap between heroes sharing a row
 	PreferredRowBonus = 0.1, -- +10% attack/hp/defense/heal
 	Pairs = {

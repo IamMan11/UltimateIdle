@@ -14,6 +14,7 @@ local Motion = require(script.Parent.Motion)
 local State = require(script.Parent.Parent.Parent.State)
 local Device = require(script.Parent.Device)
 local Tip = require(script.Parent.Tip)
+local Icons = require(ReplicatedStorage.Shared.Config.Icons)
 
 local e = React.createElement
 
@@ -231,32 +232,55 @@ function Widgets.Label(props: LabelProps): React.ReactNode
 end
 
 export type IconProps = {
-	image: string, -- Config.Icons value
-	size: number?,
+	image: Icons.Icon, -- Config.Icons / Config.IconOf value (atlas cell)
+	size: number?, -- square, px; ignored with fill
+	fill: boolean?, -- fill the parent (kept square by ScaleType.Fit)
 	position: UDim2?,
 	anchor: Vector2?,
 	transparency: number?,
 	layoutOrder: number?,
+	zIndex: number?,
 }
 
--- Source art is 32 px pixel art: nearest sampling at 32 px and up, smooth below (nearest drops pixels when shrinking).
 function Widgets.Icon(props: IconProps): React.ReactNode
 	local size = props.size or 32
 	return e("ImageLabel", {
-		Size = UDim2.fromOffset(size, size),
+		Size = if props.fill then UDim2.fromScale(1, 1) else UDim2.fromOffset(size, size),
 		Position = props.position,
 		AnchorPoint = props.anchor,
 		BackgroundTransparency = 1,
-		Image = props.image,
+		Image = props.image.Image,
+		ImageRectOffset = props.image.Offset,
+		ImageRectSize = props.image.Size,
+		ScaleType = Enum.ScaleType.Fit,
 		ImageTransparency = props.transparency or 0,
-		ResampleMode = if size >= 32 then Enum.ResamplerMode.Pixelated else Enum.ResamplerMode.Default,
 		LayoutOrder = props.layoutOrder,
+		ZIndex = props.zIndex,
+	})
+end
+
+-- Small corner text over an icon cell (level, count): light text with a dark stroke so it reads on any art.
+function Widgets.CellTag(text: string, textSize: number?, align: Enum.TextXAlignment?): React.ReactNode
+	local drawn = Theme.Body(textSize or 11)
+	return e("TextLabel", {
+		Size = UDim2.new(1, 0, 0, drawn + 2),
+		Position = UDim2.fromScale(0, 1),
+		AnchorPoint = Vector2.new(0, 1),
+		BackgroundTransparency = 1,
+		Text = text,
+		TextColor3 = Theme.OnDark,
+		FontFace = Theme.FontBold,
+		TextSize = drawn,
+		TextXAlignment = align or Enum.TextXAlignment.Right,
+		ZIndex = 3,
+	}, {
+		Stroke = e("UIStroke", { Color = Theme.Outline, Thickness = 1.5 }),
 	})
 end
 
 export type ButtonProps = {
 	text: string,
-	icon: string?, -- Config.Icons value: drawn at the left, text left-aligned after it
+	icon: Icons.Icon?, -- Config.Icons value: drawn at the left, text left-aligned after it
 	iconSize: number?,
 	onClick: (() -> ())?,
 	size: UDim2?,

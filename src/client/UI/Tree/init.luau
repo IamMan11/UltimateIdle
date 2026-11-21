@@ -8,6 +8,8 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Text = require(ReplicatedStorage.Shared.Text)
 local Format = require(ReplicatedStorage.Shared.Format)
 local SkillTree = require(ReplicatedStorage.Shared.Config.SkillTree)
+local Icons = require(ReplicatedStorage.Shared.Config.Icons)
+local IconOf = require(ReplicatedStorage.Shared.Config.IconOf)
 local Theme = require(script.Parent.Core.Theme)
 local Art = require(script.Parent.Core.Art)
 local Widgets = require(script.Parent.Core.Widgets)
@@ -21,7 +23,7 @@ local DEFAULT_SIZE = Vector2.new(860, 520)
 local MIN_SIZE = Vector2.new(480, 320)
 -- Grid cell and node size in design units: nodes stay small and the map scrolls instead of stretching.
 local CELL = 56
-local NODE = 36
+local NODE = 46
 local LINE = 3
 
 -- Where each branch runs from the Start node (grid cells, +Y down): a node sits `Row` cells along and `Col` cells across.
@@ -176,7 +178,9 @@ local function node(
 	label: string,
 	owned: boolean,
 	locked: boolean,
-	onClick: (() -> ())?
+	onClick: (() -> ())?,
+	icon: Icons.Icon?,
+	off: boolean?
 ): React.ReactNode
 	local where = at(cell)
 	local labelColor = if owned then Theme.Gold elseif locked then Theme.Subtext else Theme.Text
@@ -194,22 +198,33 @@ local function node(
 		Art = Art.Back({
 			piece = if owned then "SlotSelected" elseif locked then "SlotPaper" else "BtnPaperHover",
 			edge = 0.8,
+			padding = 3,
 		}),
-		Label = e("TextLabel", {
-			Size = UDim2.new(1, -4, 1, -4),
-			Position = UDim2.fromOffset(2, 2),
-			BackgroundTransparency = 1,
-			Text = label,
-			TextColor3 = labelColor,
-			FontFace = Theme.FontBold,
-			TextSize = Theme.Body(10),
-			TextScaled = true,
-			TextWrapped = true,
-			ZIndex = 2,
-		}, {
-			Max = e("UITextSizeConstraint", { MaxTextSize = Theme.Body(10) }),
-			Heavy = Widgets.Heavy(labelColor, Theme.Body(10)),
-		}),
+		Padding = Widgets.Padding(3),
+		Icon = if icon ~= nil
+			then e(
+				Widgets.Icon,
+				{ image = icon, fill = true, transparency = if locked or off then 0.5 else 0, zIndex = 2 }
+			)
+			else nil,
+		Tag = if icon ~= nil and off then Widgets.CellTag(label, 9, Enum.TextXAlignment.Center) else nil,
+		Label = if icon ~= nil
+			then nil
+			else e("TextLabel", {
+				Size = UDim2.new(1, -4, 1, -4),
+				Position = UDim2.fromOffset(2, 2),
+				BackgroundTransparency = 1,
+				Text = label,
+				TextColor3 = labelColor,
+				FontFace = Theme.FontBold,
+				TextSize = Theme.Body(10),
+				TextScaled = true,
+				TextWrapped = true,
+				ZIndex = 2,
+			}, {
+				Max = e("UITextSizeConstraint", { MaxTextSize = Theme.Body(10) }),
+				Heavy = Widgets.Heavy(labelColor, Theme.Body(10)),
+			}),
 	})
 end
 
@@ -230,12 +245,13 @@ local function TreePage(props: Props): React.ReactNode
 		end
 		local first = def.Effects[1]
 		local label = if first ~= nil then Text.EffectMark(first.Kind) else "?"
-		if st == "Owned" and def.Toggle and data.SkillOff[def.Id] == true then
+		local off = st == "Owned" and def.Toggle and data.SkillOff[def.Id] == true
+		if off then
 			label = UI.Off
 		end
 		board[def.Id] = node(cell, label, st == "Owned", st == "Locked", function()
 			click(data, def)
-		end)
+		end, IconOf.Node(def.Id), off)
 	end
 
 	return e(FloatWindow, {

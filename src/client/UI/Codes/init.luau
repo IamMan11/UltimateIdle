@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
 local Text = require(ReplicatedStorage.Shared.Text)
+local Icons = require(ReplicatedStorage.Shared.Config.Icons)
 local FloatWindow = require(script.Parent.Core.FloatWindow)
 local Widgets = require(script.Parent.Core.Widgets)
 local State = require(script.Parent.Parent.State)
@@ -33,6 +34,7 @@ local function Codes(): React.ReactNode
 		}),
 		Redeem = e(Widgets.Button, {
 			text = UI.Redeem,
+			icon = Icons.Codes,
 			size = UDim2.fromOffset(140, 38),
 			position = UDim2.fromScale(1, 0),
 			anchor = Vector2.new(1, 0),

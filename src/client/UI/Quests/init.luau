@@ -166,6 +166,7 @@ local function QuestsPage(props: Props): React.ReactNode
 		}),
 		ClaimAll = e(Widgets.Button, {
 			text = UI.ClaimAll,
+			icon = Icons.Confirm,
 			size = UDim2.fromOffset(160, 44),
 			position = UDim2.fromScale(1, 1),
 			anchor = Vector2.new(1, 1),

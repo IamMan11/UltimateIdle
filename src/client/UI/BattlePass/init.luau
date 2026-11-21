@@ -11,6 +11,7 @@ local Formula = require(ReplicatedStorage.Shared.Formula)
 local Period = require(ReplicatedStorage.Shared.Period)
 local PassConfig = require(ReplicatedStorage.Shared.Config.BattlePass)
 local ShopConfig = require(ReplicatedStorage.Shared.Config.Shop)
+local Icons = require(ReplicatedStorage.Shared.Config.Icons)
 local Theme = require(script.Parent.Core.Theme)
 local Art = require(script.Parent.Core.Art)
 local FloatWindow = require(script.Parent.Core.FloatWindow)
@@ -221,6 +222,7 @@ local function BattlePassPage(props: Props): React.ReactNode
 		}),
 		ClaimAll = e(Widgets.Button, {
 			text = UI.ClaimAll,
+			icon = Icons.Confirm,
 			size = UDim2.fromOffset(140, TOP_H),
 			position = UDim2.fromScale(1, 0),
 			anchor = Vector2.new(1, 0),

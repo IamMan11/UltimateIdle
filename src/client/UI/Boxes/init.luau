@@ -7,6 +7,7 @@ local React = require(ReplicatedStorage.Packages.React)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Text = require(ReplicatedStorage.Shared.Text)
 local Boxes = require(ReplicatedStorage.Shared.Config.Boxes)
+local IconOf = require(ReplicatedStorage.Shared.Config.IconOf)
 local Heroes = require(ReplicatedStorage.Shared.Config.Heroes)
 local Formula = require(ReplicatedStorage.Shared.Formula)
 local Theme = require(script.Parent.Core.Theme)
@@ -115,12 +116,21 @@ local function BoxesPage(props: Props): React.ReactNode
 				local stack = list[index]
 				local want = math.clamp(counts[stack.Key] or 1, 1, stack.Count)
 				local convertible = table.find(Boxes.ConvertSources, stack.Kind) ~= nil
+				local boxIcon = IconOf.Box(stack.Kind)
 				return e("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 }, {
 					Art = Art.Back({ piece = "PaperCompactSharp", edge = 0.8 }),
+					Icon = if boxIcon ~= nil
+						then e(Widgets.Icon, {
+							image = boxIcon,
+							size = 40,
+							position = UDim2.new(0, 6, 0.5, 0),
+							anchor = Vector2.new(0, 0.5),
+						})
+						else nil,
 					Name = e(Widgets.Label, {
 						text = `{Text.Box(stack.Key)}   {stack.Count}/{stack.Max}`,
-						size = UDim2.fromScale(0.42, 1),
-						position = UDim2.fromOffset(10, 0),
+						size = UDim2.new(0.42, -40, 1, 0),
+						position = UDim2.fromOffset(52, 0),
 					}),
 					Controls = e("Frame", {
 						Size = UDim2.new(0.58, -10, 1, -8),

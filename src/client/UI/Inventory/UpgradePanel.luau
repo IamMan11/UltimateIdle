@@ -9,6 +9,7 @@ local Text = require(ReplicatedStorage.Shared.Text)
 local Format = require(ReplicatedStorage.Shared.Format)
 local Formula = require(ReplicatedStorage.Shared.Formula)
 local Inserts = require(ReplicatedStorage.Shared.Config.Inserts)
+local Icons = require(ReplicatedStorage.Shared.Config.Icons)
 local Theme = require(script.Parent.Parent.Core.Theme)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
 local State = require(script.Parent.Parent.Parent.State)
@@ -143,6 +144,7 @@ local function UpgradePanel(props: Props): React.ReactNode
 	rows.Go = e("Frame", { Size = UDim2.new(1, 0, 0, 40), BackgroundTransparency = 1, LayoutOrder = 7 }, {
 		Upgrade = e(Widgets.Button, {
 			text = UI.Upgrade,
+			icon = Icons.Upgrade,
 			size = UDim2.fromOffset(180, 40),
 			position = UDim2.fromScale(0.5, 0),
 			anchor = Vector2.new(0.5, 0),

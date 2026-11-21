@@ -1,5 +1,5 @@
 --!strict
--- Team window, left column: model preview of the picked class with its name (or "not owned") (buy button when not owned), class strip (4 at a time, arrow buttons when there are more), then either the 10 gear slots laid out around the body or the class skills (toggle button), Inventory button.
+-- Team window, left column: model preview of the picked class with its name (or "not owned") (buy button when not owned), class strip (4 at a time, arrow buttons when there are more), then either the 10 gear slots (top to bottom, then the next column, cell size fitted to the area) or the class skills (toggle button), Inventory button.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -12,6 +12,7 @@ local Heroes = require(ReplicatedStorage.Shared.Config.Heroes)
 local Skills = require(ReplicatedStorage.Shared.Config.Skills)
 local Items = require(ReplicatedStorage.Shared.Config.Items)
 local Classes = require(ReplicatedStorage.Shared.Config.Classes)
+local IconOf = require(ReplicatedStorage.Shared.Config.IconOf)
 local Theme = require(script.Parent.Parent.Core.Theme)
 local Art = require(script.Parent.Parent.Core.Art)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
@@ -35,19 +36,21 @@ local GAP = 8
 -- Templates face -Z: look at them from the front, a little to the side and above.
 local VIEW = Vector3.new(-0.5, 0.25, -1)
 
--- Gear slot -> centre of its cell in the slot area (fractions): armour down the middle, hands left, jewellery right.
-local DOLL: { [string]: Vector2 } = {
-	Helmet = Vector2.new(0.38, 0.125),
-	Armor = Vector2.new(0.38, 0.375),
-	Pants = Vector2.new(0.38, 0.625),
-	Boots = Vector2.new(0.38, 0.875),
-	MainHand = Vector2.new(0.13, 0.375),
-	OffHand = Vector2.new(0.13, 0.625),
-	Bracelet1 = Vector2.new(0.65, 0.375),
-	Bracelet2 = Vector2.new(0.87, 0.375),
-	Ring1 = Vector2.new(0.65, 0.625),
-	Ring2 = Vector2.new(0.87, 0.625),
-}
+-- Gear slots in fill order (down each column): armour, hands, jewellery.
+local SLOT_ORDER =
+	{ "Helmet", "Armor", "Pants", "Boots", "MainHand", "OffHand", "Bracelet1", "Bracelet2", "Ring1", "Ring2" }
+
+-- Column count that gives the biggest square cells for `count` cells in `area` (any unit); returns columns, side.
+local function bestGrid(count: number, area: Vector2): (number, number)
+	local bestCols, bestSide = count, 0
+	for cols = 1, count do
+		local side = math.min(area.X / cols, area.Y / math.ceil(count / cols))
+		if side > bestSide then
+			bestCols, bestSide = cols, side
+		end
+	end
+	return bestCols, bestSide
+end
 
 export type Props = {
 	data: Types.ProfileData,
@@ -63,6 +66,7 @@ local function HeroPanel(props: Props): React.ReactNode
 	local def = Heroes.ById[classId]
 
 	local tab, setTab = React.useState("Gear")
+	local area, setArea = React.useState(Vector2.zero)
 	local offset, setOffset = React.useState(0)
 	local count = #Heroes.List
 	local maxOffset = math.max(count - VISIBLE, 0)
@@ -112,12 +116,22 @@ local function HeroPanel(props: Props): React.ReactNode
 					local unlocked = hero ~= nil and Formula.Skills.IsUnlocked(skill, level)
 					local at = order / #Skills.SlotOrder
 					order += 1
+					local skillIcon = IconOf.Skill(skill.Id)
 					skills[skill.Id] = e("Frame", {
 						Size = UDim2.new(1, 0, 1 / #Skills.SlotOrder, -4),
 						Position = UDim2.fromScale(0, at),
 						BackgroundTransparency = 1,
 					}, {
 						Art = Art.Back({ piece = "PaperCompactSharp", transparency = if unlocked then 0 else 0.5 }),
+						Icon = if skillIcon ~= nil
+							then e(Widgets.Icon, {
+								image = skillIcon,
+								size = 40,
+								position = UDim2.new(0, 6, 0.5, 0),
+								anchor = Vector2.new(0, 0.5),
+								transparency = if unlocked then 0 else 0.5,
+							})
+							else nil,
 						Name = e(Widgets.Label, {
 							text = `{Text.Skill(skill.Id)}{if unlocked
 								then ""
@@ -125,8 +139,8 @@ local function HeroPanel(props: Props): React.ReactNode
 							bold = true,
 							textSize = 14,
 							color = if unlocked then Theme.Text else Theme.Subtext,
-							position = UDim2.fromOffset(8, 4),
-							size = UDim2.new(1, -16, 0, 18),
+							position = UDim2.fromOffset(52, 4),
+							size = UDim2.new(1, -60, 0, 18),
 						}),
 						Desc = e(Widgets.Label, {
 							text = Text.SkillDesc(skill, Formula.Skills.Resolve(skill, advancement, path), power),
@@ -134,8 +148,8 @@ local function HeroPanel(props: Props): React.ReactNode
 							textSize = 12,
 							wrap = true,
 							stat = true,
-							position = UDim2.fromOffset(8, 22),
-							size = UDim2.new(1, -16, 1, -26),
+							position = UDim2.fromOffset(52, 22),
+							size = UDim2.new(1, -60, 1, -26),
 						}),
 					})
 				end
@@ -143,15 +157,27 @@ local function HeroPanel(props: Props): React.ReactNode
 		end
 	end
 
-	local cells: { [string]: React.ReactNode } = {}
-	for name, at in DOLL do
+	local classIcon = IconOf.Class(classId, advancement, path)
+	local slotCount = #SLOT_ORDER
+	local cols, side = bestGrid(slotCount, area)
+	-- Scale of the slot area, so cells stay square at any UI scale.
+	local cells: { [string]: React.ReactNode } = {
+		Layout = e("UIGridLayout", {
+			CellSize = UDim2.fromScale(side / math.max(area.X, 1), side / math.max(area.Y, 1)),
+			CellPadding = UDim2.fromOffset(0, 0),
+			FillDirection = Enum.FillDirection.Vertical,
+			FillDirectionMaxCells = math.ceil(slotCount / cols),
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}),
+	}
+	for order, name in SLOT_ORDER do
 		local item = if hero ~= nil then data.Gear[hero.Equipped[name] or ""] else nil
 		local open = slot == name
 		local accent = Theme.TierAccent(if item ~= nil then item.Tier else nil)
+		local itemIcon = if item ~= nil then IconOf.Item(item.BaseId) else IconOf.Item(`{classId}_{Items.SlotOf[name]}`)
 		cells[name] = e("TextButton", {
-			Size = UDim2.fromScale(0.2, 0.22),
-			Position = UDim2.fromScale(at.X, at.Y),
-			AnchorPoint = Vector2.new(0.5, 0.5),
+			LayoutOrder = order,
 			BackgroundTransparency = 1,
 			AutoButtonColor = false,
 			Active = hero ~= nil,
@@ -178,33 +204,47 @@ local function HeroPanel(props: Props): React.ReactNode
 				Tip.Pin(rbx, Tip.Gear(item, classId))
 			end,
 		}, {
-			Aspect = e("UIAspectRatioConstraint", { AspectRatio = 1 }),
 			Art = Art.Back({
 				piece = if open then "SlotSelected" else "SlotPaper",
 				transparency = if hero ~= nil then 0 else 0.5,
+				padding = 4,
 			}),
+			Padding = Widgets.Padding(4),
 			Rim = Widgets.TierRim(if item ~= nil then item.Tier else nil, 3),
-			Label = e("TextLabel", {
-				Size = UDim2.new(1, -8, 1, -8),
-				Position = UDim2.fromOffset(4, 4),
-				BackgroundTransparency = 1,
-				Text = if item ~= nil then `{ItemInfo.Name(item)}\nLv {item.Level}` else Text.Slot(name),
-				TextColor3 = if accent ~= nil and open
-					then accent.Light
-					elseif open then Theme.OnDark
-					elseif accent ~= nil then accent.Color
-					else Theme.Subtext,
-				FontFace = if accent ~= nil then Theme.FontBold else Theme.Font,
-				TextSize = Theme.Body(12),
-				TextWrapped = true,
-				TextScaled = true,
-				ZIndex = 2,
-			}, {
-				Max = e("UITextSizeConstraint", { MaxTextSize = Theme.Body(12) }),
-				Heavy = if accent ~= nil
-					then Widgets.Heavy(if open then accent.Light else accent.Color, Theme.Body(12))
-					else nil,
-			}),
+			Icon = if itemIcon ~= nil
+				then e(Widgets.Icon, {
+					image = itemIcon,
+					fill = true,
+					transparency = if item ~= nil then 0 else 0.7,
+					zIndex = 2,
+				})
+				else nil,
+			Tag = if itemIcon ~= nil
+				then Widgets.CellTag(if item ~= nil then `Lv {item.Level}` else Text.Slot(name), 10)
+				else nil,
+			Label = if itemIcon ~= nil
+				then nil
+				else e("TextLabel", {
+					Size = UDim2.new(1, -8, 1, -8),
+					Position = UDim2.fromOffset(4, 4),
+					BackgroundTransparency = 1,
+					Text = if item ~= nil then `{ItemInfo.Name(item)}\nLv {item.Level}` else Text.Slot(name),
+					TextColor3 = if accent ~= nil and open
+						then accent.Light
+						elseif open then Theme.OnDark
+						elseif accent ~= nil then accent.Color
+						else Theme.Subtext,
+					FontFace = if accent ~= nil then Theme.FontBold else Theme.Font,
+					TextSize = Theme.Body(12),
+					TextWrapped = true,
+					TextScaled = true,
+					ZIndex = 2,
+				}, {
+					Max = e("UITextSizeConstraint", { MaxTextSize = Theme.Body(12) }),
+					Heavy = if accent ~= nil
+						then Widgets.Heavy(if open then accent.Light else accent.Color, Theme.Body(12))
+						else nil,
+				}),
 		})
 	end
 
@@ -213,6 +253,15 @@ local function HeroPanel(props: Props): React.ReactNode
 			Model = e(ModelView, { entries = { { Class = classId, Position = Vector3.zero } }, view = VIEW }),
 			-- Above the viewport: sibling order is not fixed, so the overlay sets its own ZIndex.
 			Overlay = e("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = 2 }, {
+				ClassIcon = if classIcon ~= nil
+					then e(Widgets.Icon, {
+						image = classIcon,
+						size = 48,
+						position = UDim2.new(1, -6, 0, 6),
+						anchor = Vector2.new(1, 0),
+						transparency = if hero ~= nil then 0 else 0.5,
+					})
+					else nil,
 				Name = e(Widgets.Label, {
 					text = if hero ~= nil
 						then Text.Advancement(classId, hero.Advancement, hero.Path)
@@ -286,9 +335,12 @@ local function HeroPanel(props: Props): React.ReactNode
 		}),
 		Slots = if tab == "Gear"
 			then e("Frame", {
-				Size = UDim2.new(1, 0, 1 - PREVIEW, -(STRIP_H + GAP * 3 + FOOT_H)),
-				Position = UDim2.new(0, 0, PREVIEW, STRIP_H + GAP * 2),
+				Size = UDim2.new(1, 0, 1 - PREVIEW, -(STRIP_H + GAP * 4 + FOOT_H + TOGGLE.Y)),
+				Position = UDim2.new(0, 0, PREVIEW, STRIP_H + GAP * 3 + TOGGLE.Y),
 				BackgroundTransparency = 1,
+				[React.Change.AbsoluteSize] = function(rbx: Frame)
+					setArea(rbx.AbsoluteSize)
+				end,
 			}, cells)
 			else nil,
 		Skills = if tab == "Skills"

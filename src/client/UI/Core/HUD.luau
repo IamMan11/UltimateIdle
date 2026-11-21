@@ -15,6 +15,7 @@ local Stages = require(ReplicatedStorage.Shared.Config.Stages)
 local TutorialConfig = require(ReplicatedStorage.Shared.Config.Tutorial)
 local Period = require(ReplicatedStorage.Shared.Period)
 local Icons = require(ReplicatedStorage.Shared.Config.Icons)
+local IconOf = require(ReplicatedStorage.Shared.Config.IconOf)
 local Theme = require(script.Parent.Theme)
 local Art = require(script.Parent.Art)
 local Widgets = require(script.Parent.Widgets)
@@ -105,7 +106,7 @@ export type Props = {
 type PageButton = { Id: string, Label: string, Tab: string?, Key: string }
 
 -- Currency: icon + amount.
-local function money(icon: string, text: string, position: UDim2, size: UDim2): React.ReactNode
+local function money(icon: Icons.Icon, text: string, position: UDim2, size: UDim2): React.ReactNode
 	return e("Frame", { Size = size, Position = position, BackgroundTransparency = 1 }, {
 		Icon = e(Widgets.Icon, { image = icon, size = 22 }),
 		Label = e(Widgets.Label, {
@@ -196,6 +197,7 @@ end
 local function HUD(props: Props): React.ReactNode
 	local data = props.data
 	local battle = State.Battle
+	local stageIcon = IconOf.Stage(data.Stage.Rebirth)
 	local ui = State.Ui
 	local levelsOpen, setLevelsOpen = React.useState(props.compact ~= true)
 	local farmUnlocked = AccountConfig.IsUnlocked("Farm", data.AccountLevel, bestLevel(data))
@@ -277,6 +279,20 @@ local function HUD(props: Props): React.ReactNode
 				BackgroundTransparency = 1,
 			}, {
 				Art = Art.Back({ piece = "TitleBarSlim" }),
+				StageIcon = if stageIcon ~= nil
+					then e(Widgets.Icon, {
+						image = stageIcon,
+						size = 28,
+						position = UDim2.new(0, 3, 0.5, 0),
+						anchor = Vector2.new(0, 0.5),
+					})
+					else nil,
+				WaveIcon = e(Widgets.Icon, {
+					image = if battle.Wave >= Stages.WavesPerLevel then Icons.Wave_Boss else Icons.Wave,
+					size = 28,
+					position = UDim2.new(1, -3, 0.5, 0),
+					anchor = Vector2.new(1, 0.5),
+				}),
 				Stage = e(Widgets.Label, {
 					text = `{UI.Stage} {data.Stage.Rebirth + 1}`,
 					textSize = 14,

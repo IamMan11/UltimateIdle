@@ -20,6 +20,7 @@ local UpgradePick = require(script.Parent.UpgradePick)
 local GearMenu = require(script.Parent.GearMenu)
 local SalvageInfo = require(script.Parent.SalvageInfo)
 local Inserts = require(ReplicatedStorage.Shared.Config.Inserts)
+local Icons = require(ReplicatedStorage.Shared.Config.Icons)
 local Tip = require(script.Parent.Parent.Core.Tip)
 local Equip = require(script.Parent.Parent.Core.Equip)
 
@@ -33,7 +34,7 @@ local FOOT_H = 34
 local INFO_H = 22
 local GAP = 8
 local CELL_GAP = 6
-local BADGE = 18
+local BADGE = 22
 
 type Mode = "Lock" | "Salvage"
 
@@ -351,20 +352,24 @@ local function Grid(props: Props): React.ReactNode
 				padding = 4,
 			}),
 			Rim = Widgets.TierRim(entry.Tier),
-			Label = e("TextLabel", {
-				Size = UDim2.fromScale(1, 1),
-				BackgroundTransparency = 1,
-				Text = entry.Label,
-				TextColor3 = if accent ~= nil then accent.Color else Theme.Text,
-				FontFace = if accent ~= nil then Theme.FontBold else Theme.Font,
-				TextSize = Theme.Body(11),
-				TextScaled = true,
-				TextWrapped = true,
-				ZIndex = 2,
-			}, {
-				Max = e("UITextSizeConstraint", { MaxTextSize = Theme.Body(11) }),
-				Heavy = if accent ~= nil then Widgets.Heavy(accent.Color, Theme.Body(11)) else nil,
-			}),
+			Icon = if entry.Icon ~= nil then e(Widgets.Icon, { image = entry.Icon, fill = true, zIndex = 2 }) else nil,
+			Tag = if entry.Icon ~= nil and entry.Tag ~= "" then Widgets.CellTag(entry.Tag, 10) else nil,
+			Label = if entry.Icon ~= nil
+				then nil
+				else e("TextLabel", {
+					Size = UDim2.fromScale(1, 1),
+					BackgroundTransparency = 1,
+					Text = entry.Label,
+					TextColor3 = if accent ~= nil then accent.Color else Theme.Text,
+					FontFace = if accent ~= nil then Theme.FontBold else Theme.Font,
+					TextSize = Theme.Body(11),
+					TextScaled = true,
+					TextWrapped = true,
+					ZIndex = 2,
+				}, {
+					Max = e("UITextSizeConstraint", { MaxTextSize = Theme.Body(11) }),
+					Heavy = if accent ~= nil then Widgets.Heavy(accent.Color, Theme.Body(11)) else nil,
+				}),
 			Padding = Widgets.Padding(4),
 			Stroke = if isMarked
 				then Widgets.Stroke(Theme.Danger, 2, 0)
@@ -386,12 +391,12 @@ local function Grid(props: Props): React.ReactNode
 				else nil,
 			-- Top right: marked for salvage, or locked.
 			Badge = if isMarked or locked
-				then e(Widgets.Label, {
-					text = if isMarked then UI.SalvageMark else UI.LockMark,
-					textSize = 15,
-					align = Enum.TextXAlignment.Right,
-					size = UDim2.fromOffset(BADGE, BADGE),
-					position = UDim2.new(1, -BADGE, 0, -2),
+				then e(Widgets.Icon, {
+					image = if isMarked then Icons.Salvage else Icons.Lock,
+					size = BADGE,
+					position = UDim2.new(1, 2, 0, -4),
+					anchor = Vector2.new(1, 0),
+					zIndex = 4,
 				})
 				else nil,
 			Menu = menu,
@@ -439,6 +444,7 @@ local function Grid(props: Props): React.ReactNode
 		local item = data.Gear[chosen.Id]
 		actions.Salvage = e(Widgets.Button, {
 			text = UI.Salvage,
+			icon = Icons.Salvage,
 			size = UDim2.fromOffset(100, FOOT_H),
 			textSize = 15,
 			color = Theme.Danger,
@@ -529,6 +535,7 @@ local function Grid(props: Props): React.ReactNode
 		}),
 		FilterButton = e(Widgets.Button, {
 			text = UI.Filter,
+			icon = Icons.Filter,
 			size = UDim2.fromOffset(84, HEAD_H),
 			position = UDim2.fromScale(1, 0),
 			anchor = Vector2.new(1, 0),

@@ -7,6 +7,7 @@ local React = require(ReplicatedStorage.Packages.React)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Text = require(ReplicatedStorage.Shared.Text)
 local Game = require(ReplicatedStorage.Shared.Config.Game)
+local Icons = require(ReplicatedStorage.Shared.Config.Icons)
 local FloatWindow = require(script.Parent.Parent.Core.FloatWindow)
 local Theme = require(script.Parent.Parent.Core.Theme)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
@@ -79,6 +80,7 @@ local function Picker(props: Props): React.ReactNode
 		}),
 		Confirm = e(Widgets.Button, {
 			text = UI.Confirm,
+			icon = Icons.Confirm,
 			size = UDim2.new(0, 110, 1, 0),
 			textSize = 15,
 			color = Theme.Confirm,

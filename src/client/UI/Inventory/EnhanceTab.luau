@@ -8,6 +8,7 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Text = require(ReplicatedStorage.Shared.Text)
 local Formula = require(ReplicatedStorage.Shared.Formula)
 local EnhanceConfig = require(ReplicatedStorage.Shared.Config.Enhance)
+local Icons = require(ReplicatedStorage.Shared.Config.Icons)
 local Theme = require(script.Parent.Parent.Core.Theme)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
 local State = require(script.Parent.Parent.Parent.State)
@@ -119,6 +120,7 @@ local function enhanceBody(data: Types.ProfileData, item: Types.GearItem?): Reac
 	rows.Go = centred(40, 5, {
 		Enhance = e(Widgets.Button, {
 			text = UI.Enhance,
+			icon = Icons.Enhance,
 			size = UDim2.fromOffset(180, 40),
 			position = UDim2.fromScale(0.5, 0),
 			anchor = Vector2.new(0.5, 0),

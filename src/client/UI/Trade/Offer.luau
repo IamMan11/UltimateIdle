@@ -119,7 +119,7 @@ local function entries(offer: Types.TradeOffer, gear: (string) -> Types.GearItem
 	return out
 end
 
-local function money(icon: string, amount: number, x: number): React.ReactNode
+local function money(icon: Icons.Icon, amount: number, x: number): React.ReactNode
 	return e("Frame", {
 		Size = UDim2.new(0.5, -4, 1, 0),
 		Position = UDim2.new(x, if x > 0 then 4 else 0, 0, 0),

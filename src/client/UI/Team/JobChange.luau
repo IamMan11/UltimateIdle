@@ -8,6 +8,7 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Format = require(ReplicatedStorage.Shared.Format)
 local Text = require(ReplicatedStorage.Shared.Text)
 local Classes = require(ReplicatedStorage.Shared.Config.Classes)
+local IconOf = require(ReplicatedStorage.Shared.Config.IconOf)
 local Theme = require(script.Parent.Parent.Core.Theme)
 local Art = require(script.Parent.Parent.Core.Art)
 local Widgets = require(script.Parent.Parent.Core.Widgets)
@@ -101,6 +102,7 @@ local function JobChange(props: Props): React.ReactNode
 					`{UI.JobThen}: {Text.Advancement(heroId, after.Index, path.Index)} (Lv {after.HeroLevel})`
 				)
 			end
+			local pathIcon = IconOf.Class(heroId, stage.Index, path.Index)
 			cards[`Path{path.Index}`] = e("Frame", {
 				Size = UDim2.new(1 / #choices, -GAP * (#choices - 1) / #choices, 1, 0),
 				Position = UDim2.new((i - 1) / #choices, if i > 1 then GAP / #choices * (i - 1) else 0, 0, 0),
@@ -108,7 +110,13 @@ local function JobChange(props: Props): React.ReactNode
 			}, {
 				Art = Art.Back({ piece = "PaperCompactSharp", padding = 16 }),
 				Padding = Widgets.Padding(16),
-				Name = e(Widgets.Label, { text = name, bold = true, textSize = 20, size = UDim2.new(1, 0, 0, 24) }),
+				Name = e(Widgets.Label, { text = name, bold = true, textSize = 20, size = UDim2.new(1, -56, 0, 24) }),
+				Icon = if pathIcon ~= nil
+					then e(
+						Widgets.Icon,
+						{ image = pathIcon, size = 52, position = UDim2.new(1, 4, 0, -6), anchor = Vector2.new(1, 0) }
+					)
+					else nil,
 				Path = e(Widgets.Label, {
 					text = Text.Path(path.Index),
 					color = Theme.Accent,

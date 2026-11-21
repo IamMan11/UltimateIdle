@@ -14,6 +14,7 @@ local Inserts = require(ReplicatedStorage.Shared.Config.Inserts)
 local Materials = require(ReplicatedStorage.Shared.Config.Materials)
 local Boxes = require(ReplicatedStorage.Shared.Config.Boxes)
 local Icons = require(ReplicatedStorage.Shared.Config.Icons)
+local IconOf = require(ReplicatedStorage.Shared.Config.IconOf)
 local Theme = require(script.Parent.Theme)
 local Art = require(script.Parent.Art)
 local Widgets = require(script.Parent.Widgets)
@@ -43,7 +44,7 @@ export type Props = {
 
 -- What one card shows; sections with no lines are left out.
 type Card = {
-	Image: string?, -- Config.Icons value
+	Image: Icons.Icon?, -- Config.Icons / IconOf value
 	ImageText: string,
 	Name: string,
 	Powers: string, -- trait names right after the name (gear)
@@ -77,6 +78,7 @@ local function gearCard(data: Types.ProfileData, item: Types.GearItem, wearer: s
 	local own = data.Gear[item.Uid] == item
 	local wornBy = if own then ItemInfo.WornMap(data)[item.Uid] else nil
 	local reader = wearer or wornBy
+	card.Image = IconOf.Item(item.BaseId)
 	card.ImageText = if def ~= nil then Text.Slot(def.Slot) else ""
 	card.Side = `+{item.Plus}`
 	card.Name = Text.Item(item.BaseId)
@@ -100,7 +102,7 @@ local function materialCard(data: Types.ProfileData, id: string, count: number?)
 	local card = blank()
 	local def = Materials.ById[id]
 	local insert = Inserts.ById[id]
-	card.Image = if insert == nil then Icons.Forge else nil
+	card.Image = IconOf.Material(id) or (if insert == nil then Icons.Forge else nil)
 	card.ImageText = if insert ~= nil then Text.SocketKind(insert.Kind) else ""
 	card.Side = if count ~= nil and count > 1 then `x{Format.Number(count)}` else ""
 	card.Name = Text.Material(id)
@@ -121,7 +123,7 @@ local function boxCard(data: Types.ProfileData, key: string, count: number?): Ca
 	local card = blank()
 	local box = Boxes.Parse(key)
 	local have = data.Boxes[key] or 0
-	card.Image = Icons.Boxes
+	card.Image = IconOf.Box(key) or Icons.Boxes
 	card.Side = if count ~= nil then `x{Format.Number(count)}` else ""
 	card.Name = Text.Box(key)
 	if box ~= nil then
@@ -280,7 +282,7 @@ local function render(card: Card): { [string]: React.ReactNode }
 				Icon = if card.Image ~= nil
 					then e(Widgets.Icon, {
 						image = card.Image,
-						size = 32,
+						size = IMG - 6,
 						position = UDim2.fromScale(0.5, 0.5),
 						anchor = Vector2.new(0.5, 0.5),
 					})

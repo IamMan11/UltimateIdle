@@ -10,7 +10,7 @@
 - รูปทรง: smooth · hero = **R6 บล็อกซ้อนชั้น** · monster/boss = R6 ถ้าทำได้ ไม่งั้น skinned mesh (ยืนยัน 2026-11-15)
 - มุมกล้อง + ระยะที่ผู้เล่นเห็น: side-scroll มองจาก −Y กล้องยกเล็กน้อย ห่าง lane ~40 stud
 - แพลตฟอร์มต่ำสุด: PC ก่อน แล้ว mobile → budget คิดแบบ mobile
-- Icon ปุ่ม: **pixel art 32×32** ขอบคมชัด (ยืนยัน 2026-11-15 · 20 อันอยู่ในเกมแล้ว: `src/shared/Config/Icons.luau`)
+- Icon (ทุกปุ่ม/item/class/skill/skill tree/stage/wave): **sticker 3D** — ทรงอ้วนมน สีอิ่ม เงาวาว ขอบดำหนารอบ silhouette + เงาตกล่างขวา · Blender Cycles 512 → post 2D (ขอบ 3% · เงา dx 1.2% dy 3.8%) → 256 px พื้นใส · ในเกมใช้ atlas 128 px (**ยืนยัน 2026-11-20** "เอาแบบนี้แหละ" · ต้นแบบ `D:\BlenderForUltimateIdle\icons3d\preview\preview_sheet.png` · ทั้งชุด `preview\sheet_*.png`) · ป้ายมุม: ลูกศรเขียว = เพิ่มค่า · วงกลมเลขโรมัน = ขั้น · badge แดงดาบ = สาย Power · น้ำเงินโล่ = สาย Guard · ดาวทอง = ขั้นอาชีพ · ~~pixel art 32×32~~ (เลิกใช้)
 
 ## หลักร่วม (ทุก asset)
 

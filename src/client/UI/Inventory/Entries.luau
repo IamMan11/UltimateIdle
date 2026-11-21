@@ -10,6 +10,8 @@ local Text = require(ReplicatedStorage.Shared.Text)
 local Boxes = require(ReplicatedStorage.Shared.Config.Boxes)
 local Materials = require(ReplicatedStorage.Shared.Config.Materials)
 local Items = require(ReplicatedStorage.Shared.Config.Items)
+local Icons = require(ReplicatedStorage.Shared.Config.Icons)
+local IconOf = require(ReplicatedStorage.Shared.Config.IconOf)
 local ItemInfo = require(script.Parent.Parent.Core.ItemInfo)
 local State = require(script.Parent.Parent.Parent.State)
 
@@ -20,7 +22,9 @@ export type Entry = {
 	Key: string, -- unique per slot
 	Kind: Kind,
 	Id: string, -- gear uid · material id · box stack key
-	Label: string, -- text in the cell
+	Label: string, -- text in the cell when it has no icon
+	Icon: Icons.Icon?, -- picture in the cell
+	Tag: string, -- corner text over the icon (level / count)
 	Line: string, -- one-line description under the grid
 	Count: number, -- units in this slot (1 for gear)
 	Worn: boolean,
@@ -78,6 +82,8 @@ function Entries.Build(data: Types.ProfileData, filter: Filter): { Entry }
 				Kind = "Gear",
 				Id = item.Uid,
 				Label = `{ItemInfo.Name(item)}\nLv {item.Level}`,
+				Icon = IconOf.Item(item.BaseId),
+				Tag = if item.Plus > 0 then `+{item.Plus} Lv{item.Level}` else `Lv {item.Level}`,
 				Line = if wornBy ~= nil
 					then `{ItemInfo.Line(item)}  ·  worn by {Text.Class(wornBy)}`
 					else ItemInfo.Line(item),
@@ -106,6 +112,8 @@ function Entries.Build(data: Types.ProfileData, filter: Filter): { Entry }
 				Kind = "Box",
 				Id = key,
 				Label = `{Text.Box(key)}\nx{count}`,
+				Icon = IconOf.Box(key),
+				Tag = `x{count}`,
 				Line = `{Text.Box(key)}  ·  {count}/{if box ~= nil then Boxes.Cap(box.Kind, capPct) else count} in this stack`,
 				Count = count,
 				Worn = false,
@@ -131,6 +139,8 @@ function Entries.Build(data: Types.ProfileData, filter: Filter): { Entry }
 						Kind = "Material",
 						Id = def.Id,
 						Label = if max > 1 then `{name}\nx{count}` else name,
+						Icon = IconOf.Material(def.Id),
+						Tag = if max > 1 then `x{count}` else "",
 						Line = `{name}  ·  {total} in the bag  ·  {max} per slot`,
 						Count = count,
 						Worn = false,
